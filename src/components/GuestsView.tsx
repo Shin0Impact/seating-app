@@ -12,13 +12,15 @@ type Props = {
   guests: Guest[];
   tables: TableEl[];
   onChange: (guests: Guest[], key?: string) => void;
+  /** When set, the trash button asks the parent (which shows a confirmation) instead of deleting at once. */
+  onAskRemove?: (id: string) => void;
   onImportAll?: (added: Guest[], newTables: TableEl[]) => void;
 };
 
 type Filter = 'all' | 'unseated' | 'seated';
 
 /** Full-page guest list: look through it, search, add, edit and import. */
-export function GuestsView({ t, guests, tables, onChange, onImportAll }: Props) {
+export function GuestsView({ t, guests, tables, onChange, onAskRemove, onImportAll }: Props) {
   const [name, setName] = useState('');
   const [group, setGroup] = useState('');
   const [tableId, setTableId] = useState('');
@@ -267,7 +269,7 @@ export function GuestsView({ t, guests, tables, onChange, onImportAll }: Props) 
                     )}
                   </div>
                   <IconButton icon="access" label={t('stepFree')} pressed={g.stepFree} onClick={() => update(g.id, { stepFree: !g.stepFree }, 'step')} />
-                  <IconButton icon="trash" label={t('removeGuest')} danger onClick={() => remove(g.id)} />
+                  <IconButton icon="trash" label={t('removeGuest')} danger onClick={() => (onAskRemove ? onAskRemove(g.id) : remove(g.id))} />
                 </li>
               );
             })}

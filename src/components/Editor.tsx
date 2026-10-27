@@ -104,9 +104,13 @@ export type EditorProps = {
 export default function Editor({ initial, onChange, leading, account }: EditorProps = {}) {
   const [lang, setLang] = useState<Lang>('ar');
   const t = useCallback((k: Key) => STRINGS[lang][k], [lang]);
+  const langRef = useRef(lang);
+  langRef.current = lang;
   const { pref: themePref, theme, setPref: setThemePref } = useTheme();
   applyPalette(theme);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  /** Anything destructive that is not undone by a click asks first; the pending action runs on Delete. */
+  const [pendingDelete, setPendingDelete] = useState<{ text: string; run: () => void } | null>(null);
 
   const [layout, setLayout] = useState<Layout>(emptyLayout);
   const layoutRef = useRef(layout);
@@ -422,12 +426,19 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
     const l = layoutRef.current;
     const ids = new Set(selectionRef.current);
     if (ids.size === 0) return;
-    commit({
-      ...l,
-      elements: l.elements.filter((e) => !ids.has(e.id)),
-      guests: l.guests.map((g) => (g.tableId && ids.has(g.tableId) ? { ...g, tableId: null, seat: null } : g)),
-    });
-    setSelection([]);
+    const run = () => {
+      const cur = layoutRef.current;
+      commit({
+        ...cur,
+        elements: cur.elements.filter((e) => !ids.has(e.id)),
+        guests: cur.guests.map((g) => (g.tableId && ids.has(g.tableId) ? { ...g, tableId: null, seat: null } : g)),
+      });
+      setSelection([]);
+    };
+    const tableIds = l.elements.filter((e) => e.kind === 'table' && ids.has(e.id)).map((e) => e.id);
+    if (tableIds.length === 0) return run(); // plain shapes: Undo is enough
+    const seated = l.guests.filter((g) => g.tableId && tableIds.includes(g.tableId)).length;
+    setPendingDelete({ text: STRINGS[langRef.current].confirmRemoveTables.replace('{n}', String(tableIds.length)).replace('{k}', String(seated)), run });
   }, [commit]);
 
   /** Copies everything selected, shifted a little; tables get the next table numbers and no guests. */
@@ -714,13 +725,17 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
 
   // ----- table metrics view -----
   const removeOne = (id: string) => {
-    const l = layoutRef.current;
-    commit({
-      ...l,
-      elements: l.elements.filter((e) => e.id !== id),
-      guests: l.guests.map((g) => (g.tableId === id ? { ...g, tableId: null, seat: null } : g)),
-    });
-    setSelection((cur) => cur.filter((x) => x !== id));
+    const run = () => {
+      const l = layoutRef.current;
+      commit({
+        ...l,
+        elements: l.elements.filter((e) => e.id !== id),
+        guests: l.guests.map((g) => (g.tableId === id ? { ...g, tableId: null, seat: null } : g)),
+      });
+      setSelection((cur) => cur.filter((x) => x !== id));
+    };
+    const seated = layoutRef.current.guests.filter((g) => g.tableId === id).length;
+    setPendingDelete({ text: t('confirmRemoveTables').replace('{n}', '1').replace('{k}', String(seated)), run });
   };
   const setAllSeats = (seats: number) => {
     const l = layoutRef.current;
@@ -758,9 +773,15 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
     commit({ ...l, guests: l.guests.map((g) => (g.id === id ? { ...g, ...patch, name: (patch.name ?? g.name).slice(0, LIMITS.nameMax), group: (patch.group ?? g.group).slice(0, LIMITS.nameMax) } : g)) }, `guest:${id}`);
   };
   const removeGuestById = (id: string) => {
-    const l = layoutRef.current;
-    commit({ ...l, guests: l.guests.filter((g) => g.id !== id) });
+    const name = layoutRef.current.guests.find((g) => g.id === id)?.name ?? '';
     setPicker(null);
+    setPendingDelete({
+      text: t('confirmRemoveGuest').replace('{name}', name),
+      run: () => {
+        const l = layoutRef.current;
+        commit({ ...l, guests: l.guests.filter((g) => g.id !== id) });
+      },
+    });
   };
   const [guestEdit, setGuestEdit] = useState<{ id: string; x: number; y: number } | null>(null);
   /** Double-click on an element: select it and show its properties in the side panel. */
@@ -1339,6 +1360,18 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
           onClose={() => setSettingsOpen(false)}
         />
       )}
+      {pendingDelete && (
+        <>
+          <div className="picker-backdrop" onMouseDown={() => setPendingDelete(null)} />
+          <div className="import-dialog confirm" role="alertdialog" aria-label={t('remove')} onKeyDown={(e) => e.key === 'Escape' && setPendingDelete(null)}>
+            <p>{pendingDelete.text}</p>
+            <div className="row">
+              <button className="primary danger-fill" onClick={() => { const r = pendingDelete.run; setPendingDelete(null); r(); }} autoFocus>{t('remove')}</button>
+              <button onClick={() => setPendingDelete(null)}>{t('importCancel')}</button>
+            </div>
+          </div>
+        </>
+      )}
       {askClear && (
         <>
           <div className="picker-backdrop" onMouseDown={() => setAskClear(false)} />
@@ -1734,6 +1767,7 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
           guests={layout.guests}
           tables={tables}
           onChange={setGuests}
+          onAskRemove={removeGuestById}
           onImportAll={(added, made) => {
             const l = layoutRef.current;
             commit({ ...l, elements: [...l.elements, ...placeNewTables(l.elements, l.settings, made)], guests: [...l.guests, ...added] });
