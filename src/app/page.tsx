@@ -4,10 +4,11 @@ import { Logo } from '@/components/Site';
 import ThemeToggle from '@/components/ThemeToggle';
 import { serverClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/supabase/env';
+import { toLoginEmail } from '@/lib/username';
 
 async function signIn(form: FormData) {
   'use server';
-  const email = String(form.get('email') ?? '').trim();
+  const email = toLoginEmail(String(form.get('email') ?? ''));
   const password = String(form.get('password') ?? '');
   const supabase = await serverClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -31,17 +32,12 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
       <div className="theme-float"><ThemeToggle /></div>
       <section className="hero">
         <div className="hero-inner">
-          <div className="hero-copy">
-            <div className="hero-art"><Logo size={150} /></div>
-            <h1>ترتيب الجلوس</h1>
-            <p>ارسم قاعة الحفل ورتّب الطاولات، أرسل رابطًا لكل عائلة لتأكيد الحضور، وامسح رمز الضيف عند الباب ليصل مباشرةً إلى كرسيه.</p>
-            <ul className="hero-points">
-              <li>مخطط القاعة بالسحب والإفلات، يعمل على الهاتف</li>
-              <li>رابط ورمز QR لكل عائلة، بدون تسجيل دخول للضيوف</li>
-              <li>الفريق يتابع الدعوات والتأكيدات معًا في الوقت نفسه</li>
-            </ul>
-          </div>
           <div className="login-card">
+            <div className="login-head">
+              <Logo size={56} />
+              <h1>ترتيب الجلوس</h1>
+              <p>خطّط قاعة الحفل ونظّم ضيوفك في مكان واحد.</p>
+            </div>
             {!supabaseConfigured ? (
               <p className="notice info">الخادم غير مُعدّ بعد. أضف مفاتيح Supabase في إعدادات Vercel.</p>
             ) : signedIn ? (
@@ -51,14 +47,13 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
               </>
             ) : (
               <form action={signIn} className="login-form" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <h2>تسجيل دخول المنظّم</h2>
-                {q.error && <p className="notice err" role="alert">البريد الإلكتروني أو كلمة المرور غير صحيحة.</p>}
-                <label className="field-col">البريد الإلكتروني<input name="email" type="email" required autoComplete="email" dir="ltr" /></label>
+                {q.error && <p className="notice err" role="alert">اسم المستخدم أو كلمة المرور غير صحيحة.</p>}
+                <label className="field-col">اسم المستخدم أو البريد الإلكتروني<input name="email" type="text" required autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} dir="ltr" /></label>
                 <label className="field-col">كلمة المرور<input name="password" type="password" required autoComplete="current-password" dir="ltr" /></label>
                 <button className="btn primary">دخول</button>
               </form>
             )}
-            <p className="hero-foot">تريد تجربة المحرر فقط؟ <Link href="/editor">افتحه بدون حساب</Link> (يُحفظ على هذا الجهاز فقط).</p>
+            <p className="hero-foot"><Link href="/editor">جرّب المحرر بدون حساب</Link></p>
           </div>
         </div>
       </section>

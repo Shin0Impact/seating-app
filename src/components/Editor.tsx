@@ -45,7 +45,7 @@ import { NumField, round2 } from './NumField';
 import { SeatList } from './SeatList';
 import { TablesView } from './TablesView';
 import { Icon, IconButton } from './Icon';
-import SettingsDialog from './SettingsDialog';
+import SettingsDialog, { type AccountInfo } from './SettingsDialog';
 import { useTheme } from '@/lib/theme';
 import { GuestEditPopup } from './ChairPicker';
 import { inviteDrafts } from '@/lib/invites';
@@ -97,9 +97,11 @@ export type EditorProps = {
   onChange?: (layout: Layout) => void;
   /** Shown at the start of the top bar (for example a link back to the events list). */
   leading?: React.ReactNode;
+  /** Set when the editor runs inside an event: adds the Account section to Settings. */
+  account?: AccountInfo;
 };
 
-export default function Editor({ initial, onChange, leading }: EditorProps = {}) {
+export default function Editor({ initial, onChange, leading, account }: EditorProps = {}) {
   const [lang, setLang] = useState<Lang>('ar');
   const t = useCallback((k: Key) => STRINGS[lang][k], [lang]);
   const { pref: themePref, theme, setPref: setThemePref } = useTheme();
@@ -1320,6 +1322,7 @@ export default function Editor({ initial, onChange, leading }: EditorProps = {})
 
       {settingsOpen && (
         <SettingsDialog
+          account={account}
           t={t}
           lang={lang}
           setLang={setLang}

@@ -548,3 +548,15 @@ button.primary.danger-fill { background: var(--danger); border-color: var(--dang
 .set-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .set-actions button.danger { color: var(--danger); border-color: var(--danger); }
 .theme-float { position: fixed; top: 12px; inset-inline-end: 12px; z-index: 5; }
+.back-link { white-space: nowrap; text-decoration: none; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: 0.9em; }
+.back-link:hover { background: var(--hover); }
+.set-sec .btn { min-height: 42px; }
+
+/* simplified landing: one centred card */
+.hero-inner { grid-template-columns: 1fr; width: min(400px, 100%); }
+.login-card { padding: 28px 26px; gap: 18px; }
+.login-head { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding-bottom: 4px; }
+.login-head svg { overflow: visible; margin-bottom: 6px; }
+.login-head h1 { font-size: 1.7em; }
+.login-head p { margin: 0; color: var(--muted); font-size: 1em; }
+.hero-foot { text-align: center; margin: 0; }

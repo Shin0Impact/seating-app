@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Layout } from '@/lib/layout';
+import { signOut } from '@/app/actions';
 import { browserClient } from '@/lib/supabase/browser';
 
 const Editor = dynamic(() => import('./Editor'), { ssr: false, loading: () => <p style={{ padding: 24 }}>…</p> });
@@ -11,7 +12,7 @@ const Editor = dynamic(() => import('./Editor'), { ssr: false, loading: () => <p
 type Status = 'saved' | 'saving' | 'error' | 'conflict';
 
 /** The hall editor backed by the database: changes are saved a moment after you stop, and a stale tab cannot overwrite a newer save. */
-export default function EventEditor({ id, name, initial, version }: { id: string; name: string; initial: Layout; version: number }) {
+export default function EventEditor({ id, name, initial, version, user }: { id: string; name: string; initial: Layout; version: number; user: string }) {
   const [status, setStatus] = useState<Status>('saved');
   const ver = useRef(version);
   const last = useRef(JSON.stringify(initial));
@@ -64,9 +65,10 @@ export default function EventEditor({ id, name, initial, version }: { id: string
     <Editor
       initial={initial}
       onChange={onChange}
+      account={{ user, eventId: id, signOut }}
       leading={
         <div className="event-lead">
-          <Link href={`/events/${id}`} aria-label="الرجوع إلى المناسبة">→</Link>
+          <Link href="/events" className="back-link" aria-label="مناسباتي">→ مناسباتي</Link>
           <h1>{name}</h1>
           <span className={`save-status ${status}`} role="status">{label}</span>
         </div>

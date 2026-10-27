@@ -2,9 +2,13 @@
 import { useEffect } from 'react';
 import type { Lang, Key } from '@/lib/i18n';
 import type { ThemePref } from '@/lib/theme';
+import Link from 'next/link';
 import { Icon } from './Icon';
 
+export type AccountInfo = { user: string; eventId: string; signOut: () => void | Promise<void> };
+
 type Props = {
+  account?: AccountInfo;
   t: (k: Key) => string;
   lang: Lang;
   setLang: (l: Lang) => void;
@@ -38,6 +42,20 @@ export default function SettingsDialog(p: Props) {
       <div className="picker-backdrop" onMouseDown={p.onClose} />
       <div className="import-dialog settings" role="dialog" aria-label={t('appSettings')}>
         <h2>{t('appSettings')}</h2>
+
+        {p.account && (
+          <section className="set-sec">
+            <h3>{t('setAccount')}{p.account.user && <span style={{ textTransform: 'none' }}> · {p.account.user}</span>}</h3>
+            <div className="set-actions">
+              <Link className="btn" href="/events">{t('myEvents')}</Link>
+              <Link className="btn" href={`/events/${p.account.eventId}`}>{t('eventHome')}</Link>
+              <Link className="btn" href={`/events/${p.account.eventId}/invites`}>{t('invitesLink')}</Link>
+            </div>
+            <form action={p.account.signOut}>
+              <button className="danger">{t('signOut')}</button>
+            </form>
+          </section>
+        )}
 
         <section className="set-sec">
           <h3>{t('setLanguage')}</h3>

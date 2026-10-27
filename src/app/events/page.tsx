@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { SiteHeader } from '@/components/Site';
 import { emptyLayout } from '@/lib/layout';
+import { signOut } from '@/app/actions';
 import { serverClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/supabase/env';
 
@@ -24,11 +25,6 @@ async function create(form: FormData) {
   redirect(`/events/${data.id}`);
 }
 
-async function signOut() {
-  'use server';
-  await (await serverClient()).auth.signOut();
-  redirect('/');
-}
 
 const fmtDate = (d: string | null) => (d ? new Date(d + 'T00:00:00').toLocaleDateString('ar', { day: 'numeric', month: 'long', year: 'numeric' }) : 'بدون تاريخ');
 

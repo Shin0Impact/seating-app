@@ -6,14 +6,14 @@ export type Theme = 'light' | 'dark';
 export const THEME_KEY = 'seating-theme';
 
 /** Runs before first paint (inlined in <head>) so there is no light flash in dark mode. */
-export const THEME_BOOT = `(function(){try{var p=localStorage.getItem('${THEME_KEY}');var d=p==='dark'||((p!=='light')&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.setAttribute('data-theme',d?'dark':'light')}catch(e){}})()`;
+export const THEME_BOOT = `(function(){try{var p=localStorage.getItem('${THEME_KEY}');var d=p==='dark'||(p==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.setAttribute('data-theme',d?'dark':'light')}catch(e){}})()`;
 
 export function readPref(): ThemePref {
   try {
     const p = localStorage.getItem(THEME_KEY);
     if (p === 'light' || p === 'dark' || p === 'auto') return p;
   } catch {}
-  return 'auto';
+  return 'light'; // first visit opens in light mode; Auto is opt-in
 }
 
 export function resolve(pref: ThemePref): Theme {
@@ -27,7 +27,7 @@ function apply(t: Theme) {
 
 /** Theme preference (auto follows the device) and the resolved light/dark value. */
 export function useTheme() {
-  const [pref, setPrefState] = useState<ThemePref>('auto');
+  const [pref, setPrefState] = useState<ThemePref>('light');
   const [theme, setTheme] = useState<Theme>('light');
 
   useEffect(() => {
