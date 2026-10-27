@@ -9,3 +9,6 @@ next-env.d.ts
 demo/dist
 demo/guests.ts
 *.csv
+
+# stray screenshots from local testing
+/*.png
