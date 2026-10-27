@@ -4,6 +4,7 @@ import { Logo } from '@/components/Site';
 import ThemeToggle from '@/components/ThemeToggle';
 import { serverClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/supabase/env';
+import { signOut } from '@/app/actions';
 import { normalizeUsername } from '@/lib/username';
 
 async function signIn(form: FormData) {
@@ -49,6 +50,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
               <>
                 <h2>أهلًا بعودتك</h2>
                 <Link className="btn primary" href="/events">متابعة إلى مناسباتي</Link>
+                <form action={signOut}><button className="btn" style={{ width: '100%' }}>تسجيل الخروج</button></form>
               </>
             ) : (
               <form action={signIn} className="login-form" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
