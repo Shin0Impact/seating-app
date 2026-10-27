@@ -19,11 +19,11 @@ export async function proxy(req: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   if (!data?.claims && req.nextUrl.pathname.startsWith('/events')) {
     const url = req.nextUrl.clone();
-    url.pathname = '/login';
+    url.pathname = '/';
     url.search = '';
     return NextResponse.redirect(url);
   }
   return res;
 }
 
-export const config = { matcher: ['/events/:path*', '/login'] };
+export const config = { matcher: ['/events/:path*'] };

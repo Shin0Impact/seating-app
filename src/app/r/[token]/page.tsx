@@ -1,6 +1,8 @@
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import QRCode from 'qrcode';
+import ThemeToggle from '@/components/ThemeToggle';
+import { Logo } from '@/components/Site';
 import { isToken } from '@/lib/invites';
 import { serverClient } from '@/lib/supabase/server';
 
@@ -28,43 +30,49 @@ export default async function Rsvp({ params }: { params: Promise<{ token: string
   const h = await headers();
   const site = (process.env.NEXT_PUBLIC_SITE_URL || `${h.get('x-forwarded-proto') ?? 'https'}://${h.get('host')}`).replace(/\/$/, '');
   const qr = inv.status === 'confirmed' ? await QRCode.toString(`${site}/r/${token}`, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' }) : '';
+  const when = inv.event_date ? new Date(inv.event_date + 'T00:00:00').toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
 
   return (
-    <main className="page narrow rsvp">
-      <p className="muted">{inv.event_name}{inv.event_date ? ` · ${inv.event_date}` : ''}</p>
-      <h1>أهلًا {inv.guest_name}</h1>
-      {inv.status === 'pending' && (
-        <form action={answer} className="stack">
-          <input type="hidden" name="token" value={token} />
-          <p>هل ستحضرون؟</p>
-          {inv.party_size > 1 && (
-            <label>كم شخصًا سيحضر (حتى {inv.party_size})؟
-              <input name="count" type="number" min={1} max={inv.party_size} defaultValue={inv.party_size} inputMode="numeric" />
-            </label>
-          )}
-          <div className="row">
-            <button name="status" value="confirmed" className="primary">نعم، سنحضر</button>
-            <button name="status" value="declined">نعتذر</button>
-          </div>
-        </form>
-      )}
-      {inv.status === 'confirmed' && (
-        <section className="stack">
-          <p>تم تأكيد حضوركم ({inv.confirmed_count}). أبرزوا هذا الرمز عند المدخل وسنرافقكم إلى طاولتكم.</p>
-          <div className="qr" role="img" aria-label="QR" dangerouslySetInnerHTML={{ __html: qr }} />
-          <form action={answer}>
+    <div className="site rsvp-wrap">
+      <div className="theme-float"><ThemeToggle /></div>
+      <main className="rsvp-card">
+        <div style={{ display: 'grid', placeItems: 'center' }}><Logo size={56} /></div>
+        <p className="muted" style={{ margin: 0 }}>{inv.event_name}{when ? ` · ${when}` : ''}</p>
+        <h1>أهلًا {inv.guest_name}</h1>
+        {inv.status === 'pending' && (
+          <form action={answer} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <input type="hidden" name="token" value={token} />
-            <button name="status" value="declined" className="link">تغيير: لن نتمكن من الحضور</button>
+            <p style={{ margin: 0 }}>يسعدنا حضوركم. هل ستحضرون؟</p>
+            {inv.party_size > 1 && (
+              <label className="field-col" style={{ alignItems: 'center' }}>كم شخصًا سيحضر (حتى {inv.party_size})؟
+                <input name="count" type="number" min={1} max={inv.party_size} defaultValue={inv.party_size} inputMode="numeric" />
+              </label>
+            )}
+            <div className="row">
+              <button name="status" value="confirmed" className="btn primary">نعم، سنحضر</button>
+              <button name="status" value="declined" className="btn">نعتذر عن الحضور</button>
+            </div>
           </form>
-        </section>
-      )}
-      {inv.status === 'declined' && (
-        <form action={answer} className="stack">
-          <input type="hidden" name="token" value={token} />
-          <p>سُجّل اعتذاركم. شكرًا لإعلامنا.</p>
-          <button name="status" value="confirmed">غيّرت رأيي، سنحضر</button>
-        </form>
-      )}
-    </main>
+        )}
+        {inv.status === 'confirmed' && (
+          <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p className="notice ok" style={{ margin: 0 }}>تم تأكيد حضوركم ({inv.confirmed_count}). شكرًا لكم!</p>
+            <p style={{ margin: 0 }}>أبرزوا هذا الرمز عند المدخل وسنرافقكم إلى طاولتكم.</p>
+            <div className="qr" role="img" aria-label="رمز الدخول" dangerouslySetInnerHTML={{ __html: qr }} />
+            <form action={answer}>
+              <input type="hidden" name="token" value={token} />
+              <button name="status" value="declined" className="linkbtn">لن نتمكن من الحضور بعد الآن</button>
+            </form>
+          </section>
+        )}
+        {inv.status === 'declined' && (
+          <form action={answer} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <input type="hidden" name="token" value={token} />
+            <p style={{ margin: 0 }}>سُجّل اعتذاركم. شكرًا لإعلامنا.</p>
+            <button name="status" value="confirmed" className="btn">غيّرنا رأينا، سنحضر</button>
+          </form>
+        )}
+      </main>
+    </div>
   );
 }

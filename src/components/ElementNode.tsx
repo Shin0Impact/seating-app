@@ -61,32 +61,69 @@ export function chairText(name: string, scale: number): { text: string; full: bo
 
 export const FONT = "'Noto Sans Arabic Variable', system-ui, sans-serif";
 
-const COLORS = {
+const LIGHT = {
   ink: '#2b2a28',
   line: '#6b655c',
   table: '#fffdf8',
   chair: '#d9d2c3',
   overlap: '#c0392b',
   tight: '#d98b00',
+  chairOverlap: '#f3c4bd',
+  chairTight: '#f6e0b0',
   zoneFill: 'rgba(176, 141, 60, 0.14)',
   zoneLine: '#9a7a2e',
   column: '#4a463f',
+  noGroup: '#c9d6ee',
+  groupS: 60,
+  groupL: 80,
+};
+const DARK: typeof LIGHT = {
+  ink: '#ecebe7',
+  line: '#9a958a',
+  table: '#2f3238',
+  chair: '#4a4d55',
+  overlap: '#ef7d70',
+  tight: '#e0a23a',
+  chairOverlap: '#6d3028',
+  chairTight: '#6b5420',
+  zoneFill: 'rgba(224, 180, 80, 0.14)',
+  zoneLine: '#c9a553',
+  column: '#b9b4a8',
+  noGroup: '#3a4a6e',
+  groupS: 42,
+  groupL: 34,
 };
 
-const MARKER_FILL: Record<string, string> = {
+const MARKER_LIGHT: Record<string, string> = {
   stage: '#e7d7f2',
   dancefloor: '#d6ecec',
   entrance: '#f6d9d0',
   buffet: '#e3edd2',
   other: '#e8e4dc',
 };
+const MARKER_DARK: Record<string, string> = {
+  stage: '#473458',
+  dancefloor: '#25494a',
+  entrance: '#593a30',
+  buffet: '#3b4a2a',
+  other: '#3b3a37',
+};
+
+/** Canvas colors are plain values (Konva can't read CSS variables). The editor calls applyPalette() on every
+ *  render and remounts the canvas layers when the theme flips, so these objects are always current. */
+export const COLORS: typeof LIGHT = { ...LIGHT };
+const MARKER_FILL: Record<string, string> = { ...MARKER_LIGHT };
+export function applyPalette(theme: 'light' | 'dark') {
+  Object.assign(COLORS, theme === 'dark' ? DARK : LIGHT);
+  Object.assign(MARKER_FILL, theme === 'dark' ? MARKER_DARK : MARKER_LIGHT);
+}
 
 /** A stable pastel color per group, so families are easy to spot around a table. */
 function groupColor(group: string): string {
-  if (!group) return '#c9d6ee';
+  if (!group) return COLORS.noGroup;
   let h = 0;
   for (const ch of group) h = (h * 31 + ch.codePointAt(0)!) % 360;
-  return `hsl(${h}, 60%, 80%)`;
+  return `hsl(${h}, ${COLORS.groupS}%, ${COLORS.groupL}%)`;
 }
 
 type ChairProps = {
@@ -314,7 +351,7 @@ function Label({ text, rotation, w, h, size = 0.36 }: { text: string; rotation: 
 
 export function ElementNode({ el, settings, issue, seated, seatGuests, highlightSeat, register, onSelect, onMove, snapStep = 0.1, onChairDrop, onChairTip, onChairOpen, scale = 40, multi, onDragStartEl, onDragMoveEl, onOpenEl, pickedIds, onChairPick, locked }: Props) {
   const stroke = issue === 'overlap' ? COLORS.overlap : issue === 'tight' ? COLORS.tight : COLORS.line;
-  const chairFill = issue === 'overlap' ? '#f3c4bd' : issue === 'tight' ? '#f6e0b0' : COLORS.chair;
+  const chairFill = issue === 'overlap' ? COLORS.chairOverlap : issue === 'tight' ? COLORS.chairTight : COLORS.chair;
 
   let body: React.ReactNode = null;
   if (el.kind === 'table') {

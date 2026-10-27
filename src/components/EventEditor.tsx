@@ -66,7 +66,7 @@ export default function EventEditor({ id, name, initial, version }: { id: string
       onChange={onChange}
       leading={
         <div className="event-lead">
-          <Link href="/events" aria-label="Back">→</Link>
+          <Link href={`/events/${id}`} aria-label="الرجوع إلى المناسبة">→</Link>
           <h1>{name}</h1>
           <span className={`save-status ${status}`} role="status">{label}</span>
         </div>

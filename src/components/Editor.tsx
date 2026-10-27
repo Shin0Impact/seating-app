@@ -39,12 +39,14 @@ import {
 import { Key, Lang, STRINGS, dirOf } from '@/lib/i18n';
 import { ChairPicker } from './ChairPicker';
 import { ContextMenu, MenuItem } from './ContextMenu';
-import { ChairTip, ElementNode, FONT, IssueState } from './ElementNode';
+import { applyPalette, ChairTip, ElementNode, FONT, IssueState } from './ElementNode';
 import { GuestsView } from './GuestsView';
 import { NumField, round2 } from './NumField';
 import { SeatList } from './SeatList';
 import { TablesView } from './TablesView';
 import { Icon, IconButton } from './Icon';
+import SettingsDialog from './SettingsDialog';
+import { useTheme } from '@/lib/theme';
 import { GuestEditPopup } from './ChairPicker';
 import { inviteDrafts } from '@/lib/invites';
 import { coarsePointer, readPayload, TouchPayload } from '@/lib/touchdrag';
@@ -100,6 +102,9 @@ export type EditorProps = {
 export default function Editor({ initial, onChange, leading }: EditorProps = {}) {
   const [lang, setLang] = useState<Lang>('ar');
   const t = useCallback((k: Key) => STRINGS[lang][k], [lang]);
+  const { pref: themePref, theme, setPref: setThemePref } = useTheme();
+  applyPalette(theme);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [layout, setLayout] = useState<Layout>(emptyLayout);
   const layoutRef = useRef(layout);
@@ -1215,11 +1220,7 @@ export default function Editor({ initial, onChange, leading }: EditorProps = {})
           <IconButton icon="undo" label={`${t('undo')} (Ctrl+Z)`} onClick={undo} disabled={past.current.length === 0} />
           <IconButton icon="redo" label={`${t('redo')} (Ctrl+Y)`} onClick={redo} disabled={future.current.length === 0} />
           <span className="sep" aria-hidden />
-          <IconButton icon="download" label={t('exportFile')} onClick={exportFile} />
-          <IconButton icon="upload" label={t('importFile')} onClick={() => fileRef.current?.click()} />
-          <IconButton icon="trash" label={t('clearAll')} danger onClick={clearAll} disabled={layout.elements.length === 0} />
-          <span className="sep" aria-hidden />
-          <button className="lang" onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}>{t('language')}</button>
+          <IconButton icon="settings" label={t('appSettings')} onClick={() => setSettingsOpen(true)} />
           <input
             ref={fileRef}
             type="file"
@@ -1317,6 +1318,24 @@ export default function Editor({ initial, onChange, leading }: EditorProps = {})
 
       {toast && <div className="toast" role="status">{toast}</div>}
 
+      {settingsOpen && (
+        <SettingsDialog
+          t={t}
+          lang={lang}
+          setLang={setLang}
+          themePref={themePref}
+          setThemePref={setThemePref}
+          snapGrid={snapGrid}
+          toggleSnap={toggleSnap}
+          locked={layoutLocked}
+          toggleLock={toggleLock}
+          onExport={exportFile}
+          onImport={() => fileRef.current?.click()}
+          onClear={() => { setSettingsOpen(false); clearAll(); }}
+          clearDisabled={layout.elements.length === 0}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
       {askClear && (
         <>
           <div className="picker-backdrop" onMouseDown={() => setAskClear(false)} />
@@ -1495,12 +1514,12 @@ export default function Editor({ initial, onChange, leading }: EditorProps = {})
           >
             <Layer listening={false}>
               {gridLines.map((l) => (
-                <Line key={l.key} points={l.points} stroke={l.major ? '#cfc8b8' : '#e6e1d4'} strokeWidth={l.major ? 1.25 : 1} strokeScaleEnabled={false} />
+                <Line key={l.key} points={l.points} stroke={theme === 'dark' ? (l.major ? '#3f424a' : '#2b2d33') : l.major ? '#cfc8b8' : '#e6e1d4'} strokeWidth={l.major ? 1.25 : 1} strokeScaleEnabled={false} />
               ))}
-              <Line points={[0, -0.25, 0, 0.25]} stroke="#9a9283" strokeWidth={1} strokeScaleEnabled={false} />
-              <Line points={[-0.25, 0, 0.25, 0]} stroke="#9a9283" strokeWidth={1} strokeScaleEnabled={false} />
+              <Line points={[0, -0.25, 0, 0.25]} stroke={theme === 'dark' ? '#7d796f' : '#9a9283'} strokeWidth={1} strokeScaleEnabled={false} />
+              <Line points={[-0.25, 0, 0.25, 0]} stroke={theme === 'dark' ? '#7d796f' : '#9a9283'} strokeWidth={1} strokeScaleEnabled={false} />
             </Layer>
-            <Layer key={fontTick}>
+            <Layer key={`${fontTick}-${theme}`}>
               {[...layout.elements]
                 .sort((a, b) => ORDER[a.kind] - ORDER[b.kind])
                 .map((el) => (

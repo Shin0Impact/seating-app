@@ -68,12 +68,12 @@ export default function Scanner() {
   const ok = res && 'ok' in res ? res : null;
   const err = res && 'error' in res ? res.error : null;
   return (
-    <div className="scanner">
+    <div className="card-box">
       <video ref={video} playsInline muted className="scan-video" />
-      {cam === 'off' && <p className="form-error">تعذّر تشغيل الكاميرا. اسمح بالوصول أو الصق الرمز يدويًا.</p>}
-      <form className="row" onSubmit={(e) => { e.preventDefault(); void submit(manual); setManual(''); }}>
-        <input value={manual} onChange={(e) => setManual(e.target.value)} placeholder="الصق رابط الدعوة أو الرمز" dir="ltr" />
-        <button>تحقّق</button>
+      {cam === 'off' && <p className="notice err">تعذّر تشغيل الكاميرا. اسمح بالوصول أو الصق الرمز يدويًا.</p>}
+      <form style={{ display: 'flex', gap: 8 }} onSubmit={(e) => { e.preventDefault(); void submit(manual); setManual(''); }}>
+        <input className="field-input" style={{ flex: 1, minHeight: 44, padding: '0 12px', border: '1px solid var(--line)', borderRadius: 10 }} value={manual} onChange={(e) => setManual(e.target.value)} placeholder="الصق رابط الدعوة أو الرمز" dir="ltr" />
+        <button className="btn">تحقّق</button>
       </form>
       {err && <div className="scan-result bad" role="alert">{err === 'not_found' ? 'رمز غير معروف لهذه المناسبة' : err === 'login' ? 'سجّل الدخول من جديد' : 'خطأ، حاول مرة أخرى'}</div>}
       {ok && (
@@ -86,7 +86,7 @@ export default function Scanner() {
               <li key={i}><b>{p.name}</b><span className="where">{p.table ? `${p.table}${p.seat ? ` · كرسي ${p.seat}` : ''}` : 'بدون طاولة بعد'}</span></li>
             ))}
           </ul>
-          <button onClick={() => setRes(null)}>التالي</button>
+          <button className="btn primary" onClick={() => setRes(null)}>التالي</button>
         </div>
       )}
     </div>

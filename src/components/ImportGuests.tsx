@@ -13,10 +13,12 @@ type Props = {
   tables: TableEl[];
   onImport: (added: Guest[], newTables: TableEl[]) => void;
   onClose: () => void;
+  /** Render as part of the page instead of a pop-up. */
+  inline?: boolean;
 };
 
 /** Import guests from a CSV file or pasted spreadsheet cells, with a preview before anything is added. */
-export function ImportGuests({ t, guests, tables, onImport, onClose }: Props) {
+export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: Props) {
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [header, setHeader] = useState(true);
@@ -68,8 +70,8 @@ export function ImportGuests({ t, guests, tables, onImport, onClose }: Props) {
 
   return (
     <>
-      <div className="picker-backdrop" onMouseDown={onClose} />
-      <div className="import-dialog" role="dialog" aria-label={t('importGuests')} onKeyDown={(e) => e.key === 'Escape' && onClose()}>
+      {!inline && <div className="picker-backdrop" onMouseDown={onClose} />}
+      <div className={`import-dialog${inline ? ' inline' : ''}`} role="dialog" aria-label={t('importGuests')} onKeyDown={(e) => e.key === 'Escape' && onClose()}>
         <h3>{t('importGuests')}</h3>
         <p className="muted">{t('importIntro')}</p>
         <label
