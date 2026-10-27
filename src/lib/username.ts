@@ -1,16 +1,10 @@
-/** Planners can sign in with a plain username. Supabase signs in by email, so a username maps to a
- *  fixed fake address on this domain (create the user in Supabase with that email, "Auto confirm" on). */
-export const USERNAME_DOMAIN = 'seating.example.com';
+/** Planners sign in with an email or with a username they picked (stored in public.profiles). */
+export const USERNAME_RE = /^[^@\s]{2,30}$/;
 
-/** "maher" -> "maher@seating.example.com"; anything containing "@" is treated as a real email. */
-export function toLoginEmail(input: string): string {
-  const v = input.trim().toLowerCase();
-  if (!v) return v;
-  return v.includes('@') ? v : `${v}@${USERNAME_DOMAIN}`;
+export function normalizeUsername(input: string): string {
+  return input.trim().toLowerCase();
 }
 
-/** Friendly name for display: strips the fake domain from username accounts. */
-export function displayName(email: string | null | undefined): string {
-  if (!email) return '';
-  return email.endsWith(`@${USERNAME_DOMAIN}`) ? email.slice(0, -(USERNAME_DOMAIN.length + 1)) : email;
+export function isValidUsername(input: string): boolean {
+  return USERNAME_RE.test(normalizeUsername(input));
 }

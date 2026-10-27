@@ -4,13 +4,18 @@ import { Logo } from '@/components/Site';
 import ThemeToggle from '@/components/ThemeToggle';
 import { serverClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/supabase/env';
-import { toLoginEmail } from '@/lib/username';
+import { normalizeUsername } from '@/lib/username';
 
 async function signIn(form: FormData) {
   'use server';
-  const email = toLoginEmail(String(form.get('email') ?? ''));
+  const typed = normalizeUsername(String(form.get('email') ?? ''));
   const password = String(form.get('password') ?? '');
   const supabase = await serverClient();
+  let email = typed;
+  if (typed && !typed.includes('@')) {
+    const { data } = await supabase.rpc('login_email', { p_username: typed });
+    email = typeof data === 'string' && data ? data : `${typed}@invalid.local`;
+  }
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) redirect('/?error=1');
   redirect('/events');

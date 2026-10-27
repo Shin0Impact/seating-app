@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { SiteHeader } from '@/components/Site';
 import { emptyLayout } from '@/lib/layout';
-import { signOut } from '@/app/actions';
-import { serverClient } from '@/lib/supabase/server';
+import { setUsername, signOut } from '@/app/actions';
+import { serverClient, whoAmI } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/supabase/env';
 
 export const dynamic = 'force-dynamic';
@@ -28,10 +28,11 @@ async function create(form: FormData) {
 
 const fmtDate = (d: string | null) => (d ? new Date(d + 'T00:00:00').toLocaleDateString('ar', { day: 'numeric', month: 'long', year: 'numeric' }) : 'بدون تاريخ');
 
-export default async function Events({ searchParams }: { searchParams: Promise<{ error?: string; deleted?: string }> }) {
+export default async function Events({ searchParams }: { searchParams: Promise<{ error?: string; deleted?: string; username?: string }> }) {
   if (!supabaseConfigured) redirect('/');
   const q = await searchParams;
   const supabase = await serverClient();
+  const me = await whoAmI(supabase);
   const { data: events } = await supabase.from('events').select('id,name,event_date,updated_at').order('updated_at', { ascending: false });
   const ids = (events ?? []).map((e) => e.id);
   const { data: inv } = ids.length ? await supabase.from('invites').select('event_id,status,sent_at,party_size') : { data: [] };
@@ -50,6 +51,11 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
       </SiteHeader>
       <main className="container">
         <div className="page-title"><h1>مناسباتي</h1></div>
+        {q.username && (
+          <p className={`notice ${q.username === 'saved' ? 'ok' : 'err'}`} role="status">
+            {{ saved: 'تم حفظ اسم المستخدم.', taken: 'اسم المستخدم هذا مستخدم من قبل.', invalid: 'اسم المستخدم من 2 إلى 30 حرفًا بدون مسافات أو @.' }[q.username] ?? 'تعذّر حفظ اسم المستخدم.'}
+          </p>
+        )}
         {q.deleted && <p className="notice ok" role="status">تم حذف المناسبة.</p>}
         {q.error && <p className="notice err" role="alert">تعذّر إنشاء المناسبة. حاول مرة أخرى.</p>}
         <div className="event-grid">
@@ -72,6 +78,12 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
           <label className="field-col">الاسم<input name="name" required maxLength={120} placeholder="مثال: زفاف فضل" /></label>
           <label className="field-col">التاريخ (اختياري)<input name="date" type="date" /></label>
           <button className="btn primary">إنشاء والمتابعة</button>
+        </form>
+        <form action={setUsername} className="card-box">
+          <h2>اسم المستخدم</h2>
+          <p className="muted" style={{ margin: 0 }}>{me.username ? 'يمكنك الدخول به بدل البريد الإلكتروني.' : 'اختر اسمًا لتدخل به بدل البريد الإلكتروني.'}</p>
+          <label className="field-col">الاسم<input name="username" defaultValue={me.username ?? ''} required minLength={2} maxLength={30} autoCapitalize="none" autoComplete="off" dir="ltr" placeholder="jihad" /></label>
+          <button className="btn">{me.username ? 'تغيير الاسم' : 'حفظ الاسم'}</button>
         </form>
       </main>
     </div>

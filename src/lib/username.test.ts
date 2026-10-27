@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { displayName, toLoginEmail } from './username';
+import { isValidUsername, normalizeUsername } from './username';
 
-describe('username login', () => {
-  it('maps plain usernames to the fixed domain', () => {
-    expect(toLoginEmail(' Maher ')).toBe('maher@seating.example.com');
+describe('username', () => {
+  it('lowercases and trims', () => expect(normalizeUsername('  Jihad ')).toBe('jihad'));
+  it('accepts plain names, including Arabic', () => {
+    expect(isValidUsername('Jihad')).toBe(true);
+    expect(isValidUsername('جهاد')).toBe(true);
   });
-  it('keeps real emails as they are', () => {
-    expect(toLoginEmail('A@B.com')).toBe('a@b.com');
-  });
-  it('shows usernames without the domain', () => {
-    expect(displayName('maher@seating.example.com')).toBe('maher');
-    expect(displayName('a@b.com')).toBe('a@b.com');
-    expect(displayName(null)).toBe('');
+  it('rejects emails, spaces and bad lengths', () => {
+    expect(isValidUsername('a@b.com')).toBe(false);
+    expect(isValidUsername('two words')).toBe(false);
+    expect(isValidUsername('a')).toBe(false);
+    expect(isValidUsername('x'.repeat(31))).toBe(false);
   });
 });

@@ -1,6 +1,7 @@
 'use server';
 import { redirect } from 'next/navigation';
 import { serverClient } from '@/lib/supabase/server';
+import { isValidUsername, normalizeUsername } from '@/lib/username';
 
 export async function signOut() {
   await (await serverClient()).auth.signOut();
@@ -19,4 +20,19 @@ export async function deleteEvent(form: FormData) {
   const { error } = await supabase.from('events').delete().eq('id', id);
   if (error) redirect(`/events/${id}?delete=error`);
   redirect('/events?deleted=1');
+}
+
+/** Sets or changes the signed-in planner's username. */
+export async function setUsername(form: FormData) {
+  const name = normalizeUsername(String(form.get('username') ?? ''));
+  if (!isValidUsername(name)) redirect('/events?username=invalid');
+  const supabase = await serverClient();
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) redirect('/');
+  const { data: existing } = await supabase.from('profiles').select('user_id').eq('user_id', u.user.id).maybeSingle();
+  const { error } = existing
+    ? await supabase.from('profiles').update({ username: name }).eq('user_id', u.user.id)
+    : await supabase.from('profiles').insert({ username: name });
+  if (error) redirect(`/events?username=${error.code === '23505' ? 'taken' : 'error'}`);
+  redirect('/events?username=saved');
 }
