@@ -1,20 +1,17 @@
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { SiteHeader, StepBar } from '@/components/Site';
 import { parseLayout } from '@/lib/layout';
 import { totals, type InviteRow } from '@/lib/inviteview';
+import DeleteEvent from '@/components/DeleteEvent';
+import { signOut } from '@/app/actions';
 import { serverClient } from '@/lib/supabase/server';
-
-async function signOut() {
-  'use server';
-  await (await serverClient()).auth.signOut();
-  redirect('/');
-}
 
 export const dynamic = 'force-dynamic';
 
-export default async function EventHome({ params }: { params: Promise<{ id: string }> }) {
+export default async function EventHome({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ delete?: string }> }) {
   const { id } = await params;
+  const q = await searchParams;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const supabase = await serverClient();
   const { data: ev } = await supabase.from('events').select('id,name,event_date,layout').eq('id', id).maybeSingle();
@@ -62,7 +59,9 @@ export default async function EventHome({ params }: { params: Promise<{ id: stri
             <Link className="btn" href={`/events/${id}/scan`}>فتح الماسح</Link>
           </section>
         </div>
+        {q.delete && <p className="notice err" role="alert">{q.delete === 'mismatch' ? 'الاسم المكتوب لا يطابق اسم المناسبة.' : 'تعذّر حذف المناسبة. حاول مرة أخرى.'}</p>}
         <p className="muted">الدعوات والمخطط صفحتان منفصلتان: يمكن لشخصين العمل على الاثنين في الوقت نفسه من الحساب نفسه.</p>
+        <DeleteEvent id={id} name={ev.name} />
       </main>
     </div>
   );

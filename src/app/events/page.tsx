@@ -28,7 +28,7 @@ async function create(form: FormData) {
 
 const fmtDate = (d: string | null) => (d ? new Date(d + 'T00:00:00').toLocaleDateString('ar', { day: 'numeric', month: 'long', year: 'numeric' }) : 'بدون تاريخ');
 
-export default async function Events({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function Events({ searchParams }: { searchParams: Promise<{ error?: string; deleted?: string }> }) {
   if (!supabaseConfigured) redirect('/');
   const q = await searchParams;
   const supabase = await serverClient();
@@ -50,6 +50,7 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
       </SiteHeader>
       <main className="container">
         <div className="page-title"><h1>مناسباتي</h1></div>
+        {q.deleted && <p className="notice ok" role="status">تم حذف المناسبة.</p>}
         {q.error && <p className="notice err" role="alert">تعذّر إنشاء المناسبة. حاول مرة أخرى.</p>}
         <div className="event-grid">
           {(events ?? []).map((e) => {
