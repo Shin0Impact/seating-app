@@ -4,7 +4,6 @@ import { SiteHeader, StepBar } from '@/components/Site';
 import { parseLayout } from '@/lib/layout';
 import { totals, type InviteRow } from '@/lib/inviteview';
 import DeleteEvent from '@/components/DeleteEvent';
-import { signOut } from '@/app/actions';
 import { serverClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -23,9 +22,7 @@ export default async function EventHome({ params, searchParams }: { params: Prom
   const t = totals((invites ?? []) as InviteRow[]);
   return (
     <div className="site">
-      <SiteHeader crumb={{ id, name: ev.name }}>
-        <form action={signOut}><button className="btn small">تسجيل الخروج</button></form>
-      </SiteHeader>
+      <SiteHeader crumb={{ id, name: ev.name }} />
       <main className="container">
         <div className="page-title"><h1>{ev.name}</h1></div>
         <StepBar id={id} active="hall" />

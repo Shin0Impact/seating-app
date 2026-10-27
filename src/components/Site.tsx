@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import ThemeToggle from './ThemeToggle';
+import { signOut } from '@/app/actions';
 
 export function Logo({ size = 34 }: { size?: number }) {
   return (
@@ -33,6 +34,7 @@ export function SiteHeader({ crumb, children }: { crumb?: { id: string; name: st
       <div className="site-actions">
         {children}
         <ThemeToggle />
+        <form action={signOut}><button className="btn small">تسجيل الخروج</button></form>
       </div>
     </header>
   );

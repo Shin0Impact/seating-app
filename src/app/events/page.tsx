@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { SiteHeader } from '@/components/Site';
 import { emptyLayout } from '@/lib/layout';
-import { setUsername, signOut } from '@/app/actions';
+import { setUsername } from '@/app/actions';
 import { serverClient, whoAmI } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/supabase/env';
 
@@ -46,9 +46,7 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
   }
   return (
     <div className="site">
-      <SiteHeader>
-        <form action={signOut}><button className="btn small">تسجيل الخروج</button></form>
-      </SiteHeader>
+      <SiteHeader />
       <main className="container">
         <div className="page-title"><h1>مناسباتي</h1></div>
         {q.username && (
