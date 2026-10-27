@@ -68,7 +68,7 @@ export default function EventEditor({ id, name, initial, version, user }: { id: 
       account={{ user, eventId: id, signOut }}
       leading={
         <div className="event-lead">
-          <Link href="/events" className="back-link" aria-label="مناسباتي">→ مناسباتي</Link>
+          <Link href={`/events/${id}`} className="back-link" aria-label="الرجوع إلى المناسبة">→ المناسبة</Link>
           <h1>{name}</h1>
           <span className={`save-status ${status}`} role="status">{label}</span>
         </div>

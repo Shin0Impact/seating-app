@@ -33,6 +33,7 @@ export function SiteHeader({ crumb, children }: { crumb?: { id: string; name: st
       </div>
       <div className="site-actions">
         {children}
+        {crumb && <Link className="btn small" href="/events">كل المناسبات</Link>}
         <ThemeToggle />
         <form action={signOut}><button className="btn small">تسجيل الخروج</button></form>
       </div>
