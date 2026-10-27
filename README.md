@@ -74,7 +74,7 @@ The offline editor at `/` keeps working with no setup. The online parts (planner
 1. Supabase: create a project. SQL editor → paste `supabase/migrations/0001_init.sql` → Run.
 2. Supabase → Authentication → URL configuration: set Site URL to your Vercel address (after step 4) and add `https://YOUR-APP.vercel.app/**` to the redirect URLs.
 3. Push this folder to a new GitHub repository (`.env*.local` is already git-ignored).
-4. Vercel → Add New Project → import the repo. Add environment variables from `.env.example` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`) → Deploy. Build command stays `npm run build`.
+4. Vercel → Add New Project → import the repo. Add environment variables from `.env.example` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (or the older `..._ANON_KEY`), optionally `NEXT_PUBLIC_SITE_URL`) → Deploy. Build command stays `npm run build`.
 5. Open the site, go to `/login`, create an account, confirm the email, then create an event.
 
 For local development copy `.env.example` to `.env.local` and fill it in.
