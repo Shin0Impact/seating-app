@@ -99,7 +99,7 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
                 <HallPreview layout={planLayout} label={s('yourTable')} focus={focus} />
               </div>
             )}
-            <MoreRequest action={askMore} token={token} sent={q.more === '1'} />
+            <MoreRequest action={askMore} token={token} sent={q.more === '1'} total={inv.party_size} />
             <ChangeRequestButton action={answer} token={token} />
           </section>
         )}
