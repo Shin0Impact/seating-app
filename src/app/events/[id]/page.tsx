@@ -17,7 +17,7 @@ export default async function EventHome({ params, searchParams }: { params: Prom
   const supabase = await serverClient();
   const [{ data: ev }, { data: invites }] = await Promise.all([
     supabase.from('events').select('id,name,event_date,layout').eq('id', id).maybeSingle(),
-    supabase.from('invites').select('token,guest_id,party_size,status,confirmed_count,checked_in_at,sent_at').eq('event_id', id),
+    supabase.from('invites').select('*').eq('event_id', id),
   ]);
   if (!ev) notFound();
   const { s } = await getS();
@@ -25,6 +25,7 @@ export default async function EventHome({ params, searchParams }: { params: Prom
   const tables = layout.elements.filter((e) => e.kind === 'table').length;
   const seated = layout.guests.filter((g) => g.tableId).length;
   const t = totals((invites ?? []) as InviteRow[]);
+  const changeCount = ((invites ?? []) as InviteRow[]).filter((r) => r.change_requested_at && r.status === 'pending').length;
   const delMsg = q.delete === 'mismatch' ? s('deleteMismatch') : s('deleteFailed');
   const renameMsg = q.rename === 'saved' ? s('renameSaved') : q.rename === 'invalid' ? s('renameInvalid') : s('renameError');
   return (
@@ -49,6 +50,7 @@ export default async function EventHome({ params, searchParams }: { params: Prom
             <div className="sc-head"><span className="n">3</span><h3>{s('invitations')}</h3></div>
             <div className="big">{t.families ? `${t.sent}/${t.families}` : '—'}</div>
             <p className="muted" style={{ margin: 0 }}>{t.families ? s('sentLine', { yes: t.confirmedFamilies }) : s('oneLinkHint')}</p>
+            {changeCount > 0 && <p className="notice info" style={{ margin: 0 }}>{s('changeBanner', { n: changeCount })}</p>}
             <Link className="btn" href={`/events/${id}/invites`}>{s('manageInvites')}</Link>
           </section>
           <section className="step-card">
