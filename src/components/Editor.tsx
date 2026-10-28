@@ -35,6 +35,7 @@ import {
   tableDims,
   tableFootprint,
   uid,
+  snapToGridEdges,
 } from '@/lib/layout';
 import { Key, Lang, STRINGS, dirOf } from '@/lib/i18n';
 import { ChairPicker } from './ChairPicker';
@@ -432,15 +433,17 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
     setPendingDelete({ text: STRINGS[langRef.current].confirmRemoveTables.replace('{n}', String(tableIds.length)).replace('{k}', String(seated)), run });
   }, [commit]);
 
-  /** Copies everything selected, shifted a little; tables get the next table numbers and no guests. */
-  const duplicateSelected = () => {
+  /** Adds copies of the given elements, shifted; tables get the next table numbers and no guests. */
+  const pasteElements = (src: Element[], shift: number) => {
+    if (lockedRef.current) {
+      setToast(lockMsgRef.current);
+      return;
+    }
     const l = layoutRef.current;
-    const ids = new Set(selectionRef.current);
     let n = l.elements.filter((e) => e.kind === 'table').length;
     const made: Element[] = [];
-    for (const e of l.elements) {
-      if (!ids.has(e.id)) continue;
-      const copy = { ...e, id: uid(), x: snapV(e.x + 0.8), y: snapV(e.y + 0.8) } as Element;
+    for (const e of src) {
+      const copy = { ...e, id: uid(), x: round2(e.x + shift), y: round2(e.y + shift) } as Element;
       if (copy.kind === 'table') {
         n += 1;
         copy.label = `${t('table')} ${n}`;
@@ -452,6 +455,23 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
     commit({ ...l, elements: [...l.elements, ...made] });
     setSelection(made.map((e) => e.id));
   };
+  const clipboard = useRef<{ els: Element[]; pastes: number }>({ els: [], pastes: 0 });
+  const selectedElements = () => {
+    const ids = new Set(selectionRef.current);
+    return layoutRef.current.elements.filter((e) => ids.has(e.id));
+  };
+  const copySelected = () => {
+    const els = selectedElements();
+    if (els.length === 0) return;
+    clipboard.current = { els: els.map((e) => ({ ...e })), pastes: 0 };
+  };
+  const pasteClipboard = () => {
+    const c = clipboard.current;
+    if (c.els.length === 0) return;
+    c.pastes += 1;
+    pasteElements(c.els, 0.8 * c.pastes);
+  };
+  const duplicateSelected = () => pasteElements(selectedElements(), 0.8);
 
   /** Quarter turn; a group turns around its own centre so the arrangement is kept. */
   const rotateSelected = () => {
@@ -1001,7 +1021,9 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
   const isGuestDrag = (e: React.DragEvent) => Array.from(e.dataTransfer.types).some((t) => t === 'text/guest-id' || t === 'text/guest-ids' || t === 'text/guest-group');
   const isPresetDrag = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes('text/element-preset');
 
-  // keyboard: delete, undo, redo
+  const copyHandlerRef = useRef({ copy: () => {}, paste: () => {} });
+  copyHandlerRef.current = { copy: copySelected, paste: pasteClipboard };
+  // keyboard: delete, undo, redo, copy, paste
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!inHallRef.current) return;
@@ -1015,6 +1037,12 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
       } else if (mod && k === 'a') {
         e.preventDefault();
         selectAll();
+      } else if (mod && k === 'c' && selectionRef.current.length > 0) {
+        e.preventDefault();
+        copyHandlerRef.current.copy();
+      } else if (mod && k === 'v') {
+        e.preventDefault();
+        copyHandlerRef.current.paste();
       } else if (mod && k === 'z' && !e.shiftKey) {
         e.preventDefault();
         undo();
@@ -1201,6 +1229,7 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
   };
 
   const dims = selected && selected.kind === 'table' ? tableDims(selected, layout.settings) : null;
+  const canResize = !!selected && !layoutLocked && !peopleTool && selection.length <= 1;
   const footprint = selected && selected.kind === 'table' ? tableFootprint(selected, layout.settings) : null;
 
   const palette: { key: string; label: string; glyph: string; spec: () => Spec }[] = [
@@ -1567,7 +1596,7 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
                     onDragStartEl={onDragStartEl}
                     onDragMoveEl={onDragMoveEl}
                     onMove={onMoveEl}
-                    snapStep={snapStep}
+                    snapPos={(x, y) => (snapGrid ? snapToGridEdges(el, layout.settings, x, y, 1) : { x: snap(x, 0.1), y: snap(y, 0.1) })}
                     onOpenEl={openProps}
                     pickedIds={pickedSet}
                     onChairPick={peopleTool ? togglePerson : undefined}
@@ -1576,21 +1605,74 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
                 ))}
               <Transformer
                 ref={trRef}
-                enabledAnchors={[]}
-                resizeEnabled={false}
+                enabledAnchors={canResize ? ['top-left', 'top-right', 'bottom-left', 'bottom-right'] : []}
+                resizeEnabled={canResize}
+                keepRatio={!!selected && (selected.kind === 'table' || selected.kind === 'column')}
+                flipEnabled={false}
+                boundBoxFunc={(o, n) => (n.width < 12 || n.height < 12 ? o : n)}
                 rotateEnabled={!layoutLocked}
                 rotationSnaps={Array.from({ length: 24 }, (_, i) => i * 15)}
                 rotationSnapTolerance={6}
                 rotateAnchorOffset={28}
                 borderStroke="#3b6fd4"
                 anchorStroke="#3b6fd4"
+                anchorSize={11}
+                anchorCornerRadius={2}
                 onTransformEnd={(e) => {
                   const node = e.target as unknown as Konva.Group;
+                  const id = [...nodeRefs.current.entries()].find(([, n]) => n === node)?.[0];
+                  if (!id) return;
                   let r = Math.round(node.rotation());
                   if (r > 180) r -= 360;
                   if (r < -180) r += 360;
-                  const id = [...nodeRefs.current.entries()].find(([, n]) => n === node)?.[0];
-                  if (id) patchEl(id, { rotation: r });
+                  const sx = Math.abs(node.scaleX());
+                  const sy = Math.abs(node.scaleY());
+                  const nx = node.x();
+                  const ny = node.y();
+                  node.scale({ x: 1, y: 1 });
+                  const el = layoutRef.current.elements.find((x) => x.id === id);
+                  if (!el || Math.abs(sx - 1) + Math.abs(sy - 1) < 0.001) {
+                    patchEl(id, { rotation: r });
+                    return;
+                  }
+                  if (lockedRef.current) {
+                    setToast(lockMsgRef.current);
+                    return;
+                  }
+                  const clampSize = (v: number) => Math.min(LIMITS.sizeMax, Math.max(LIMITS.sizeMin, round2(v)));
+                  const l = layoutRef.current;
+                  if (el.kind === 'table') {
+                    const seats = Math.min(LIMITS.seatsMax, Math.max(LIMITS.seatsMin, Math.round(el.seats * sx)));
+                    const elements = l.elements.map((x) => (x.id === id ? ({ ...x, seats, x: round2(nx), y: round2(ny), rotation: r } as Element) : x));
+                    commit({ ...l, elements, guests: normalizeSeats(elements, l.guests) });
+                  } else if (el.kind === 'column') {
+                    patchEl(id, { size: clampSize(el.size * sx), x: round2(nx), y: round2(ny), rotation: r });
+                  } else {
+                    let w = clampSize(el.w * sx);
+                    let h = clampSize(el.h * sy);
+                    let x = nx;
+                    let y = ny;
+                    if (snapGrid && r % 90 === 0) {
+                      // put the dragged edges on the grid lines
+                      const swap = Math.abs(r) % 180 === 90;
+                      const bw = swap ? h : w;
+                      const bh = swap ? w : h;
+                      const left = snap(nx - bw / 2, 1);
+                      const right = Math.max(left + 1, snap(nx + bw / 2, 1));
+                      const top = snap(ny - bh / 2, 1);
+                      const bottom = Math.max(top + 1, snap(ny + bh / 2, 1));
+                      x = (left + right) / 2;
+                      y = (top + bottom) / 2;
+                      if (swap) {
+                        h = right - left;
+                        w = bottom - top;
+                      } else {
+                        w = right - left;
+                        h = bottom - top;
+                      }
+                    }
+                    patchEl(id, { w: clampSize(w), h: clampSize(h), x: round2(x), y: round2(y), rotation: r });
+                  }
                 }}
               />
             </Layer>

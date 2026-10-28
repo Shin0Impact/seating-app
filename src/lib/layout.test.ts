@@ -239,3 +239,13 @@ describe('chair-level seating', () => {
     expect(l.guests.map((g) => g.seat)).toEqual([2, null, null, null]);
   });
 });
+
+describe('snapToGridEdges', () => {
+  it('puts an edge of the box on a grid line', async () => {
+    const { snapToGridEdges, newZone, DEFAULT_SETTINGS } = await import('./layout');
+    const z = { ...newZone(0, 0), w: 3, h: 2 };
+    const p = snapToGridEdges(z, DEFAULT_SETTINGS, 5.2, 7.4, 1);
+    expect(p.x - 1.5).toBeCloseTo(Math.round(p.x - 1.5));
+    expect(p.y - 1).toBeCloseTo(Math.round(p.y - 1));
+  });
+});

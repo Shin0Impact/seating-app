@@ -223,7 +223,7 @@ const ar: Record<keyof typeof en, string> = {
   diameter: 'قطر الطاولة',
   length: 'طول الطاولة',
   withChairs: 'مع الكراسي',
-  duplicate: 'تكرار',
+  duplicate: 'نسخ',
   remove: 'حذف',
   undo: 'تراجع',
   settings: 'إعدادات الأحجام',
@@ -384,7 +384,7 @@ const ar: Record<keyof typeof en, string> = {
   seatGuestHere: 'أجلس مدعواً هنا…',
   changeGuest: 'تغيير المدعو…',
   addHere: 'أضف هنا',
-  duplicateN: 'تكرار',
+  duplicateN: 'نسخ',
 };
 
 export type Key = keyof typeof en;

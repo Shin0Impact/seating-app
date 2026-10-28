@@ -561,3 +561,37 @@ export function chairWorld(elements: Element[], settings: Settings, g: Guest): {
   const slot = t ? chairSlots(t, settings)[g.seat] : undefined;
   return t && slot ? toWorld(t, slot.x, slot.y) : null;
 }
+
+/** Half the width/height of the box an element occupies on screen (chairs included), ignoring nothing that rotates. */
+export function halfExtent(el: Element, s: Settings): { hx: number; hy: number } {
+  let w: number, h: number;
+  if (el.kind === 'table') {
+    const f = tableFootprint(el, s);
+    if (f.type === 'circle') return { hx: f.r, hy: f.r };
+    w = f.w;
+    h = f.h;
+  } else if (el.kind === 'column') {
+    if (el.shape === 'circle') return { hx: el.size / 2, hy: el.size / 2 };
+    w = el.size;
+    h = el.size;
+  } else {
+    w = el.w;
+    h = el.h;
+  }
+  const a = (el.rotation * Math.PI) / 180;
+  const c = Math.abs(Math.cos(a));
+  const sn = Math.abs(Math.sin(a));
+  return { hx: (c * w + sn * h) / 2, hy: (sn * w + c * h) / 2 };
+}
+
+/** Moves the element so its nearest edge (left or right, top or bottom) lies on a grid line. */
+export function snapToGridEdges(el: Element, s: Settings, x: number, y: number, step = 1): { x: number; y: number } {
+  const { hx, hy } = halfExtent(el, s);
+  const axis = (v: number, h: number) => {
+    const a = snap(v - h, step) + h;
+    const b = snap(v + h, step) - h;
+    return Math.abs(a - v) <= Math.abs(b - v) ? a : b;
+  };
+  const r = (n: number) => Math.round(n * 1000) / 1000;
+  return { x: r(axis(x, hx)), y: r(axis(y, hy)) };
+}

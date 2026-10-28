@@ -21,7 +21,7 @@ type Props = {
   highlightSeat?: number | null;
   register: (id: string, node: Konva.Group | null) => void;
   onMove: (id: string, x: number, y: number) => void;
-  snapStep?: number;
+  snapPos?: (x: number, y: number) => { x: number; y: number };
   /** A seated guest's chair was dropped at this world position (meters). */
   onChairDrop?: (guestId: string, x: number, y: number) => void;
   /** Hovering a seated chair: show the guest's name near the pointer. */
@@ -349,7 +349,7 @@ function Label({ text, rotation, w, h, size = 0.36 }: { text: string; rotation: 
   );
 }
 
-export function ElementNode({ el, settings, issue, seated, seatGuests, highlightSeat, register, onSelect, onMove, snapStep = 0.1, onChairDrop, onChairTip, onChairOpen, scale = 40, multi, onDragStartEl, onDragMoveEl, onOpenEl, pickedIds, onChairPick, locked }: Props) {
+export function ElementNode({ el, settings, issue, seated, seatGuests, highlightSeat, register, onSelect, onMove, snapPos, onChairDrop, onChairTip, onChairOpen, scale = 40, multi, onDragStartEl, onDragMoveEl, onOpenEl, pickedIds, onChairPick, locked }: Props) {
   const stroke = issue === 'overlap' ? COLORS.overlap : issue === 'tight' ? COLORS.tight : COLORS.line;
   const chairFill = issue === 'overlap' ? COLORS.chairOverlap : issue === 'tight' ? COLORS.chairTight : COLORS.chair;
 
@@ -431,14 +431,13 @@ export function ElementNode({ el, settings, issue, seated, seatGuests, highlight
       }}
       onDragMove={(e) => {
         if (e.target !== e.currentTarget) return;
-        if (snapStep > 0.1) e.target.position({ x: snap(e.target.x(), snapStep), y: snap(e.target.y(), snapStep) });
+        if (snapPos) e.target.position(snapPos(e.target.x(), e.target.y()));
         onDragMoveEl?.(el.id, e.target.x(), e.target.y());
       }}
       onDragEnd={(e) => {
         if (e.target !== e.currentTarget) return; // a chair was dragged, not the table
         const node = e.target;
-        const x = snap(node.x(), snapStep);
-        const y = snap(node.y(), snapStep);
+        const { x, y } = snapPos ? snapPos(node.x(), node.y()) : { x: snap(node.x(), 0.1), y: snap(node.y(), 0.1) };
         node.position({ x, y });
         onMove(el.id, x, y);
       }}
