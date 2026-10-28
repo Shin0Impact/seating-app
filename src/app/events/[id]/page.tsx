@@ -4,11 +4,12 @@ import { SiteHeader, StepBar } from '@/components/Site';
 import { parseLayout } from '@/lib/layout';
 import { totals, type InviteRow } from '@/lib/inviteview';
 import DeleteEvent from '@/components/DeleteEvent';
+import { renameEvent } from '@/app/actions';
 import { serverClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-export default async function EventHome({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ delete?: string }> }) {
+export default async function EventHome({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ delete?: string; rename?: string }> }) {
   const { id } = await params;
   const q = await searchParams;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
@@ -58,6 +59,18 @@ export default async function EventHome({ params, searchParams }: { params: Prom
         </div>
         {q.delete && <p className="notice err" role="alert">{q.delete === 'mismatch' ? 'الاسم المكتوب لا يطابق اسم المناسبة.' : 'تعذّر حذف المناسبة. حاول مرة أخرى.'}</p>}
         <p className="muted">الدعوات والمخطط صفحتان منفصلتان: يمكن لشخصين العمل على الاثنين في الوقت نفسه من الحساب نفسه.</p>
+        {q.rename && (
+          <p className={`notice ${q.rename === 'saved' ? 'ok' : 'err'}`} role="status">
+            {q.rename === 'saved' ? 'تم حفظ التعديل.' : q.rename === 'invalid' ? 'الاسم مطلوب.' : 'تعذّر حفظ التعديل.'}
+          </p>
+        )}
+        <form action={renameEvent} className="card-box">
+          <h2>اسم المناسبة وتاريخها</h2>
+          <input type="hidden" name="id" value={id} />
+          <label className="field-col">الاسم<input name="name" defaultValue={ev.name} required maxLength={120} /></label>
+          <label className="field-col">التاريخ (اختياري)<input name="date" type="date" defaultValue={ev.event_date ?? ''} /></label>
+          <button className="btn">حفظ</button>
+        </form>
         <DeleteEvent id={id} name={ev.name} />
       </main>
     </div>

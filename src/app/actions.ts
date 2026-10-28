@@ -36,3 +36,34 @@ export async function setUsername(form: FormData) {
   if (error) redirect(`/events?username=${error.code === '23505' ? 'taken' : 'error'}`);
   redirect('/events?username=saved');
 }
+
+/** Renames an event and/or changes its date. */
+export async function renameEvent(form: FormData) {
+  const id = String(form.get('id') ?? '');
+  const name = String(form.get('name') ?? '').trim().slice(0, 120);
+  const date = String(form.get('date') ?? '');
+  if (!/^[0-9a-f-]{36}$/.test(id)) redirect('/events');
+  if (!name) redirect(`/events/${id}?rename=invalid`);
+  const supabase = await serverClient();
+  const { error } = await supabase
+    .from('events')
+    .update({ name, event_date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  redirect(`/events/${id}?rename=${error ? 'error' : 'saved'}`);
+}
+
+/** Changes the signed-in planner's password after checking the current one. */
+export async function changePassword(form: FormData) {
+  const current = String(form.get('current') ?? '');
+  const next = String(form.get('next') ?? '');
+  const again = String(form.get('again') ?? '');
+  if (next.length < 8) redirect('/events?password=short');
+  if (next !== again) redirect('/events?password=mismatch');
+  const supabase = await serverClient();
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user?.email) redirect('/');
+  const check = await supabase.auth.signInWithPassword({ email: u.user.email, password: current });
+  if (check.error) redirect('/events?password=wrong');
+  const { error } = await supabase.auth.updateUser({ password: next });
+  redirect(`/events?password=${error ? 'error' : 'saved'}`);
+}
