@@ -37,7 +37,7 @@ export default async function EventHome({ params, searchParams }: { params: Prom
             <div className="sc-head"><span className="n">2</span><h3>مخطط القاعة</h3></div>
             <div className="big">{tables}</div>
             <p className="muted" style={{ margin: 0 }}>{tables ? `طاولة · أُجلس ${seated} من ${layout.guests.length}` : 'ارسم الطاولات واسحب الضيوف إلى كراسيهم.'}</p>
-            <Link className="btn primary" href={`/events/${id}/hall`}>فتح المخطط</Link>
+            <Link className="btn primary" href={`/events/${id}/preview`}>عرض المخطط</Link>
           </section>
           <section className="step-card">
             <div className="sc-head"><span className="n">3</span><h3>الدعوات</h3></div>
