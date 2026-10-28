@@ -1,27 +1,32 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import SiteSettings from './SiteSettings';
+import { getS } from '@/lib/lang-server';
 import { Icon } from './Icon';
 import { signOut } from '@/app/actions';
 
 export function Logo({ size = 34 }: { size?: number }) {
+  // A round table seen from above: a solid table, five chairs, and one warm chair for "your seat".
+  const chairs = [0, 72, 144, 216, 288];
   return (
     <svg viewBox="0 0 48 48" width={size} height={size} aria-hidden>
-      <circle cx="24" cy="24" r="10" fill="var(--panel)" stroke="var(--ink)" strokeWidth="2" />
-      {[0, 60, 120, 180, 240, 300].map((a) => (
-        <rect key={a} x="21" y="3.5" width="6" height="8" rx="2.5" fill="var(--accent-soft)" stroke="var(--accent)" strokeWidth="1.6" transform={`rotate(${a} 24 24)`} />
-      ))}
+      {chairs.map((a, i) => {
+        const r = (a - 90) * (Math.PI / 180);
+        return <circle key={a} cx={24 + 17.5 * Math.cos(r)} cy={24 + 17.5 * Math.sin(r)} r="4.6" fill={i === 0 ? '#e0a53a' : 'var(--accent-soft)'} stroke={i === 0 ? '#e0a53a' : 'var(--accent)'} strokeWidth="1.6" />;
+      })}
+      <circle cx="24" cy="24" r="10.5" fill="var(--accent)" />
     </svg>
   );
 }
 
-export function SiteHeader({ crumb, children }: { crumb?: { id: string; name: string }; children?: ReactNode }) {
+export async function SiteHeader({ crumb, children }: { crumb?: { id: string; name: string }; children?: ReactNode }) {
+  const { s } = await getS();
   return (
     <header className="site-bar">
       <div className="crumbs">
         <Link href="/events" className="brand">
           <Logo />
-          <span className="brand-name">ترتيب الجلوس</span>
+          <span className="brand-name">{s('brand')}</span>
         </Link>
         {crumb && (
           <>
@@ -35,34 +40,35 @@ export function SiteHeader({ crumb, children }: { crumb?: { id: string; name: st
       <div className="site-actions">
         {children}
         {crumb && (
-          <Link className="btn small bar-btn" href="/events" aria-label="كل المناسبات" title="كل المناسبات">
+          <Link className="btn small bar-btn" href="/events" aria-label={s('allEvents')} title={s('allEvents')}>
             <span className="ico"><Icon name="list" size={18} /></span>
-            <span className="lbl">كل المناسبات</span>
+            <span className="lbl">{s('allEvents')}</span>
           </Link>
         )}
-        <SiteSettings signOut={signOut} eventId={crumb?.id} />
+        <SiteSettings account={{ eventId: crumb?.id, signOut }} />
       </div>
     </header>
   );
 }
 
 export type StepKey = 'import' | 'hall' | 'invites' | 'scan';
-const STEPS: { key: StepKey; label: string; sub: string; path: string }[] = [
-  { key: 'import', label: 'الضيوف', sub: 'اختياري', path: 'import' },
-  { key: 'hall', label: 'المخطط', sub: 'القاعة والطاولات', path: 'preview' },
-  { key: 'invites', label: 'الدعوات', sub: 'رابط لكل عائلة', path: 'invites' },
-  { key: 'scan', label: 'الدخول', sub: 'مسح الرمز', path: 'scan' },
-];
 
-export function StepBar({ id, active }: { id: string; active: StepKey }) {
+export async function StepBar({ id, active }: { id: string; active: StepKey }) {
+  const { s } = await getS();
+  const steps: { key: StepKey; label: string; sub: string; path: string }[] = [
+    { key: 'import', label: s('stepGuests'), sub: s('optional'), path: 'import' },
+    { key: 'hall', label: s('stepHall'), sub: s('stepHallSub'), path: 'preview' },
+    { key: 'invites', label: s('stepInvites'), sub: s('stepInvitesSub'), path: 'invites' },
+    { key: 'scan', label: s('stepEntry'), sub: s('stepEntrySub'), path: 'scan' },
+  ];
   return (
-    <nav className="stepbar" aria-label="الخطوات">
-      {STEPS.map((s, i) => (
-        <Link key={s.key} href={`/events/${id}/${s.path}`} className={`step${s.key === active ? ' on' : ''}`} aria-current={s.key === active ? 'step' : undefined}>
+    <nav className="stepbar" aria-label={s('steps')}>
+      {steps.map((st, i) => (
+        <Link key={st.key} href={`/events/${id}/${st.path}`} className={`step${st.key === active ? ' on' : ''}`} aria-current={st.key === active ? 'step' : undefined}>
           <span className="n">{i + 1}</span>
           <span>
-            {s.label}
-            <small>{s.sub}</small>
+            {st.label}
+            <small>{st.sub}</small>
           </span>
         </Link>
       ))}

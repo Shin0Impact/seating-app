@@ -22,10 +22,12 @@ export async function deleteEvent(form: FormData) {
   redirect('/events?deleted=1');
 }
 
+export type UsernameResult = 'saved' | 'taken' | 'invalid' | 'error';
+
 /** Sets or changes the signed-in planner's username. */
-export async function setUsername(form: FormData) {
-  const name = normalizeUsername(String(form.get('username') ?? ''));
-  if (!isValidUsername(name)) redirect('/events?username=invalid');
+export async function updateUsername(raw: string): Promise<UsernameResult> {
+  const name = normalizeUsername(String(raw ?? ''));
+  if (!isValidUsername(name)) return 'invalid';
   const supabase = await serverClient();
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) redirect('/');
@@ -33,8 +35,8 @@ export async function setUsername(form: FormData) {
   const { error } = existing
     ? await supabase.from('profiles').update({ username: name }).eq('user_id', u.user.id)
     : await supabase.from('profiles').insert({ username: name });
-  if (error) redirect(`/events?username=${error.code === '23505' ? 'taken' : 'error'}`);
-  redirect('/events?username=saved');
+  if (error) return error.code === '23505' ? 'taken' : 'error';
+  return 'saved';
 }
 
 /** Renames an event and/or changes its date. */
@@ -52,18 +54,17 @@ export async function renameEvent(form: FormData) {
   redirect(`/events/${id}?rename=${error ? 'error' : 'saved'}`);
 }
 
+export type PasswordResult = 'saved' | 'wrong' | 'short' | 'mismatch' | 'error';
+
 /** Changes the signed-in planner's password after checking the current one. */
-export async function changePassword(form: FormData) {
-  const current = String(form.get('current') ?? '');
-  const next = String(form.get('next') ?? '');
-  const again = String(form.get('again') ?? '');
-  if (next.length < 8) redirect('/events?password=short');
-  if (next !== again) redirect('/events?password=mismatch');
+export async function updatePassword(current: string, next: string, again: string): Promise<PasswordResult> {
+  if (String(next ?? '').length < 8) return 'short';
+  if (next !== again) return 'mismatch';
   const supabase = await serverClient();
   const { data: u } = await supabase.auth.getUser();
   if (!u.user?.email) redirect('/');
-  const check = await supabase.auth.signInWithPassword({ email: u.user.email, password: current });
-  if (check.error) redirect('/events?password=wrong');
+  const check = await supabase.auth.signInWithPassword({ email: u.user.email, password: String(current ?? '') });
+  if (check.error) return 'wrong';
   const { error } = await supabase.auth.updateUser({ password: next });
-  redirect(`/events?password=${error ? 'error' : 'saved'}`);
+  return error ? 'error' : 'saved';
 }

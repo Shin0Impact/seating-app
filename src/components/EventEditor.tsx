@@ -6,13 +6,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Layout } from '@/lib/layout';
 import { signOut } from '@/app/actions';
 import { browserClient } from '@/lib/supabase/browser';
+import { useS } from './LangProvider';
 
 const Editor = dynamic(() => import('./Editor'), { ssr: false, loading: () => <p style={{ padding: 24 }}>…</p> });
 
 type Status = 'saved' | 'saving' | 'error' | 'conflict';
 
 /** The hall editor backed by the database: changes are saved a moment after you stop, and a stale tab cannot overwrite a newer save. */
-export default function EventEditor({ id, name, initial, version, user }: { id: string; name: string; initial: Layout; version: number; user: string }) {
+export default function EventEditor({ id, name, initial, version }: { id: string; name: string; initial: Layout; version: number; user?: string }) {
+  const s = useS();
   const [status, setStatus] = useState<Status>('saved');
   const ver = useRef(version);
   const last = useRef(JSON.stringify(initial));
@@ -60,15 +62,15 @@ export default function EventEditor({ id, name, initial, version, user }: { id: 
     return () => window.removeEventListener('beforeunload', warn);
   }, []);
 
-  const label = { saved: 'تم الحفظ', saving: 'جارٍ الحفظ…', error: 'تعذّر الحفظ — سنحاول مجددًا عند التعديل', conflict: 'تم تعديل المخطط من نافذة أخرى. أعد تحميل الصفحة.' }[status];
+  const label = { saved: s('saved'), saving: s('saving'), error: s('saveError'), conflict: s('saveConflict') }[status];
   return (
     <Editor
       initial={initial}
       onChange={onChange}
-      account={{ user, eventId: id, signOut }}
+      account={{ eventId: id, signOut }}
       leading={
         <div className="event-lead">
-          <Link href={`/events/${id}`} className="back-link" aria-label="الرجوع إلى المناسبة">→ المناسبة</Link>
+          <Link href={`/events/${id}`} className="back-link" aria-label={s('backToEventAria')}>{s('backToEvent')}</Link>
           <h1>{name}</h1>
           <span className={`save-status ${status}`} role="status">{label}</span>
         </div>

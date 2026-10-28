@@ -1,7 +1,7 @@
 import { chairSlots, tableDims, toWorld, type Layout } from '@/lib/layout';
 
 /** Read-only picture of the hall, drawn as plain SVG so it needs no client code. */
-export default function HallPreview({ layout }: { layout: Layout }) {
+export default function HallPreview({ layout, label }: { layout: Layout; label: string }) {
   const { elements, guests, settings } = layout;
   if (!elements.length) return null;
   const seatedAt = new Map<string, Set<number>>();
@@ -19,7 +19,7 @@ export default function HallPreview({ layout }: { layout: Layout }) {
   const fs = 0.45;
 
   return (
-    <svg className="hall-preview" viewBox={vb} role="img" aria-label="معاينة القاعة" preserveAspectRatio="xMidYMid meet">
+    <svg className="hall-preview" viewBox={vb} role="img" aria-label={label} preserveAspectRatio="xMidYMid meet">
       {elements.map((e) => {
         if (e.kind === 'table') {
           const d = tableDims(e, settings);

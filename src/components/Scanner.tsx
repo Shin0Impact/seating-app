@@ -3,12 +3,16 @@
 import jsQR from 'jsqr';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isToken } from '@/lib/invites';
+import { useLang, useS } from './LangProvider';
+import { localeOf } from '@/lib/site-i18n';
 
 type Result = { ok: true; already: string | null; status: string; partySize: number; confirmedCount: number | null; placements: { name: string; table: string | null; seat: number | null }[] } | { error: string };
 
 const tokenFrom = (text: string) => text.trim().split(/[/?#]/).filter(Boolean).pop() ?? '';
 
 export default function Scanner() {
+  const s = useS();
+  const { lang } = useLang();
   const video = useRef<HTMLVideoElement>(null);
   const [res, setRes] = useState<Result | null>(null);
   const [cam, setCam] = useState<'starting' | 'on' | 'off'>('starting');
@@ -70,23 +74,23 @@ export default function Scanner() {
   return (
     <div className="card-box">
       <video ref={video} playsInline muted className="scan-video" />
-      {cam === 'off' && <p className="notice err">تعذّر تشغيل الكاميرا. اسمح بالوصول أو الصق الرمز يدويًا.</p>}
+      {cam === 'off' && <p className="notice err">{s('cameraFailed')}</p>}
       <form style={{ display: 'flex', gap: 8 }} onSubmit={(e) => { e.preventDefault(); void submit(manual); setManual(''); }}>
-        <input className="field-input" style={{ flex: 1, minHeight: 44, padding: '0 12px', border: '1px solid var(--line)', borderRadius: 10 }} value={manual} onChange={(e) => setManual(e.target.value)} placeholder="الصق رابط الدعوة أو الرمز" dir="ltr" />
-        <button className="btn">تحقّق</button>
+        <input className="field-input" style={{ flex: 1, minHeight: 44, padding: '0 12px', border: '1px solid var(--line)', borderRadius: 10 }} value={manual} onChange={(e) => setManual(e.target.value)} placeholder={s('pasteCode')} dir="ltr" />
+        <button className="btn">{s('verify')}</button>
       </form>
-      {err && <div className="scan-result bad" role="alert">{err === 'not_found' ? 'رمز غير معروف لهذه المناسبة' : err === 'login' ? 'سجّل الدخول من جديد' : 'خطأ، حاول مرة أخرى'}</div>}
+      {err && <div className="scan-result bad" role="alert">{err === 'not_found' ? s('unknownCode') : err === 'login' ? s('signInAgain') : s('genericError')}</div>}
       {ok && (
         <div className={`scan-result ${ok.already ? 'warn' : ok.status === 'confirmed' ? 'good' : 'warn'}`} role="status">
-          {ok.already && <p className="scan-flag">⚠ تم تسجيل دخوله سابقًا ({new Date(ok.already).toLocaleTimeString('ar')})</p>}
-          {!ok.already && ok.status !== 'confirmed' && <p className="scan-flag">⚠ لم يؤكّد حضوره مسبقًا</p>}
-          <p className="muted">العدد: {ok.confirmedCount ?? ok.partySize} من {ok.partySize}</p>
+          {ok.already && <p className="scan-flag">{s('alreadyIn', { time: new Date(ok.already).toLocaleTimeString(localeOf(lang)) })}</p>}
+          {!ok.already && ok.status !== 'confirmed' && <p className="scan-flag">{s('notConfirmed')}</p>}
+          <p className="muted">{s('countLine', { n: ok.confirmedCount ?? ok.partySize, size: ok.partySize })}</p>
           <ul>
             {ok.placements.map((p, i) => (
-              <li key={i}><b>{p.name}</b><span className="where">{p.table ? `${p.table}${p.seat ? ` · كرسي ${p.seat}` : ''}` : 'بدون طاولة بعد'}</span></li>
+              <li key={i}><b>{p.name}</b><span className="where">{p.table ? `${p.table}${p.seat ? s('chairN', { n: p.seat }) : ''}` : s('noTableYet')}</span></li>
             ))}
           </ul>
-          <button className="btn primary" onClick={() => setRes(null)}>التالي</button>
+          <button className="btn primary" onClick={() => setRes(null)}>{s('next')}</button>
         </div>
       )}
     </div>

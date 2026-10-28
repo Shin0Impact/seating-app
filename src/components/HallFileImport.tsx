@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import { parseLayout } from '@/lib/layout';
 import { browserClient } from '@/lib/supabase/browser';
 import { Icon } from './Icon';
+import { useS } from './LangProvider';
 
 /** Replaces the saved hall (tables and guests) with a hall file exported from the editor. */
 export default function HallFileImport({ id, hasHall }: { id: string; hasHall: boolean }) {
+  const s = useS();
   const ref = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
@@ -25,11 +27,11 @@ export default function HallFileImport({ id, hasHall }: { id: string; hasHall: b
       if (e1 || !cur) throw new Error('read');
       const { data, error } = await sb.from('events').update({ layout, version: cur.version + 1, updated_at: new Date().toISOString() }).eq('id', id).eq('version', cur.version).select('version');
       if (error || !data?.length) throw new Error('save');
-      setMsg({ ok: true, text: 'تم استيراد المخطط.' });
+      setMsg({ ok: true, text: s('hallImported') });
       setFile(null);
       router.refresh();
     } catch {
-      setMsg({ ok: false, text: 'تعذّر استيراد الملف. استخدم ملف مخطط (JSON) صدّرته من المحرر، بحجم أقل من 2 ميغابايت.' });
+      setMsg({ ok: false, text: s('hallImportFailed') });
       setFile(null);
     } finally {
       setBusy(false);
@@ -46,14 +48,14 @@ export default function HallFileImport({ id, hasHall }: { id: string; hasHall: b
   return (
     <section className="hall-import">
       <input ref={ref} type="file" accept="application/json,.json" hidden onChange={(e) => pick(e.target.files?.[0])} />
-      <button className="btn" disabled={busy} onClick={() => ref.current?.click()}><Icon name="upload" size={18} /> {busy ? 'جارٍ الاستيراد…' : 'استيراد مخطط من ملف'}</button>
-      <span className="muted">ملف JSON صدّرته من المحرر. يستبدل الطاولات والضيوف الحاليين.</span>
+      <button className="btn" disabled={busy} onClick={() => ref.current?.click()}><Icon name="upload" size={18} /> {busy ? s('importing') : s('importHall')}</button>
+      <span className="muted">{s('importHallHint')}</span>
       {file && (
         <div className="notice err" role="alert" style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-          <span>سيُستبدل المخطط الحالي بالكامل بـ «{file.name}». متابعة؟</span>
+          <span>{s('importHallConfirm', { file: file.name })}</span>
           <span style={{ display: 'flex', gap: 8 }}>
-            <button className="btn danger-fill" onClick={() => run(file)}>نعم، استبدل</button>
-            <button className="btn" onClick={() => { setFile(null); if (ref.current) ref.current.value = ''; }}>إلغاء</button>
+            <button className="btn danger-fill" onClick={() => run(file)}>{s('yesReplace')}</button>
+            <button className="btn" onClick={() => { setFile(null); if (ref.current) ref.current.value = ''; }}>{s('cancel')}</button>
           </span>
         </div>
       )}

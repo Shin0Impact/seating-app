@@ -45,14 +45,15 @@ import { NumField, round2 } from './NumField';
 import { SeatList } from './SeatList';
 import { TablesView } from './TablesView';
 import { Icon, IconButton } from './Icon';
-import SettingsDialog, { type AccountInfo } from './SettingsDialog';
+import SettingsDialog from './SettingsDialog';
+import type { AccountProps } from './SettingsPanel';
+import { useLang } from './LangProvider';
 import { useTheme } from '@/lib/theme';
 import { GuestEditPopup } from './ChairPicker';
 import { inviteDrafts } from '@/lib/invites';
 import { coarsePointer, readPayload, TouchPayload } from '@/lib/touchdrag';
 
 const STORAGE_KEY = 'seating-layout-v1';
-const LANG_KEY = 'seating-lang';
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 const ORDER: Record<Element['kind'], number> = { zone: 0, marker: 1, table: 2, column: 3 };
 
@@ -98,15 +99,15 @@ export type EditorProps = {
   /** Shown at the start of the top bar (for example a link back to the events list). */
   leading?: React.ReactNode;
   /** Set when the editor runs inside an event: adds the Account section to Settings. */
-  account?: AccountInfo;
+  account?: AccountProps;
 };
 
 export default function Editor({ initial, onChange, leading, account }: EditorProps = {}) {
-  const [lang, setLang] = useState<Lang>('ar');
+  const { lang } = useLang();
   const t = useCallback((k: Key) => STRINGS[lang][k], [lang]);
   const langRef = useRef(lang);
   langRef.current = lang;
-  const { pref: themePref, theme, setPref: setThemePref } = useTheme();
+  const { theme } = useTheme();
   applyPalette(theme);
   const [settingsOpen, setSettingsOpen] = useState(false);
   /** Anything destructive that is not undone by a click asks first; the pending action runs on Delete. */
@@ -204,8 +205,6 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
   // ----- load / save -----
   useEffect(() => {
     try {
-      const l = localStorage.getItem(LANG_KEY);
-      if (l === 'ar' || l === 'en') setLang(l);
       try {
         const u = JSON.parse(localStorage.getItem(USAGE_KEY) ?? '{}');
         if (u && typeof u === 'object') {
@@ -262,14 +261,6 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
     }
     return [...seen.values()].sort((a, b) => b.n - a.n || a.order - b.order).slice(0, PRESET_SLOTS);
   }, [usage]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(LANG_KEY, lang);
-    } catch {
-      /* ignore */
-    }
-  }, [lang]);
 
   // canvas text uses the bundled Arabic font; redraw once it is ready
   useEffect(() => {
@@ -1345,10 +1336,6 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
         <SettingsDialog
           account={account}
           t={t}
-          lang={lang}
-          setLang={setLang}
-          themePref={themePref}
-          setThemePref={setThemePref}
           snapGrid={snapGrid}
           toggleSnap={toggleSnap}
           locked={layoutLocked}
