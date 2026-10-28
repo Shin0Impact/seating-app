@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { useS } from './LangProvider';
 
 /** A button that opens a small "how many more?" box; sending it tells the planner. */
-export default function MoreRequest({ action, token, sent }: { action: (form: FormData) => void | Promise<void>; token: string; sent: boolean }) {
+export default function MoreRequest({ action, token, sent, total }: { action: (form: FormData) => void | Promise<void>; token: string; sent: boolean; total: number }) {
   const s = useS();
   const [open, setOpen] = useState(false);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
       {!open && (
-        <button type="button" className="btn" onClick={() => setOpen(true)}>{s('bringMore')}</button>
+        <button type="button" className="btn" onClick={() => setOpen(true)}>{s('bringMore', { total })}</button>
       )}
       {open && (
         <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>

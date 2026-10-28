@@ -5,7 +5,7 @@ import { fillMessage, inviteState, totals, whatsappUrl, type InviteRow, type Inv
 import { useLang, useS } from './LangProvider';
 import { localeOf, type SKey } from '@/lib/site-i18n';
 import { inviteDrafts, makeToken } from '@/lib/invites';
-import { parseLayout, type Guest } from '@/lib/layout';
+import { newGuest, parseLayout, type Guest } from '@/lib/layout';
 import { matches } from '@/lib/search';
 import { browserClient } from '@/lib/supabase/browser';
 
@@ -178,6 +178,43 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
     await browserClient().from('invites').update({ extra_requested: 0 }).eq('token', r.token);
     pending.current.delete(r.token);
   }
+  /** Adds the extra people to the plan ("Name +k", unseated, same group), grows the invite, and clears the request. */
+  async function approveMore(r: InviteRow) {
+    const n = r.extra_requested ?? 0;
+    if (n < 1) return;
+    pending.current.add(r.token);
+    const sb = browserClient();
+    try {
+      const ev = await sb.from('events').select('layout,version').eq('id', eventId).maybeSingle();
+      if (!ev.data) throw new Error(s('planCheckFailed'));
+      const layout = parseLayout(ev.data.layout);
+      const head = layout.guests.find((g) => g.id === r.guest_id);
+      if (!head) throw new Error(s('planCheckFailed'));
+      if (r.party_size + n > 50) throw new Error('max 50');
+      const taken = new Set(layout.guests.filter((g) => g.group === head.group).map((g) => g.name));
+      const made: Guest[] = [];
+      let k = r.party_size - 1;
+      while (made.length < n) {
+        k += 1;
+        const name = `${head.name} +${k}`;
+        if (!taken.has(name)) made.push(newGuest(name, head.group, null, false, null));
+      }
+      const next = { ...layout, guests: [...layout.guests, ...made] };
+      const saved = await sb.from('events').update({ layout: next, version: ev.data.version + 1, updated_at: new Date().toISOString() }).eq('id', eventId).eq('version', ev.data.version).select('version');
+      if (saved.error || !saved.data || saved.data.length === 0) throw new Error(saved.error?.message ?? s('planCheckFailed'));
+      const members = [...(((r as InviteRow & { member_ids?: string[] }).member_ids) ?? []), ...made.map((g) => g.id)];
+      const patch = { party_size: r.party_size + n, member_ids: members, confirmed_count: r.confirmed_count === null ? null : r.confirmed_count + n, extra_requested: 0 };
+      const up = await sb.from('invites').update(patch).eq('token', r.token);
+      if (up.error) throw new Error(up.error.message);
+      setGuests(next.guests);
+      setRows((cur) => cur.map((x) => (x.token === r.token ? { ...x, ...patch } : x)));
+      setMsg({ kind: 'ok', text: s('moreAdded', { n, name: head.name }) });
+    } catch (e) {
+      setMsg({ kind: 'err', text: s('moreAddFailed') + (e instanceof Error ? e.message : '') });
+    } finally {
+      pending.current.delete(r.token);
+    }
+  }
   const [confirmDel, setConfirmDel] = useState<string | null>(null); // token, or 'all'
 
   /** Deletes invite links whose guest is no longer in the plan. The saved plan is re-read first, so a stale tab can't delete a live invite. */
@@ -301,7 +338,12 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
                   {r.party_size > 1 && <span className="party" title={s('partyTitle')}>+{r.party_size - 1}</span>}
                   <span className={`pill ${st}`}>{s(STATE_KEY[st])}{st === 'confirmed' ? ` (${r.confirmed_count ?? r.party_size}/${r.party_size})` : ''}</span>
                   {r.change_requested_at && r.status === 'pending' && <span className="pill waiting">{s('changeRequested')} <button className="linkbtn" style={{ marginInlineStart: 4 }} onClick={() => dismissChange(r)}>{s('dismiss')}</button></span>}
-                  {(r.extra_requested ?? 0) > 0 && <span className="pill waiting">{s('moreRequested', { n: r.extra_requested ?? 0 })} <button className="linkbtn" style={{ marginInlineStart: 4 }} onClick={() => dismissMore(r)}>{s('dismiss')}</button></span>}
+                  {(r.extra_requested ?? 0) > 0 && (
+                    <span className="pill waiting">{s('moreRequested', { n: r.extra_requested ?? 0 })}
+                      <button className="linkbtn" style={{ marginInlineStart: 6 }} onClick={() => approveMore(r)}>{s('approveAdd')}</button>
+                      <button className="linkbtn" style={{ marginInlineStart: 6 }} onClick={() => dismissMore(r)}>{s('rejectMore')}</button>
+                    </span>
+                  )}
                 </div>
                 <div className="inv-sub">
                   {g?.group && <span>{g.group}</span>}
