@@ -170,6 +170,16 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
   const addRef = useRef<HTMLDivElement>(null);
   const addBtnRef = useRef<HTMLButtonElement>(null);
   const snapStep = snapGrid ? 1 : 0.1;
+  /** Snaps the left/top of what is actually drawn (the blue box) to the grid. */
+  const snapToDrawnEdges = (node: Konva.Node | undefined, x: number, y: number) => {
+    const layer = node?.getLayer();
+    if (!node || !layer) return null;
+    const r = node.getClientRect({ relativeTo: layer });
+    const ox = r.x - node.x();
+    const oy = r.y - node.y();
+    const k = (n: number) => Math.round(n * 1000) / 1000;
+    return { x: k(snap(x + ox, 1) - ox), y: k(snap(y + oy, 1) - oy) };
+  };
   const snapV = (v: number) => snap(v, snapStep);
   const toggleSnap = () => {
     const n = !snapGrid;
@@ -1596,7 +1606,7 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
                     onDragStartEl={onDragStartEl}
                     onDragMoveEl={onDragMoveEl}
                     onMove={onMoveEl}
-                    snapPos={(x, y) => (snapGrid ? snapToGridEdges(el, layout.settings, x, y, 1) : { x: snap(x, 0.1), y: snap(y, 0.1) })}
+                    snapPos={(x, y, node) => (snapGrid ? snapToDrawnEdges(node, x, y) ?? snapToGridEdges(el, layout.settings, x, y, 1) : { x: snap(x, 0.1), y: snap(y, 0.1) })}
                     onOpenEl={openProps}
                     pickedIds={pickedSet}
                     onChairPick={peopleTool ? togglePerson : undefined}
