@@ -21,7 +21,7 @@ type Props = {
   highlightSeat?: number | null;
   register: (id: string, node: Konva.Group | null) => void;
   onMove: (id: string, x: number, y: number) => void;
-  snapPos?: (x: number, y: number) => { x: number; y: number };
+  snapPos?: (x: number, y: number, node?: Konva.Node) => { x: number; y: number };
   /** A seated guest's chair was dropped at this world position (meters). */
   onChairDrop?: (guestId: string, x: number, y: number) => void;
   /** Hovering a seated chair: show the guest's name near the pointer. */
@@ -431,13 +431,13 @@ export function ElementNode({ el, settings, issue, seated, seatGuests, highlight
       }}
       onDragMove={(e) => {
         if (e.target !== e.currentTarget) return;
-        if (snapPos) e.target.position(snapPos(e.target.x(), e.target.y()));
+        if (snapPos) e.target.position(snapPos(e.target.x(), e.target.y(), e.target));
         onDragMoveEl?.(el.id, e.target.x(), e.target.y());
       }}
       onDragEnd={(e) => {
         if (e.target !== e.currentTarget) return; // a chair was dragged, not the table
         const node = e.target;
-        const { x, y } = snapPos ? snapPos(node.x(), node.y()) : { x: snap(node.x(), 0.1), y: snap(node.y(), 0.1) };
+        const { x, y } = snapPos ? snapPos(node.x(), node.y(), node) : { x: snap(node.x(), 0.1), y: snap(node.y(), 0.1) };
         node.position({ x, y });
         onMove(el.id, x, y);
       }}
