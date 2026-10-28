@@ -165,6 +165,13 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
   );
   const orphans = useMemo(() => rows.filter((r) => !byGuest.has(r.guest_id)), [rows, byGuest]);
   const changeReqs = useMemo(() => rows.filter((r) => r.change_requested_at && r.status === 'pending'), [rows]);
+  const countChanges = useMemo(() => rows.filter((r) => r.count_changed_at && !(r.extra_requested ?? 0)), [rows]);
+  async function dismissCount(r: InviteRow) {
+    pending.current.add(r.token);
+    setRows((cur) => cur.map((x) => (x.token === r.token ? { ...x, count_changed_at: null } : x)));
+    await browserClient().from('invites').update({ count_changed_at: null }).eq('token', r.token);
+    pending.current.delete(r.token);
+  }
   const moreReqs = useMemo(() => rows.filter((r) => (r.extra_requested ?? 0) > 0), [rows]);
   async function dismissChange(r: InviteRow) {
     pending.current.add(r.token);
@@ -174,8 +181,8 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
   }
   async function dismissMore(r: InviteRow) {
     pending.current.add(r.token);
-    setRows((cur) => cur.map((x) => (x.token === r.token ? { ...x, extra_requested: 0 } : x)));
-    await browserClient().from('invites').update({ extra_requested: 0 }).eq('token', r.token);
+    setRows((cur) => cur.map((x) => (x.token === r.token ? { ...x, extra_requested: 0, count_changed_at: null } : x)));
+    await browserClient().from('invites').update({ extra_requested: 0, count_changed_at: null }).eq('token', r.token);
     pending.current.delete(r.token);
   }
   /** Adds the extra people to the plan ("Name +k", unseated, same group), grows the invite, and clears the request. */
@@ -203,7 +210,7 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
       const saved = await sb.from('events').update({ layout: next, version: ev.data.version + 1, updated_at: new Date().toISOString() }).eq('id', eventId).eq('version', ev.data.version).select('version');
       if (saved.error || !saved.data || saved.data.length === 0) throw new Error(saved.error?.message ?? s('planCheckFailed'));
       const members = [...(((r as InviteRow & { member_ids?: string[] }).member_ids) ?? []), ...made.map((g) => g.id)];
-      const patch = { party_size: r.party_size + n, member_ids: members, confirmed_count: r.confirmed_count === null ? null : r.confirmed_count + n, extra_requested: 0 };
+      const patch = { party_size: r.party_size + n, member_ids: members, confirmed_count: r.confirmed_count === null ? null : r.confirmed_count + n, extra_requested: 0, count_changed_at: null };
       const up = await sb.from('invites').update(patch).eq('token', r.token);
       if (up.error) throw new Error(up.error.message);
       setGuests(next.guests);
@@ -265,6 +272,12 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
         <div className="notice info" role="status">
           <b>{s('changeBanner', { n: changeReqs.length })}</b>
           {changeReqs.map((r) => <span key={r.token} style={{ display: 'inline-block', marginInlineStart: 10 }}>{byGuest.get(r.guest_id)?.name ?? ''}</span>)}
+        </div>
+      )}
+      {countChanges.length > 0 && (
+        <div className="notice info" role="status">
+          <b>{s('countBanner', { n: countChanges.length })}</b>
+          {countChanges.map((r) => <span key={r.token} style={{ display: 'inline-block', marginInlineStart: 10 }}>{byGuest.get(r.guest_id)?.name ?? ''} → {r.count_changed_to}</span>)}
         </div>
       )}
       {moreReqs.length > 0 && (
@@ -338,6 +351,7 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
                   {r.party_size > 1 && <span className="party" title={s('partyTitle')}>+{r.party_size - 1}</span>}
                   <span className={`pill ${st}`}>{s(STATE_KEY[st])}{st === 'confirmed' ? ` (${r.confirmed_count ?? r.party_size}/${r.party_size})` : ''}</span>
                   {r.change_requested_at && r.status === 'pending' && <span className="pill waiting">{s('changeRequested')} <button className="linkbtn" style={{ marginInlineStart: 4 }} onClick={() => dismissChange(r)}>{s('dismiss')}</button></span>}
+                  {r.count_changed_at && !(r.extra_requested ?? 0) && <span className="pill waiting">{s('countChangedPill', { n: r.count_changed_to ?? 0 })} <button className="linkbtn" style={{ marginInlineStart: 4 }} onClick={() => dismissCount(r)}>{s('dismiss')}</button></span>}
                   {(r.extra_requested ?? 0) > 0 && (
                     <span className="pill waiting">{s('moreRequested', { n: r.extra_requested ?? 0 })}
                       <button className="linkbtn" style={{ marginInlineStart: 6 }} onClick={() => approveMore(r)}>{s('approveAdd')}</button>

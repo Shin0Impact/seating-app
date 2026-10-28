@@ -692,3 +692,15 @@ button.primary.danger-fill { background: var(--danger); border-color: var(--dang
 @media (prefers-reduced-motion: reduce) { .hp-route, .hp-ring, .hp-you { animation: none; } }
 .where-map { margin-top: 12px; }
 .where-map .hall-preview { height: min(52vh, 420px); background: var(--canvas); border: 1px solid var(--line); border-radius: 14px; }
+
+/* invite page */
+.rsvp-when { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--canvas); text-align: start; }
+.rsvp-when .row1 { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.rsvp-when a { color: var(--accent, #2f5fc4); font-weight: 600; }
+.guest-count { display: flex; flex-direction: column; gap: 8px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; }
+.guest-count .gc-row, .guest-count .gc-edit { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.zoompan { position: relative; overflow: hidden; touch-action: none; border-radius: 14px; border: 1px solid var(--line); background: var(--canvas); cursor: grab; }
+.zoompan .zp-inner { transform-origin: 0 0; }
+.zoompan .hall-preview { height: min(52vh, 420px); border: 0; }
+.zoompan .zp-btns { position: absolute; inset-block-end: 8px; inset-inline-end: 8px; display: flex; flex-direction: column; gap: 6px; }
+.zoompan .zp-btns button { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); font-size: 1.2em; line-height: 1; cursor: pointer; }

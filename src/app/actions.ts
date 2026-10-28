@@ -44,12 +44,22 @@ export async function renameEvent(form: FormData) {
   const id = String(form.get('id') ?? '');
   const name = String(form.get('name') ?? '').trim().slice(0, 120);
   const date = String(form.get('date') ?? '');
+  const time = String(form.get('time') ?? '');
+  const venue = String(form.get('venue') ?? '').trim().slice(0, 200);
+  const venueUrl = String(form.get('venue_url') ?? '').trim().slice(0, 500);
   if (!/^[0-9a-f-]{36}$/.test(id)) redirect('/events');
   if (!name) redirect(`/events/${id}?rename=invalid`);
   const supabase = await serverClient();
   const { error } = await supabase
     .from('events')
-    .update({ name, event_date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null, updated_at: new Date().toISOString() })
+    .update({
+      name,
+      event_date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null,
+      event_time: /^\d{2}:\d{2}$/.test(time) ? time : null,
+      venue: venue || null,
+      venue_url: /^https?:\/\//i.test(venueUrl) ? venueUrl : null,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', id);
   redirect(`/events/${id}?rename=${error ? 'error' : 'saved'}`);
 }

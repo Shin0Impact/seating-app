@@ -10,6 +10,9 @@ export type InviteRow = {
   change_requested_at?: string | null;
   /** People a confirmed family asked to add on top of its invitation; 0 when none. */
   extra_requested?: number;
+  /** Set when a confirmed family changed its head count (to count_changed_to); the planner dismisses it. */
+  count_changed_to?: number | null;
+  count_changed_at?: string | null;
 };
 
 export type InviteState = 'unsent' | 'waiting' | 'confirmed' | 'declined' | 'arrived';

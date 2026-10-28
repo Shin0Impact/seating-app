@@ -16,7 +16,7 @@ export default async function EventHome({ params, searchParams }: { params: Prom
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const supabase = await serverClient();
   const [{ data: ev }, { data: invites }] = await Promise.all([
-    supabase.from('events').select('id,name,event_date,layout').eq('id', id).maybeSingle(),
+    supabase.from('events').select('id,name,event_date,event_time,venue,venue_url,layout').eq('id', id).maybeSingle(),
     supabase.from('invites').select('*').eq('event_id', id),
   ]);
   if (!ev) notFound();
@@ -26,6 +26,7 @@ export default async function EventHome({ params, searchParams }: { params: Prom
   const seated = layout.guests.filter((g) => g.tableId).length;
   const t = totals((invites ?? []) as InviteRow[]);
   const changeCount = ((invites ?? []) as InviteRow[]).filter((r) => r.change_requested_at && r.status === 'pending').length;
+  const countChanged = ((invites ?? []) as InviteRow[]).filter((r) => r.count_changed_at && !(r.extra_requested ?? 0)).length;
   const moreCount = ((invites ?? []) as InviteRow[]).filter((r) => (r.extra_requested ?? 0) > 0).length;
   const delMsg = q.delete === 'mismatch' ? s('deleteMismatch') : s('deleteFailed');
   const renameMsg = q.rename === 'saved' ? s('renameSaved') : q.rename === 'invalid' ? s('renameInvalid') : s('renameError');
@@ -52,6 +53,7 @@ export default async function EventHome({ params, searchParams }: { params: Prom
             <div className="big">{t.families ? `${t.sent}/${t.families}` : '—'}</div>
             <p className="muted" style={{ margin: 0 }}>{t.families ? s('sentLine', { yes: t.confirmedFamilies }) : s('oneLinkHint')}</p>
             {changeCount > 0 && <p className="notice info" style={{ margin: 0 }}>{s('changeBanner', { n: changeCount })}</p>}
+            {countChanged > 0 && <p className="notice info" style={{ margin: 0 }}>{s('countBanner', { n: countChanged })}</p>}
             {moreCount > 0 && <p className="notice info" style={{ margin: 0 }}>{s('moreBanner', { n: moreCount })}</p>}
             <Link className="btn" href={`/events/${id}/invites`}>{s('manageInvites')}</Link>
           </section>
@@ -71,6 +73,9 @@ export default async function EventHome({ params, searchParams }: { params: Prom
             <input type="hidden" name="id" value={id} />
             <label className="field-col">{s('name')}<input name="name" defaultValue={ev.name} required maxLength={120} /></label>
             <label className="field-col">{s('dateLabel')}<input name="date" type="date" defaultValue={ev.event_date ?? ''} /></label>
+            <label className="field-col">{s('timeLabel')}<input name="time" type="time" defaultValue={ev.event_time ?? ''} /></label>
+            <label className="field-col">{s('venueLabel')}<input name="venue" defaultValue={ev.venue ?? ''} maxLength={200} /></label>
+            <label className="field-col">{s('venueUrlLabel')}<input name="venue_url" type="url" inputMode="url" placeholder="https://maps.google.com/…" defaultValue={ev.venue_url ?? ''} maxLength={500} /></label>
             <button className="btn">{s('save')}</button>
           </form>
           <DeleteEvent id={id} name={ev.name} />
