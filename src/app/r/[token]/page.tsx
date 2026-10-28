@@ -1,6 +1,8 @@
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import QRCode from 'qrcode';
+import '@fontsource/amiri/arabic-400.css';
+import '@fontsource/amiri/arabic-700.css';
 import LangToggle from '@/components/LangToggle';
 import SiteSettings from '@/components/SiteSettings';
 import { getS } from '@/lib/lang-server';
@@ -68,20 +70,65 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
       focus = buildFocus(planLayout, guests.map((g) => g.id));
     }
   }
-  const when = inv.event_date ? new Date(inv.event_date + 'T00:00:00').toLocaleDateString(localeOf(lang), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  const loc = localeOf(lang);
+  const d = inv.event_date ? new Date(inv.event_date + 'T00:00:00') : null;
+  const dayNum = d ? d.getDate() : null;
+  const monthName = d ? d.toLocaleDateString(loc, { month: 'long' }) : '';
+  const weekday = d ? d.toLocaleDateString(loc, { weekday: 'long' }) : '';
+  const yearNum = d ? d.getFullYear() : null;
+  const daysLeft = d ? Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate())) / 86400000) : null;
+  const countdown =
+    daysLeft === null || daysLeft < 0 ? '' :
+    daysLeft === 0 ? s('eventToday') :
+    lang === 'en' ? (daysLeft === 1 ? 'Tomorrow' : `${daysLeft} days to go`) :
+    daysLeft === 1 ? 'باقي يوم واحد' : daysLeft === 2 ? 'باقي يومان' : daysLeft <= 10 ? `باقي ${daysLeft} أيام` : `باقي ${daysLeft} يومًا`;
+  // "add to calendar": a small .ics file; floating local time, or an all-day entry when no time is set
+  let ics = '';
+  if (d) {
+    const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    const t = /^(\d{2}):(\d{2})$/.exec(inv.event_time ?? '');
+    const esc = (v: string) => v.replace(/[\\;,]/g, (c) => '\\' + c).replace(/\r?\n/g, ' ');
+    const end = new Date(d.getTime() + 86400000);
+    const endYmd = `${end.getFullYear()}${String(end.getMonth() + 1).padStart(2, '0')}${String(end.getDate()).padStart(2, '0')}`;
+    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Our Table//EN', 'BEGIN:VEVENT', `UID:${token}@our-table`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
+      t ? `DTSTART:${ymd}T${t[1]}${t[2]}00` : `DTSTART;VALUE=DATE:${ymd}`,
+      t ? `DTEND:${ymd}T${String(Math.min(23, Number(t[1]) + 4)).padStart(2, '0')}${t[2]}00` : `DTEND;VALUE=DATE:${endYmd}`,
+      `SUMMARY:${esc(inv.event_name)}`, ...(inv.venue ? [`LOCATION:${esc(inv.venue)}`] : []), 'END:VEVENT', 'END:VCALENDAR'];
+    ics = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(lines.join('\r\n'));
+  }
 
   return (
     <div className="site rsvp-wrap">
       <div className="theme-float"><LangToggle /><SiteSettings /></div>
       <main className="rsvp-card">
-        <div style={{ display: 'grid', placeItems: 'center' }}><Logo size={56} /></div>
-        <p className="muted" style={{ margin: 0 }}>{inv.event_name}</p>
-        <h1>{s('hello', { name: inv.guest_name })}</h1>
-        {(when || inv.event_time || inv.venue) && (
-          <section className="rsvp-when" aria-label={s('whenWhere')}>
-            {(when || inv.event_time) && <div className="row1"><b>{when}</b>{inv.event_time && <span>{inv.event_time}</span>}</div>}
-            {inv.venue && <div className="row1"><span>{inv.venue}</span>{inv.venue_url && <a href={inv.venue_url} target="_blank" rel="noopener noreferrer">{s('openMaps')}</a>}</div>}
-            {!inv.venue && inv.venue_url && <a href={inv.venue_url} target="_blank" rel="noopener noreferrer">{s('openMaps')}</a>}
+        <span className="rc-corner tl" aria-hidden /><span className="rc-corner tr" aria-hidden /><span className="rc-corner bl" aria-hidden /><span className="rc-corner br" aria-hidden />
+        <header className="rc-head">
+          <div className="rc-logo"><Logo size={44} /></div>
+          <p className="rc-eyebrow">{s('youAreInvited')}</p>
+          <h1 className="rc-title">{inv.event_name}</h1>
+          <div className="rc-orn" aria-hidden><i /><b /><i /></div>
+          <p className="rc-hello">{s('hello', { name: inv.guest_name })}</p>
+        </header>
+        {(d || inv.event_time || inv.venue) && (
+          <section className="rc-when" aria-label={s('whenWhere')}>
+            {d && (
+              <div className="rc-date" aria-label={`${weekday} ${dayNum} ${monthName} ${yearNum}`}>
+                <span className="m">{monthName}</span>
+                <span className="n">{dayNum}</span>
+                <span className="w">{weekday}</span>
+              </div>
+            )}
+            <div className="rc-details">
+              {inv.event_time && (
+                <p className="rc-line"><svg viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg><span>{inv.event_time}</span></p>
+              )}
+              {inv.venue && (
+                <p className="rc-line"><svg viewBox="0 0 24 24" aria-hidden><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg><span>{inv.venue}</span></p>
+              )}
+              {inv.venue_url && <a className="rc-map" href={inv.venue_url} target="_blank" rel="noopener noreferrer">{s('openMaps')} ↗</a>}
+              {countdown && <p className="rc-count">{countdown}</p>}
+              {ics && <a className="rc-cal" href={ics} download="invitation.ics">{s('addToCalendar')}</a>}
+            </div>
           </section>
         )}
         {inv.status === 'pending' && (
