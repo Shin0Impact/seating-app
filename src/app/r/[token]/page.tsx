@@ -6,6 +6,7 @@ import SiteSettings from '@/components/SiteSettings';
 import { getS } from '@/lib/lang-server';
 import { localeOf } from '@/lib/site-i18n';
 import { Logo } from '@/components/Site';
+import ChangeRequestButton from '@/components/ChangeRequestButton';
 import { isToken } from '@/lib/invites';
 import { serverClient } from '@/lib/supabase/server';
 
@@ -15,7 +16,8 @@ async function answer(form: FormData) {
   'use server';
   const token = String(form.get('token') ?? '');
   if (!isToken(token)) return;
-  const status = form.get('status') === 'declined' ? 'declined' : 'confirmed';
+  const raw = form.get('status');
+  const status = raw === 'declined' ? 'declined' : raw === 'pending' ? 'pending' : 'confirmed';
   const count = Number.parseInt(String(form.get('count') ?? '1'), 10);
   const supabase = await serverClient();
   await supabase.rpc('rsvp_set', { p_token: token, p_status: status, p_count: Number.isFinite(count) ? count : 1 });
@@ -46,7 +48,7 @@ export default async function Rsvp({ params }: { params: Promise<{ token: string
         {inv.status === 'pending' && (
           <form action={answer} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <input type="hidden" name="token" value={token} />
-            <p style={{ margin: 0 }}>{s('willYouCome')}</p>
+            <p style={{ margin: 0 }}>{s('willYouCome', { event: inv.event_name })}</p>
             {inv.party_size > 1 && (
               <label className="field-col" style={{ alignItems: 'center' }}>{s('howManyUpTo', { n: inv.party_size })}
                 <input name="count" type="number" min={1} max={inv.party_size} defaultValue={inv.party_size} inputMode="numeric" />
@@ -63,18 +65,14 @@ export default async function Rsvp({ params }: { params: Promise<{ token: string
             <p className="notice ok" style={{ margin: 0 }}>{s('rsvpConfirmed', { n: inv.confirmed_count })}</p>
             <p style={{ margin: 0 }}>{s('showCode')}</p>
             <div className="qr" role="img" aria-label={s('entryCode')} dangerouslySetInnerHTML={{ __html: qr }} />
-            <form action={answer}>
-              <input type="hidden" name="token" value={token} />
-              <button name="status" value="declined" className="linkbtn">{s('cantAnymore')}</button>
-            </form>
+            <ChangeRequestButton action={answer} token={token} />
           </section>
         )}
         {inv.status === 'declined' && (
-          <form action={answer} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <input type="hidden" name="token" value={token} />
+          <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <p style={{ margin: 0 }}>{s('declinedNote')}</p>
-            <button name="status" value="confirmed" className="btn">{s('changedMind')}</button>
-          </form>
+            <ChangeRequestButton action={answer} token={token} />
+          </section>
         )}
       </main>
     </div>

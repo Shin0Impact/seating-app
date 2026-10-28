@@ -9,7 +9,7 @@ import { parseLayout, type Guest } from '@/lib/layout';
 import { matches } from '@/lib/search';
 import { browserClient } from '@/lib/supabase/browser';
 
-const COLS = 'token,guest_id,party_size,status,confirmed_count,checked_in_at,sent_at';
+const COLS = '*';
 const FILTER_KEYS: { key: InviteState | 'all'; label: SKey }[] = [
   { key: 'all', label: 'all' },
   { key: 'unsent', label: 'stUnsent' },
@@ -164,6 +164,13 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
     [rows, byGuest, filter, group, query],
   );
   const orphans = useMemo(() => rows.filter((r) => !byGuest.has(r.guest_id)), [rows, byGuest]);
+  const changeReqs = useMemo(() => rows.filter((r) => r.change_requested_at && r.status === 'pending'), [rows]);
+  async function dismissChange(r: InviteRow) {
+    pending.current.add(r.token);
+    setRows((cur) => cur.map((x) => (x.token === r.token ? { ...x, change_requested_at: null } : x)));
+    await browserClient().from('invites').update({ change_requested_at: null }).eq('token', r.token);
+    pending.current.delete(r.token);
+  }
   const [confirmDel, setConfirmDel] = useState<string | null>(null); // token, or 'all'
 
   /** Deletes invite links whose guest is no longer in the plan. The saved plan is re-read first, so a stale tab can't delete a live invite. */
@@ -208,6 +215,12 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
         <div className="notice info" style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
           <span>{rows.length === 0 ? s('noLinksYet') : s('newFamiliesNoLink', { n: missing.length })} {s('oneLinkPerGuestHint')}</span>
           <button className="btn primary" disabled={busy} onClick={createMissing}>{busy ? s('creating') : s('createLinks', { links: linksWord(missing.length) })}</button>
+        </div>
+      )}
+      {changeReqs.length > 0 && (
+        <div className="notice info" role="status">
+          <b>{s('changeBanner', { n: changeReqs.length })}</b>
+          {changeReqs.map((r) => <span key={r.token} style={{ display: 'inline-block', marginInlineStart: 10 }}>{byGuest.get(r.guest_id)?.name ?? ''}</span>)}
         </div>
       )}
       {orphans.length > 0 && (
@@ -274,6 +287,7 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
                   <span>{g?.name ?? s('deletedFromPlan')}</span>
                   {r.party_size > 1 && <span className="party" title={s('partyTitle')}>+{r.party_size - 1}</span>}
                   <span className={`pill ${st}`}>{s(STATE_KEY[st])}{st === 'confirmed' ? ` (${r.confirmed_count ?? r.party_size}/${r.party_size})` : ''}</span>
+                  {r.change_requested_at && r.status === 'pending' && <span className="pill waiting">{s('changeRequested')} <button className="linkbtn" style={{ marginInlineStart: 4 }} onClick={() => dismissChange(r)}>{s('dismiss')}</button></span>}
                 </div>
                 <div className="inv-sub">
                   {g?.group && <span>{g.group}</span>}

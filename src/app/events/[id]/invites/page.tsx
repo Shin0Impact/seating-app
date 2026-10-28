@@ -19,7 +19,7 @@ export default async function InvitesPage({ params }: { params: Promise<{ id: st
   const supabase = await serverClient();
   const { data: ev } = await supabase.from('events').select('id,name,layout').eq('id', id).maybeSingle();
   if (!ev) notFound();
-  const { data: invites } = await supabase.from('invites').select('token,guest_id,party_size,status,confirmed_count,checked_in_at,sent_at').eq('event_id', id).order('created_at');
+  const { data: invites } = await supabase.from('invites').select('*').eq('event_id', id).order('created_at');
   const h = await headers();
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || `${h.get('x-forwarded-proto') ?? 'https'}://${h.get('host')}`).replace(/\/$/, '');
   return (
