@@ -6,7 +6,8 @@ import SiteSettings from '@/components/SiteSettings';
 import { getS } from '@/lib/lang-server';
 import { localeOf } from '@/lib/site-i18n';
 import { Logo } from '@/components/Site';
-import MoreRequest from '@/components/MoreRequest';
+import GuestCount from '@/components/GuestCount';
+import ZoomPan from '@/components/ZoomPan';
 import ChangeRequestButton from '@/components/ChangeRequestButton';
 import HallPreview from '@/components/HallPreview';
 import { parseLayout, type Guest } from '@/lib/layout';
@@ -24,22 +25,25 @@ async function answer(form: FormData) {
   const status = raw === 'declined' ? 'declined' : raw === 'pending' ? 'pending' : 'confirmed';
   const count = Number.parseInt(String(form.get('count') ?? '1'), 10);
   const supabase = await serverClient();
-  await supabase.rpc('rsvp_set', { p_token: token, p_status: status, p_count: Number.isFinite(count) ? count : 1 });
+  const n = Number.isFinite(count) ? Math.min(Math.max(count, 1), 70) : 1;
+  await supabase.rpc('rsvp_set', { p_token: token, p_status: status, p_count: n });
+  // more people than the invitation: the extras wait for the host's approval (the function ignores a count that matches)
+  if (status === 'confirmed') await supabase.rpc('rsvp_change_count', { p_token: token, p_count: n });
   redirect(`/r/${token}`);
 }
 
-async function askMore(form: FormData) {
+async function changeCount(form: FormData) {
   'use server';
   const token = String(form.get('token') ?? '');
   if (!isToken(token)) return;
-  const n = Number.parseInt(String(form.get('extra') ?? ''), 10);
+  const n = Number.parseInt(String(form.get('count') ?? ''), 10);
   if (!Number.isFinite(n) || n < 1) redirect(`/r/${token}`);
   const supabase = await serverClient();
-  await supabase.rpc('rsvp_request_more', { p_token: token, p_extra: Math.min(n, 20) });
-  redirect(`/r/${token}?more=1`);
+  await supabase.rpc('rsvp_change_count', { p_token: token, p_count: Math.min(n, 70) });
+  redirect(`/r/${token}?saved=1`);
 }
 
-export default async function Rsvp({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ more?: string }> }) {
+export default async function Rsvp({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ saved?: string }> }) {
   const { token } = await params;
   const q = await searchParams;
   if (!isToken(token)) notFound();
@@ -71,17 +75,20 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
       <div className="theme-float"><LangToggle /><SiteSettings /></div>
       <main className="rsvp-card">
         <div style={{ display: 'grid', placeItems: 'center' }}><Logo size={56} /></div>
-        <p className="muted" style={{ margin: 0 }}>{inv.event_name}{when ? ` · ${when}` : ''}</p>
+        <p className="muted" style={{ margin: 0 }}>{inv.event_name}</p>
         <h1>{s('hello', { name: inv.guest_name })}</h1>
+        {(when || inv.event_time || inv.venue) && (
+          <section className="rsvp-when" aria-label={s('whenWhere')}>
+            {(when || inv.event_time) && <div className="row1"><b>{when}</b>{inv.event_time && <span>{inv.event_time}</span>}</div>}
+            {inv.venue && <div className="row1"><span>{inv.venue}</span>{inv.venue_url && <a href={inv.venue_url} target="_blank" rel="noopener noreferrer">{s('openMaps')}</a>}</div>}
+            {!inv.venue && inv.venue_url && <a href={inv.venue_url} target="_blank" rel="noopener noreferrer">{s('openMaps')}</a>}
+          </section>
+        )}
         {inv.status === 'pending' && (
           <form action={answer} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <input type="hidden" name="token" value={token} />
             <p style={{ margin: 0 }}>{s('willYouCome', { event: inv.event_name })}</p>
-            {inv.party_size > 1 && (
-              <label className="field-col" style={{ alignItems: 'center' }}>{s('howManyUpTo', { n: inv.party_size })}
-                <input name="count" type="number" min={1} max={inv.party_size} defaultValue={inv.party_size} inputMode="numeric" />
-              </label>
-            )}
+            <GuestCount count={inv.party_size} pending token={token} />
             <div className="row">
               <button name="status" value="confirmed" className="btn primary">{s('yesWeCome')}</button>
               <button name="status" value="declined" className="btn">{s('noWeDecline')}</button>
@@ -90,16 +97,16 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
         )}
         {inv.status === 'confirmed' && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p className="notice ok" style={{ margin: 0 }}>{s('rsvpConfirmed', { n: inv.confirmed_count })}</p>
+            <p className="notice ok" style={{ margin: 0 }}>{s('rsvpConfirmedShort')}</p>
+            <GuestCount count={inv.confirmed_count ?? inv.party_size} token={token} action={changeCount} waitingExtra={inv.extra_requested ?? 0} saved={q.saved === '1'} />
             <p style={{ margin: 0 }}>{s('showCode')}</p>
             <div className="qr" role="img" aria-label={s('entryCode')} dangerouslySetInnerHTML={{ __html: qr }} />
             {focus && planLayout && (
               <div className="where-map">
                 <h2 style={{ fontSize: '1.05em', margin: '0 0 4px' }}>{s('yourTable')}: {focus.seat ? s('tableSeat', { table: focus.table, n: focus.seat }) : s('tableOnly', { table: focus.table })}</h2>
-                <HallPreview layout={planLayout} label={s('yourTable')} focus={focus} />
+                <ZoomPan><HallPreview layout={planLayout} label={s('yourTable')} focus={focus} /></ZoomPan>
               </div>
             )}
-            <MoreRequest action={askMore} token={token} sent={q.more === '1'} total={inv.party_size} />
             <ChangeRequestButton action={answer} token={token} />
           </section>
         )}
