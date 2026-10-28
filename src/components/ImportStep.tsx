@@ -46,7 +46,7 @@ export default function ImportStep({ id, initial, version }: { id: string; initi
           {msg.kind === 'ok' && (
             <>
               {' '}
-              <Link href={`/events/${id}/hall`}>افتح المخطط</Link> · <Link href={`/events/${id}/invites`}>الدعوات</Link>
+              <Link href={`/events/${id}/preview`}>افتح المخطط</Link> · <Link href={`/events/${id}/invites`}>الدعوات</Link>
             </>
           )}
         </div>
@@ -67,7 +67,7 @@ export default function ImportStep({ id, initial, version }: { id: string; initi
       />
       <div className="row" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <Link className="btn" href={`/events/${id}`}>تخطي — الرجوع إلى المناسبة</Link>
-        <Link className="btn primary" href={`/events/${id}/hall`}>المتابعة إلى المخطط</Link>
+        <Link className="btn primary" href={`/events/${id}/preview`}>المتابعة إلى المخطط</Link>
       </div>
     </div>
   );

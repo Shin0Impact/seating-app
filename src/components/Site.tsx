@@ -49,7 +49,7 @@ export function SiteHeader({ crumb, children }: { crumb?: { id: string; name: st
 export type StepKey = 'import' | 'hall' | 'invites' | 'scan';
 const STEPS: { key: StepKey; label: string; sub: string; path: string }[] = [
   { key: 'import', label: 'الضيوف', sub: 'اختياري', path: 'import' },
-  { key: 'hall', label: 'المخطط', sub: 'القاعة والطاولات', path: 'hall' },
+  { key: 'hall', label: 'المخطط', sub: 'القاعة والطاولات', path: 'preview' },
   { key: 'invites', label: 'الدعوات', sub: 'رابط لكل عائلة', path: 'invites' },
   { key: 'scan', label: 'الدخول', sub: 'مسح الرمز', path: 'scan' },
 ];
