@@ -46,14 +46,14 @@ export default function SettingsDialog(p: Props) {
         {p.account && (
           <section className="set-sec">
             <h3>{t('setAccount')}{p.account.user && <span style={{ textTransform: 'none' }}> · {p.account.user}</span>}</h3>
-            <div className="set-actions">
+            <div className="set-actions set-grid">
               <Link className="btn" href="/events">{t('myEvents')}</Link>
               <Link className="btn" href={`/events/${p.account.eventId}`}>{t('eventHome')}</Link>
               <Link className="btn" href={`/events/${p.account.eventId}/invites`}>{t('invitesLink')}</Link>
+              <form action={p.account.signOut} style={{ display: 'contents' }}>
+                <button className="danger">{t('signOut')}</button>
+              </form>
             </div>
-            <form action={p.account.signOut}>
-              <button className="danger">{t('signOut')}</button>
-            </form>
           </section>
         )}
 
@@ -101,8 +101,8 @@ export default function SettingsDialog(p: Props) {
           </div>
         </section>
 
-        <div className="set-actions">
-          <button className="primary" onClick={p.onClose} autoFocus>{t('closeSettings')}</button>
+        <div className="set-actions set-done">
+          <button className="primary" onClick={p.onClose}>{t('closeSettings')}</button>
         </div>
       </div>
     </>

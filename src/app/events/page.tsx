@@ -82,6 +82,9 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
           <label className="field-col">التاريخ (اختياري)<input name="date" type="date" /></label>
           <button className="btn primary">إنشاء والمتابعة</button>
         </form>
+        <details className="event-settings" open={!!q.username || !!q.password}>
+          <summary>الحساب</summary>
+          <div className="account-forms">
         <form action={setUsername} className="card-box">
           <h2>اسم المستخدم</h2>
           <p className="muted" style={{ margin: 0 }}>{me.username ? 'يمكنك الدخول به بدل البريد الإلكتروني.' : 'اختر اسمًا لتدخل به بدل البريد الإلكتروني.'}</p>
@@ -95,6 +98,8 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
           <label className="field-col">أعد كتابة الجديدة<input name="again" type="password" required minLength={8} autoComplete="new-password" dir="ltr" /></label>
           <button className="btn">تغيير كلمة المرور</button>
         </form>
+          </div>
+        </details>
       </main>
     </div>
   );

@@ -566,3 +566,92 @@ button.primary.danger-fill { background: var(--danger); border-color: var(--dang
 .btn.danger { color: var(--danger); border-color: var(--danger); }
 .btn.danger-fill { background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 600; }
 .btn.danger-fill:disabled { opacity: .4; }
+
+/* ---- small screens: compact site header + 2x2 step bar ---- */
+.bar-btn .ico { display: none; }
+@media (max-width: 640px) {
+  .site-bar { padding: 8px 10px; gap: 8px; }
+  .brand-name { display: none; }
+  .brand svg { width: 30px; height: 30px; }
+  .crumbs { flex: 1 1 auto; gap: 6px; }
+  .crumbs b { max-width: none; flex: 1; min-width: 0; }
+  .crumbs > a:last-child { min-width: 0; flex: 1; display: block; overflow: hidden; }
+  .site-actions { gap: 6px; flex: none; }
+  .bar-btn { width: 40px; min-height: 40px; padding: 0; }
+  .bar-btn .ico { display: inline-flex; }
+  .bar-btn .lbl { display: none; }
+  .site-actions .icon-btn { width: 40px; min-height: 40px; }
+  .stepbar { display: grid; grid-template-columns: 1fr 1fr; overflow: visible; }
+  .step { min-width: 0; white-space: normal; padding: 8px 10px; gap: 8px; }
+  .step small { font-size: 12px; }
+}
+
+/* ---- event home: four compact cards, collapsible settings ---- */
+.step-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.step-card { padding: 14px 16px; gap: 8px; }
+.sc-head { display: flex; align-items: center; gap: 10px; }
+.sc-head .n { width: 30px; height: 30px; flex: none; }
+.sc-head h3 { font-size: 1.05em; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.step-card .big { font-size: 1.9em; }
+.step-card p.muted { flex: 1; font-size: 15px; line-height: 1.5; }
+.small-note { font-size: 14px; margin: 14px 0 0; }
+.event-settings { margin-top: 22px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); padding: 0 16px; }
+.event-settings > summary { cursor: pointer; padding: 14px 0; font-weight: 600; list-style-position: inside; }
+.event-settings[open] > summary { border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.event-settings > :last-child { margin-bottom: 16px; }
+.rename-form { display: grid; grid-template-columns: 1fr 190px auto; gap: 12px; align-items: end; }
+.rename-form .btn { min-height: 46px; }
+.event-settings .danger-zone { margin-top: 18px; }
+@media (max-width: 1000px) { .step-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .step-cards { grid-template-columns: 1fr; gap: 10px; }
+  .step-card { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; align-items: center; }
+  .step-card .sc-head { grid-column: 1 / -1; }
+  .step-card .big { grid-column: 1; font-size: 1.7em; }
+  .step-card p.muted { grid-column: 2; font-size: 14px; }
+  .step-card .btn { grid-column: 1 / -1; }
+  .rename-form { grid-template-columns: 1fr; }
+}
+
+/* ---- invites on small screens ---- */
+@media (max-width: 640px) {
+  .stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .stats .stat { grid-column: span 2; padding: 10px 8px; }
+  .stats .stat:nth-child(-n+2) { grid-column: span 3; }
+  .stats .stat b { font-size: 1.5em; }
+  .inv-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 100%; }
+  .inv-actions .btn { padding: 4px 6px; font-size: 14px; min-height: 40px; text-align: center; }
+  .inv-actions .btn.wa { grid-column: 1 / -1; min-height: 44px; font-size: 16px; }
+  .inv-actions .btn.danger, .inv-actions .btn.danger-fill { grid-column: span 3; }
+  .inv-actions .btn:last-child:nth-child(3n+1) { grid-column: 1 / -1; }
+}
+
+/* ---- settings dialog: scrolls inside, "Done" stays reachable ---- */
+.settings { padding-bottom: 0; }
+.settings .set-done { position: sticky; bottom: 0; margin: 0 -16px; padding: 10px 16px; background: var(--surface); border-top: 1px solid var(--line); }
+.settings .set-done button { width: 100%; }
+@media (max-width: 760px) {
+  .settings .set-done { margin: 0 -14px; padding: 10px 14px; }
+  .settings .set-actions button, .settings .set-actions .btn { flex: 1 1 140px; }
+}
+
+/* ---- editor header on phones: back + title + tools on one row, tabs below ---- */
+@media (max-width: 760px) {
+  .bar { flex-wrap: wrap; align-items: center; }
+  .bar > .event-lead { flex: 1 1 0; min-width: 0; order: 1; }
+  .bar > .bar-actions { order: 2; width: auto; flex: none; justify-content: flex-end; gap: 4px; }
+  .bar > .views { order: 3; width: 100%; }
+  .event-lead { gap: 8px; }
+  .event-lead h1 { display: block; max-width: none; flex: 1; min-width: 0; font-size: 0.95em; }
+  .event-lead .back-link { padding: 4px 8px; font-size: 0.85em; min-height: 40px; display: inline-flex; align-items: center; }
+  .event-lead .save-status.saved { display: none; }
+  .event-lead .save-status { font-size: 12px; white-space: normal; line-height: 1.2; }
+  .bar > .bar-actions { margin-inline-start: auto; }
+  .bar .icon-btn { width: 38px; }
+}
+
+.set-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.set-grid > * { width: 100%; }
+.account-forms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.account-forms .card-box { margin: 0; }
+@media (max-width: 760px) { .account-forms { grid-template-columns: 1fr; } }

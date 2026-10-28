@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { SiteHeader, StepBar } from '@/components/Site';
+import { SiteHeader } from '@/components/Site';
 import { parseLayout } from '@/lib/layout';
 import { totals, type InviteRow } from '@/lib/inviteview';
 import DeleteEvent from '@/components/DeleteEvent';
@@ -26,52 +26,49 @@ export default async function EventHome({ params, searchParams }: { params: Prom
       <SiteHeader crumb={{ id, name: ev.name }} />
       <main className="container">
         <div className="page-title"><h1>{ev.name}</h1></div>
-        <StepBar id={id} active="hall" />
         <div className="step-cards">
           <section className="step-card">
-            <span className="n">1</span>
-            <h3>الضيوف <span className="tag">اختياري</span></h3>
+            <div className="sc-head"><span className="n">1</span><h3>الضيوف <span className="tag">اختياري</span></h3></div>
             <div className="big">{layout.guests.length}</div>
             <p className="muted" style={{ margin: 0 }}>{layout.guests.length ? 'ضيفًا في القائمة' : 'ابدأ باستيراد ملف CSV أو Excel، أو تخطَّ وأضفهم من المخطط.'}</p>
             <Link className="btn" href={`/events/${id}/import`}>{layout.guests.length ? 'استيراد المزيد' : 'استيراد قائمة'}</Link>
           </section>
           <section className="step-card">
-            <span className="n">2</span>
-            <h3>مخطط القاعة</h3>
+            <div className="sc-head"><span className="n">2</span><h3>مخطط القاعة</h3></div>
             <div className="big">{tables}</div>
             <p className="muted" style={{ margin: 0 }}>{tables ? `طاولة · أُجلس ${seated} من ${layout.guests.length}` : 'ارسم الطاولات واسحب الضيوف إلى كراسيهم.'}</p>
             <Link className="btn primary" href={`/events/${id}/hall`}>فتح المخطط</Link>
           </section>
           <section className="step-card">
-            <span className="n">3</span>
-            <h3>الدعوات</h3>
+            <div className="sc-head"><span className="n">3</span><h3>الدعوات</h3></div>
             <div className="big">{t.families ? `${t.sent}/${t.families}` : '—'}</div>
             <p className="muted" style={{ margin: 0 }}>{t.families ? `عائلة أُرسلت لها الدعوة · أكّدت ${t.confirmedFamilies}` : 'رابط واحد لكل عائلة تُرسله لربّها عبر واتساب.'}</p>
             <Link className="btn" href={`/events/${id}/invites`}>إدارة الدعوات</Link>
           </section>
           <section className="step-card">
-            <span className="n">4</span>
-            <h3>الدخول</h3>
+            <div className="sc-head"><span className="n">4</span><h3>الدخول</h3></div>
             <div className="big">{t.arrived}</div>
             <p className="muted" style={{ margin: 0 }}>{t.families ? `عائلة وصلت من ${t.confirmedFamilies} مؤكّدة` : 'يوم الحفل: امسح رمز الضيف ليظهر كرسيه.'}</p>
             <Link className="btn" href={`/events/${id}/scan`}>فتح الماسح</Link>
           </section>
         </div>
-        {q.delete && <p className="notice err" role="alert">{q.delete === 'mismatch' ? 'الاسم المكتوب لا يطابق اسم المناسبة.' : 'تعذّر حذف المناسبة. حاول مرة أخرى.'}</p>}
-        <p className="muted">الدعوات والمخطط صفحتان منفصلتان: يمكن لشخصين العمل على الاثنين في الوقت نفسه من الحساب نفسه.</p>
+        <p className="muted small-note">الدعوات والمخطط صفحتان منفصلتان: يمكن لشخصين العمل على الاثنين في الوقت نفسه.</p>
+        <details className="event-settings" open={!!q.rename || !!q.delete}>
+          <summary>إعدادات المناسبة</summary>
+          {q.delete && <p className="notice err" role="alert">{q.delete === 'mismatch' ? 'الاسم المكتوب لا يطابق اسم المناسبة.' : 'تعذّر حذف المناسبة. حاول مرة أخرى.'}</p>}
         {q.rename && (
           <p className={`notice ${q.rename === 'saved' ? 'ok' : 'err'}`} role="status">
             {q.rename === 'saved' ? 'تم حفظ التعديل.' : q.rename === 'invalid' ? 'الاسم مطلوب.' : 'تعذّر حفظ التعديل.'}
           </p>
         )}
-        <form action={renameEvent} className="card-box">
-          <h2>اسم المناسبة وتاريخها</h2>
+        <form action={renameEvent} className="rename-form">
           <input type="hidden" name="id" value={id} />
           <label className="field-col">الاسم<input name="name" defaultValue={ev.name} required maxLength={120} /></label>
           <label className="field-col">التاريخ (اختياري)<input name="date" type="date" defaultValue={ev.event_date ?? ''} /></label>
           <button className="btn">حفظ</button>
         </form>
         <DeleteEvent id={id} name={ev.name} />
+        </details>
       </main>
     </div>
   );
