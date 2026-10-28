@@ -8,6 +8,8 @@ export type InviteRow = {
   sent_at: string | null;
   /** Set when the family asked to change its answer; cleared when it answers again. */
   change_requested_at?: string | null;
+  /** People a confirmed family asked to add on top of its invitation; 0 when none. */
+  extra_requested?: number;
 };
 
 export type InviteState = 'unsent' | 'waiting' | 'confirmed' | 'declined' | 'arrived';

@@ -27,6 +27,12 @@ describe('inviteDrafts', () => {
     expect(d[1]).toEqual({ guestId: b.id, memberIds: [], partySize: 1 });
     expect(d[2].guestId).toBe(stray.id);
   });
+  it('accepts "Name+1" written without a space', () => {
+    const a = newGuest('Fadi', 'F', null, false, null);
+    const a1 = newGuest('Fadi+1', 'F', null, false, null);
+    const d = inviteDrafts([a, a1]);
+    expect(d).toEqual([{ guestId: a.id, memberIds: [a1.id], partySize: 2 }]);
+  });
   it('does not merge people with the same name in different groups', () => {
     const a = newGuest('Sami', 'A', null, false, null);
     const b = newGuest('Sami +1', 'B', null, false, null);

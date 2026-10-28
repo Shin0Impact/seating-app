@@ -12,7 +12,7 @@ export const isToken = (s: unknown): s is string => typeof s === 'string' && /^[
 
 export type InviteDraft = { guestId: string; memberIds: string[]; partySize: number };
 
-const PLUS = /^(.*\S)\s\+(\d{1,3})$/;
+export const PLUS = /^(.*\S)\s*\+(\d{1,2})$/;
 
 /**
  * One invite per named guest. The CSV import writes the people who come with a guest as "Name +1", "Name +2" in
