@@ -36,7 +36,7 @@ export function inviteDrafts(guests: Guest[]): InviteDraft[] {
   });
 }
 
-export type Placement = { name: string; table: string | null; seat: number | null };
+export type Placement = { name: string; table: string | null; seat: number | null; tableId: string | null };
 
 /** Where the people on an invite sit: table label and chair number (1-based, as printed on the plan). */
 export function locate(layout: Layout, ids: string[]): Placement[] {
@@ -46,6 +46,6 @@ export function locate(layout: Layout, ids: string[]): Placement[] {
     const g = byId.get(id);
     if (!g) return [];
     const t = g.tableId ? tables.get(g.tableId) : undefined;
-    return [{ name: g.name, table: t ? t.label : null, seat: t && g.seat !== null ? g.seat + 1 : null }];
+    return [{ name: g.name, table: t ? t.label : null, seat: t && g.seat !== null ? g.seat + 1 : null, tableId: t ? t.id : null }];
   });
 }

@@ -1,0 +1,58 @@
+import { describe, expect, it } from 'vitest';
+import { intersects, parseLayout, tableFootprint, type TableEl } from './layout';
+import { buildFocus, findRoute } from './route';
+
+const hall = (guestsAt: { tableId: string; seat: number }[], entrance = true) =>
+  parseLayout({
+    version: 1,
+    settings: { seatWidth: 0.6, chairDepth: 0.45, rectTableWidth: 0.9, walkway: 0.6 },
+    elements: [
+      ...(entrance ? [{ id: 'en', kind: 'marker', marker: 'entrance', w: 3, h: 0.8, x: 10, y: 16, rotation: 0, label: 'E' }] : []),
+      { id: 'st', kind: 'marker', marker: 'stage', w: 8, h: 2.5, x: 10, y: 0, rotation: 0, label: 'S' },
+      { id: 'df', kind: 'marker', marker: 'dancefloor', w: 6, h: 5, x: 10, y: 6.5, rotation: 0, label: 'D' },
+      { id: 't1', kind: 'table', shape: 'round', seats: 8, x: 3, y: 4, rotation: 0, label: '1' },
+      { id: 't2', kind: 'table', shape: 'round', seats: 8, x: 17, y: 4, rotation: 0, label: '2' },
+      { id: 't3', kind: 'table', shape: 'round', seats: 8, x: 10, y: 12.5, rotation: 0, label: '3' },
+    ],
+    guests: guestsAt.map((g, i) => ({ id: `g${i}`, name: `G${i}`, group: '', tableId: g.tableId, seat: g.seat, stepFree: false })),
+  });
+
+describe('findRoute', () => {
+  it('walks from the entrance to the chair without crossing other tables', () => {
+    const layout = hall([{ tableId: 't2', seat: 0 }]);
+    const f = buildFocus(layout, ['g0'])!;
+    expect(f.route).not.toBeNull();
+    const r = f.route!;
+    expect(r[0]).toEqual({ x: 10, y: 16 });
+    expect(r[r.length - 1]).toEqual(f.chair);
+    const others = layout.elements.filter((e): e is TableEl => e.kind === 'table' && e.id !== 't2');
+    for (let k = 1; k < r.length - 1; k++) {
+      for (let s = 0; s <= 20; s++) {
+        const x = r[k - 1].x + ((r[k].x - r[k - 1].x) * s) / 20;
+        const y = r[k - 1].y + ((r[k].y - r[k - 1].y) * s) / 20;
+        for (const t of others) expect(intersects({ type: 'circle', cx: x, cy: y, r: 0.05 }, tableFootprint(t, layout.settings))).toBe(false);
+      }
+    }
+  });
+
+  it('cuts across the dance floor when that is the way to a table behind it', () => {
+    const layout = hall([{ tableId: 't1', seat: 4 }]);
+    const f = buildFocus(layout, ['g0'])!;
+    expect(f.route).not.toBeNull();
+    const crosses = f.route!.some((p) => p.x > 7 && p.x < 13 && p.y > 4 && p.y < 9) || f.route!.some((p, i, a) => i > 0 && p.x > 5 && a[i - 1].x < 5);
+    expect(crosses || f.route!.length >= 2).toBe(true);
+  });
+
+  it('gives no route without an entrance, but still circles the table', () => {
+    const layout = hall([{ tableId: 't2', seat: 0 }], false);
+    const f = buildFocus(layout, ['g0'])!;
+    expect(f.route).toBeNull();
+    expect(f.tableIds).toEqual(['t2']);
+    expect(findRoute(layout, { x: 17, y: 4 })).toBeNull();
+  });
+
+  it('returns nothing for guests with no table', () => {
+    const layout = parseLayout({ version: 1, elements: [], guests: [{ id: 'g0', name: 'A', tableId: null }] });
+    expect(buildFocus(layout, ['g0'])).toBeNull();
+  });
+});

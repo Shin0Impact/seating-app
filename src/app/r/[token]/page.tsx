@@ -7,6 +7,9 @@ import { getS } from '@/lib/lang-server';
 import { localeOf } from '@/lib/site-i18n';
 import { Logo } from '@/components/Site';
 import ChangeRequestButton from '@/components/ChangeRequestButton';
+import HallPreview from '@/components/HallPreview';
+import { parseLayout, type Guest } from '@/lib/layout';
+import { buildFocus } from '@/lib/route';
 import { isToken } from '@/lib/invites';
 import { serverClient } from '@/lib/supabase/server';
 
@@ -36,6 +39,18 @@ export default async function Rsvp({ params }: { params: Promise<{ token: string
   const h = await headers();
   const site = (process.env.NEXT_PUBLIC_SITE_URL || `${h.get('x-forwarded-proto') ?? 'https'}://${h.get('host')}`).replace(/\/$/, '');
   const qr = inv.status === 'confirmed' ? await QRCode.toString(`${site}/r/${token}`, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' }) : '';
+  // Confirmed families also see where their table is, with a walking line from the entrance.
+  let focus: ReturnType<typeof buildFocus> = null;
+  let planLayout: ReturnType<typeof parseLayout> | null = null;
+  if (inv.status === 'confirmed') {
+    const { data: map } = await supabase.rpc('rsvp_map', { p_token: token });
+    if (map && typeof map === 'object') {
+      const m = map as { settings: unknown; elements: unknown; placements: { id: string; tableId: string | null; seat: number | null }[] };
+      const guests: Guest[] = (m.placements ?? []).map((p) => ({ id: p.id, name: '-', group: '', tableId: p.tableId, seat: p.seat, stepFree: false }));
+      planLayout = parseLayout({ version: 1, settings: m.settings, elements: m.elements, guests });
+      focus = buildFocus(planLayout, guests.map((g) => g.id));
+    }
+  }
   const when = inv.event_date ? new Date(inv.event_date + 'T00:00:00').toLocaleDateString(localeOf(lang), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
 
   return (
@@ -65,6 +80,12 @@ export default async function Rsvp({ params }: { params: Promise<{ token: string
             <p className="notice ok" style={{ margin: 0 }}>{s('rsvpConfirmed', { n: inv.confirmed_count })}</p>
             <p style={{ margin: 0 }}>{s('showCode')}</p>
             <div className="qr" role="img" aria-label={s('entryCode')} dangerouslySetInnerHTML={{ __html: qr }} />
+            {focus && planLayout && (
+              <div className="where-map">
+                <h2 style={{ fontSize: '1.05em', margin: '0 0 4px' }}>{s('yourTable')}: {focus.seat ? s('tableSeat', { table: focus.table, n: focus.seat }) : s('tableOnly', { table: focus.table })}</h2>
+                <HallPreview layout={planLayout} label={s('yourTable')} focus={focus} />
+              </div>
+            )}
             <ChangeRequestButton action={answer} token={token} />
           </section>
         )}

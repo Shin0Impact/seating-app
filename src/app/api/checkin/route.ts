@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { isToken, locate } from '@/lib/invites';
 import { parseLayout } from '@/lib/layout';
+import { buildFocus } from '@/lib/route';
 import { serverClient } from '@/lib/supabase/server';
 
 /** Door staff scan a guest's QR code; this marks them as arrived and says where to take them. Planner login required. */
@@ -21,6 +22,11 @@ export async function POST(req: Request) {
   const already = inv.checked_in_at as string | null;
   if (!already) await supabase.from('invites').update({ checked_in_at: new Date().toISOString() }).eq('token', inv.token).is('checked_in_at', null);
 
-  const placements = locate(parseLayout(ev.layout), [inv.guest_id, ...(inv.member_ids as string[])]);
-  return NextResponse.json({ ok: true, already, status: inv.status, partySize: inv.party_size, confirmedCount: inv.confirmed_count, event: ev.name, placements });
+  const layout = parseLayout(ev.layout);
+  const ids = [inv.guest_id, ...(inv.member_ids as string[])];
+  const placements = locate(layout, ids);
+  // The map shows only the hall's shapes, never other guests' names.
+  const plan = { settings: layout.settings, elements: layout.elements };
+  const focus = buildFocus(layout, ids);
+  return NextResponse.json({ ok: true, already, status: inv.status, partySize: inv.party_size, confirmedCount: inv.confirmed_count, event: ev.name, placements, plan, focus });
 }

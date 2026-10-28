@@ -5,8 +5,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { isToken } from '@/lib/invites';
 import { useLang, useS } from './LangProvider';
 import { localeOf } from '@/lib/site-i18n';
+import HallPreview from './HallPreview';
+import type { Focus } from '@/lib/route';
+import type { Layout } from '@/lib/layout';
 
-type Result = { ok: true; already: string | null; status: string; partySize: number; confirmedCount: number | null; placements: { name: string; table: string | null; seat: number | null }[] } | { error: string };
+type Result = { ok: true; already: string | null; status: string; partySize: number; confirmedCount: number | null; placements: { name: string; table: string | null; seat: number | null }[]; plan: Pick<Layout, 'settings' | 'elements'>; focus: Focus | null } | { error: string };
 
 const tokenFrom = (text: string) => text.trim().split(/[/?#]/).filter(Boolean).pop() ?? '';
 
@@ -90,6 +93,12 @@ export default function Scanner() {
               <li key={i}><b>{p.name}</b><span className="where">{p.table ? `${p.table}${p.seat ? s('chairN', { n: p.seat }) : ''}` : s('noTableYet')}</span></li>
             ))}
           </ul>
+          {ok.focus && (
+            <div className="where-map">
+              <HallPreview layout={{ version: 1, settings: ok.plan.settings, elements: ok.plan.elements, guests: [] }} label={s('whereTitle')} focus={ok.focus} />
+              <p className="muted" style={{ margin: '6px 0 0' }}>{ok.focus.route ? s('routeLegend') : s('noRouteHint')}</p>
+            </div>
+          )}
           <button className="btn primary" onClick={() => setRes(null)}>{s('next')}</button>
         </div>
       )}
