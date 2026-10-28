@@ -584,14 +584,9 @@ export function halfExtent(el: Element, s: Settings): { hx: number; hy: number }
   return { hx: (c * w + sn * h) / 2, hy: (sn * w + c * h) / 2 };
 }
 
-/** Moves the element so its nearest edge (left or right, top or bottom) lies on a grid line. */
+/** Moves the element so its left and top edges lie on grid lines (always the same two edges, so it never flips between sides). */
 export function snapToGridEdges(el: Element, s: Settings, x: number, y: number, step = 1): { x: number; y: number } {
   const { hx, hy } = halfExtent(el, s);
-  const axis = (v: number, h: number) => {
-    const a = snap(v - h, step) + h;
-    const b = snap(v + h, step) - h;
-    return Math.abs(a - v) <= Math.abs(b - v) ? a : b;
-  };
   const r = (n: number) => Math.round(n * 1000) / 1000;
-  return { x: r(axis(x, hx)), y: r(axis(y, hy)) };
+  return { x: r(snap(x - hx, step) + hx), y: r(snap(y - hy, step) + hy) };
 }
