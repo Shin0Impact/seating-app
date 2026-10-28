@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import ThemeToggle from './ThemeToggle';
+import SiteSettings from './SiteSettings';
 import { Icon } from './Icon';
 import { signOut } from '@/app/actions';
 
@@ -40,13 +40,7 @@ export function SiteHeader({ crumb, children }: { crumb?: { id: string; name: st
             <span className="lbl">كل المناسبات</span>
           </Link>
         )}
-        <ThemeToggle />
-        <form action={signOut}>
-          <button className="btn small bar-btn" aria-label="تسجيل الخروج" title="تسجيل الخروج">
-            <span className="ico"><Icon name="logout" size={18} /></span>
-            <span className="lbl">تسجيل الخروج</span>
-          </button>
-        </form>
+        <SiteSettings signOut={signOut} eventId={crumb?.id} />
       </div>
     </header>
   );
