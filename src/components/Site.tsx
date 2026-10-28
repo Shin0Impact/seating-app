@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import ThemeToggle from './ThemeToggle';
+import { Icon } from './Icon';
 import { signOut } from '@/app/actions';
 
 export function Logo({ size = 34 }: { size?: number }) {
@@ -20,7 +21,7 @@ export function SiteHeader({ crumb, children }: { crumb?: { id: string; name: st
       <div className="crumbs">
         <Link href="/events" className="brand">
           <Logo />
-          <span>ترتيب الجلوس</span>
+          <span className="brand-name">ترتيب الجلوس</span>
         </Link>
         {crumb && (
           <>
@@ -33,9 +34,19 @@ export function SiteHeader({ crumb, children }: { crumb?: { id: string; name: st
       </div>
       <div className="site-actions">
         {children}
-        {crumb && <Link className="btn small" href="/events">كل المناسبات</Link>}
+        {crumb && (
+          <Link className="btn small bar-btn" href="/events" aria-label="كل المناسبات" title="كل المناسبات">
+            <span className="ico"><Icon name="list" size={18} /></span>
+            <span className="lbl">كل المناسبات</span>
+          </Link>
+        )}
         <ThemeToggle />
-        <form action={signOut}><button className="btn small">تسجيل الخروج</button></form>
+        <form action={signOut}>
+          <button className="btn small bar-btn" aria-label="تسجيل الخروج" title="تسجيل الخروج">
+            <span className="ico"><Icon name="logout" size={18} /></span>
+            <span className="lbl">تسجيل الخروج</span>
+          </button>
+        </form>
       </div>
     </header>
   );
