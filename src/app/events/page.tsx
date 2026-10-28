@@ -78,7 +78,7 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
         </div>
         <form action={create} className="card-box">
           <h2>مناسبة جديدة</h2>
-          <label className="field-col">الاسم<input name="name" required maxLength={120} placeholder="مثال: زفاف فضل" /></label>
+          <label className="field-col">الاسم<input name="name" required maxLength={120} placeholder="مثال: حفل زفاف" /></label>
           <label className="field-col">التاريخ (اختياري)<input name="date" type="date" /></label>
           <button className="btn primary">إنشاء والمتابعة</button>
         </form>
