@@ -170,13 +170,13 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
   const addRef = useRef<HTMLDivElement>(null);
   const addBtnRef = useRef<HTMLButtonElement>(null);
   const snapStep = snapGrid ? 1 : 0.1;
-  /** Snaps the left/top of what is actually drawn (the blue box) to the grid. */
+  /** Snaps the left and bottom of what is actually drawn (the blue box) to the grid. */
   const snapToDrawnEdges = (node: Konva.Node | undefined, x: number, y: number) => {
     const layer = node?.getLayer();
     if (!node || !layer) return null;
     const r = node.getClientRect({ relativeTo: layer });
     const ox = r.x - node.x();
-    const oy = r.y - node.y();
+    const oy = r.y + r.height - node.y(); // bottom edge
     const k = (n: number) => Math.round(n * 1000) / 1000;
     return { x: k(snap(x + ox, 1) - ox), y: k(snap(y + oy, 1) - oy) };
   };
