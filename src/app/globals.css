@@ -655,3 +655,17 @@ button.primary.danger-fill { background: var(--danger); border-color: var(--dang
 .account-forms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
 .account-forms .card-box { margin: 0; }
 @media (max-width: 760px) { .account-forms { grid-template-columns: 1fr; } }
+
+.preview-card { position: relative; display: block; background: var(--canvas); border: 1px solid var(--line); border-radius: 16px; padding: 12px; text-decoration: none; color: inherit; transition: border-color .15s, box-shadow .15s; }
+.preview-card:hover { border-color: var(--accent); box-shadow: 0 4px 18px rgba(0,0,0,.08); }
+.hall-preview { display: block; width: 100%; height: min(62vh, 560px); }
+.preview-open { position: absolute; inset-inline-end: 16px; bottom: 16px; }
+.hp-table { fill: var(--surface); stroke: var(--line-strong); stroke-width: 0.06; }
+.hp-chair { fill: var(--chip); stroke: var(--line-strong); stroke-width: 0.04; }
+.hp-chair.on { fill: var(--accent); stroke: var(--accent); }
+.hp-col { fill: var(--line-strong); }
+.hp-zone { fill: var(--accent-soft); stroke: var(--line-strong); stroke-width: 0.05; stroke-dasharray: 0.3 0.2; }
+.hp-marker { fill: var(--chip); stroke: var(--line-strong); stroke-width: 0.05; }
+.hp-text { fill: var(--ink); pointer-events: none; }
+.hall-import { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-top: 14px; }
+.hall-import .notice { flex-basis: 100%; margin: 0; }
