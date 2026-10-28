@@ -1,19 +1,11 @@
 'use client';
-import { useEffect } from 'react';
-import type { Lang, Key } from '@/lib/i18n';
-import type { ThemePref } from '@/lib/theme';
-import Link from 'next/link';
+import type { Key } from '@/lib/i18n';
 import { Icon } from './Icon';
-
-export type AccountInfo = { user: string; eventId: string; signOut: () => void | Promise<void> };
+import SettingsPanel, { type AccountProps } from './SettingsPanel';
 
 type Props = {
-  account?: AccountInfo;
+  account?: AccountProps;
   t: (k: Key) => string;
-  lang: Lang;
-  setLang: (l: Lang) => void;
-  themePref: ThemePref;
-  setThemePref: (p: ThemePref) => void;
   snapGrid: boolean;
   toggleSnap: () => void;
   locked: boolean;
@@ -29,56 +21,11 @@ function Switch({ on, onClick, label }: { on: boolean; onClick: () => void; labe
   return <button type="button" role="switch" aria-checked={on} aria-label={label} className="switch" onClick={onClick} />;
 }
 
+/** The common settings menu plus the hall designer's own sections. */
 export default function SettingsDialog(p: Props) {
   const { t } = p;
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && p.onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [p]);
-
   return (
-    <>
-      <div className="picker-backdrop" onMouseDown={p.onClose} />
-      <div className="import-dialog settings" role="dialog" aria-label={t('appSettings')}>
-        <h2>{t('appSettings')}</h2>
-
-        {p.account && (
-          <section className="set-sec">
-            <h3>{t('setAccount')}{p.account.user && <span style={{ textTransform: 'none' }}> · {p.account.user}</span>}</h3>
-            <div className="set-actions set-grid">
-              <Link className="btn" href="/events">{t('myEvents')}</Link>
-              <Link className="btn" href={`/events/${p.account.eventId}`}>{t('eventHome')}</Link>
-              <Link className="btn" href={`/events/${p.account.eventId}/invites`}>{t('invitesLink')}</Link>
-              <form action={p.account.signOut} style={{ display: 'contents' }}>
-                <button className="danger">{t('signOut')}</button>
-              </form>
-            </div>
-          </section>
-        )}
-
-        <section className="set-sec">
-          <h3>{t('setLanguage')}</h3>
-          <div className="seg" role="group" aria-label={t('setLanguage')}>
-            <button className={p.lang === 'ar' ? 'on' : ''} onClick={() => p.setLang('ar')}>العربية</button>
-            <button className={p.lang === 'en' ? 'on' : ''} onClick={() => p.setLang('en')}>English</button>
-          </div>
-        </section>
-
-        <section className="set-sec">
-          <h3>{t('setAppearance')}</h3>
-          <div className="seg" role="group" aria-label={t('setAppearance')}>
-            {([['auto', t('themeAuto')], ['light', t('themeLight')], ['dark', t('themeDark')]] as const).map(([k, label]) => (
-              <button key={k} className={p.themePref === k ? 'on' : ''} onClick={() => p.setThemePref(k)}>
-                {k === 'light' && <Icon name="sun" size={16} />}
-                {k === 'dark' && <Icon name="moon" size={16} />}
-                {label}
-              </button>
-            ))}
-          </div>
-          <small className="muted">{t('themeHint')}</small>
-        </section>
-
+    <SettingsPanel account={p.account} onClose={p.onClose}>
         <section className="set-sec">
           <h3>{t('setLayout')}</h3>
           <div className="set-row">
@@ -100,11 +47,6 @@ export default function SettingsDialog(p: Props) {
             <button className="danger" onClick={p.onClear} disabled={p.clearDisabled}><Icon name="trash" size={18} />{t('clearAll')}</button>
           </div>
         </section>
-
-        <div className="set-actions set-done">
-          <button className="primary" onClick={p.onClose}>{t('closeSettings')}</button>
-        </div>
-      </div>
-    </>
+    </SettingsPanel>
   );
 }

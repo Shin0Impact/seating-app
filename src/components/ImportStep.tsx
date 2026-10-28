@@ -5,14 +5,16 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ImportGuests } from './ImportGuests';
 import { STRINGS } from '@/lib/i18n';
+import { useLang, useS } from './LangProvider';
 import { Guest, Layout, TableEl, placeNewTables } from '@/lib/layout';
 import { browserClient } from '@/lib/supabase/browser';
-
-const t = (k: keyof typeof STRINGS.ar) => STRINGS.ar[k];
 
 /** The optional "import your guest list" step. Saves into the event with the same version check as the hall editor. */
 export default function ImportStep({ id, initial, version }: { id: string; initial: Layout; version: number }) {
   const router = useRouter();
+  const { lang } = useLang();
+  const s = useS();
+  const t = (k: keyof typeof STRINGS.ar) => STRINGS[lang][k];
   const [layout, setLayout] = useState(initial);
   const ver = useRef(version);
   const imported = useRef(false);
@@ -28,12 +30,12 @@ export default function ImportStep({ id, initial, version }: { id: string; initi
       .eq('id', id)
       .eq('version', ver.current)
       .select('version');
-    if (error) return setMsg({ kind: 'err', text: 'تعذّر الحفظ: ' + error.message });
-    if (!data || data.length === 0) return setMsg({ kind: 'err', text: 'تم تعديل هذه المناسبة من مكان آخر. أعد تحميل الصفحة ثم حاول مجددًا.' });
+    if (error) return setMsg({ kind: 'err', text: s('saveFailed') + error.message });
+    if (!data || data.length === 0) return setMsg({ kind: 'err', text: s('editedElsewhere') });
     ver.current = data[0].version;
     setLayout(next);
     const seated = added.filter((g) => g.tableId).length;
-    setMsg({ kind: 'ok', text: `تمت إضافة ${added.length} ضيفًا${made.length ? ` وإنشاء ${made.length} طاولة` : ''}${seated ? ` (أُجلس ${seated})` : ''}.` });
+    setMsg({ kind: 'ok', text: `${s('addedGuests', { n: added.length })}${made.length ? s('andTables', { n: made.length }) : ''}${seated ? s('seatedParen', { n: seated }) : ''}.` });
     setRound((r) => r + 1);
     imported.current = false;
   }
@@ -46,13 +48,13 @@ export default function ImportStep({ id, initial, version }: { id: string; initi
           {msg.kind === 'ok' && (
             <>
               {' '}
-              <Link href={`/events/${id}/preview`}>افتح المخطط</Link> · <Link href={`/events/${id}/invites`}>الدعوات</Link>
+              <Link href={`/events/${id}/preview`}>{s('openPlan')}</Link> · <Link href={`/events/${id}/invites`}>{s('invitations')}</Link>
             </>
           )}
         </div>
       )}
       <p className="muted" style={{ margin: 0 }}>
-        يمكنك تخطي هذه الخطوة وإضافة الضيوف من المخطط مباشرةً. عمود الطاولة في الملف يُجلس الضيوف تلقائيًا إن وُجدت الطاولة (مثل «طاولة 12»)، أو يُنشئها لك.
+        {s('importSkipHint')}
       </p>
       <ImportGuests
         key={round}
@@ -66,8 +68,8 @@ export default function ImportStep({ id, initial, version }: { id: string; initi
         }}
       />
       <div className="row" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <Link className="btn" href={`/events/${id}`}>تخطي — الرجوع إلى المناسبة</Link>
-        <Link className="btn primary" href={`/events/${id}/preview`}>المتابعة إلى المخطط</Link>
+        <Link className="btn" href={`/events/${id}`}>{s('skipBack')}</Link>
+        <Link className="btn" href={`/events/${id}/preview`}>{s('continueToPlan')}</Link>
       </div>
     </div>
   );

@@ -2,21 +2,25 @@ import type { Metadata, Viewport } from 'next';
 import '@fontsource-variable/noto-sans-arabic';
 import './globals.css';
 import { THEME_BOOT } from '@/lib/theme';
+import { LangProvider } from '@/components/LangProvider';
+import { getLang } from '@/lib/lang-server';
+import { dirOf } from '@/lib/i18n';
 
 export const metadata: Metadata = {
-  title: 'Hall layout',
-  description: 'Wedding hall seating layout editor',
+  title: 'طاولتنا · Our Table',
+  description: 'Hall seating plans, guest invitations and check-in',
 };
 
 export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const lang = await getLang();
   return (
-    <html lang="ar" dir="rtl" suppressHydrationWarning>
+    <html lang={lang} dir={dirOf(lang)} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
       </head>
-      <body>{children}</body>
+      <body><LangProvider initial={lang}>{children}</LangProvider></body>
     </html>
   );
 }

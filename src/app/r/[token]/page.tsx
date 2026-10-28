@@ -1,12 +1,15 @@
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import QRCode from 'qrcode';
-import ThemeToggle from '@/components/ThemeToggle';
+import LangToggle from '@/components/LangToggle';
+import SiteSettings from '@/components/SiteSettings';
+import { getS } from '@/lib/lang-server';
+import { localeOf } from '@/lib/site-i18n';
 import { Logo } from '@/components/Site';
 import { isToken } from '@/lib/invites';
 import { serverClient } from '@/lib/supabase/server';
 
-export const metadata = { title: 'دعوة', robots: { index: false, follow: false } };
+export const metadata = { title: 'طاولتنا · Our Table', robots: { index: false, follow: false } };
 
 async function answer(form: FormData) {
   'use server';
@@ -22,6 +25,7 @@ async function answer(form: FormData) {
 export default async function Rsvp({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   if (!isToken(token)) notFound();
+  const { lang, s } = await getS();
   const supabase = await serverClient();
   const { data } = await supabase.rpc('rsvp_get', { p_token: token });
   const inv = Array.isArray(data) ? data[0] : null;
@@ -30,46 +34,46 @@ export default async function Rsvp({ params }: { params: Promise<{ token: string
   const h = await headers();
   const site = (process.env.NEXT_PUBLIC_SITE_URL || `${h.get('x-forwarded-proto') ?? 'https'}://${h.get('host')}`).replace(/\/$/, '');
   const qr = inv.status === 'confirmed' ? await QRCode.toString(`${site}/r/${token}`, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' }) : '';
-  const when = inv.event_date ? new Date(inv.event_date + 'T00:00:00').toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  const when = inv.event_date ? new Date(inv.event_date + 'T00:00:00').toLocaleDateString(localeOf(lang), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
 
   return (
     <div className="site rsvp-wrap">
-      <div className="theme-float"><ThemeToggle /></div>
+      <div className="theme-float"><LangToggle /><SiteSettings /></div>
       <main className="rsvp-card">
         <div style={{ display: 'grid', placeItems: 'center' }}><Logo size={56} /></div>
         <p className="muted" style={{ margin: 0 }}>{inv.event_name}{when ? ` · ${when}` : ''}</p>
-        <h1>أهلًا {inv.guest_name}</h1>
+        <h1>{s('hello', { name: inv.guest_name })}</h1>
         {inv.status === 'pending' && (
           <form action={answer} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <input type="hidden" name="token" value={token} />
-            <p style={{ margin: 0 }}>يسعدنا حضوركم. هل ستحضرون؟</p>
+            <p style={{ margin: 0 }}>{s('willYouCome')}</p>
             {inv.party_size > 1 && (
-              <label className="field-col" style={{ alignItems: 'center' }}>كم شخصًا سيحضر (حتى {inv.party_size})؟
+              <label className="field-col" style={{ alignItems: 'center' }}>{s('howManyUpTo', { n: inv.party_size })}
                 <input name="count" type="number" min={1} max={inv.party_size} defaultValue={inv.party_size} inputMode="numeric" />
               </label>
             )}
             <div className="row">
-              <button name="status" value="confirmed" className="btn primary">نعم، سنحضر</button>
-              <button name="status" value="declined" className="btn">نعتذر عن الحضور</button>
+              <button name="status" value="confirmed" className="btn primary">{s('yesWeCome')}</button>
+              <button name="status" value="declined" className="btn">{s('noWeDecline')}</button>
             </div>
           </form>
         )}
         {inv.status === 'confirmed' && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p className="notice ok" style={{ margin: 0 }}>تم تأكيد حضوركم ({inv.confirmed_count}). شكرًا لكم!</p>
-            <p style={{ margin: 0 }}>أبرزوا هذا الرمز عند المدخل وسنرافقكم إلى طاولتكم.</p>
-            <div className="qr" role="img" aria-label="رمز الدخول" dangerouslySetInnerHTML={{ __html: qr }} />
+            <p className="notice ok" style={{ margin: 0 }}>{s('rsvpConfirmed', { n: inv.confirmed_count })}</p>
+            <p style={{ margin: 0 }}>{s('showCode')}</p>
+            <div className="qr" role="img" aria-label={s('entryCode')} dangerouslySetInnerHTML={{ __html: qr }} />
             <form action={answer}>
               <input type="hidden" name="token" value={token} />
-              <button name="status" value="declined" className="linkbtn">لن نتمكن من الحضور بعد الآن</button>
+              <button name="status" value="declined" className="linkbtn">{s('cantAnymore')}</button>
             </form>
           </section>
         )}
         {inv.status === 'declined' && (
           <form action={answer} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <input type="hidden" name="token" value={token} />
-            <p style={{ margin: 0 }}>سُجّل اعتذاركم. شكرًا لإعلامنا.</p>
-            <button name="status" value="confirmed" className="btn">غيّرنا رأينا، سنحضر</button>
+            <p style={{ margin: 0 }}>{s('declinedNote')}</p>
+            <button name="status" value="confirmed" className="btn">{s('changedMind')}</button>
           </form>
         )}
       </main>

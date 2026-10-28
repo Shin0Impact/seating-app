@@ -1,21 +1,24 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_TEMPLATE, STATE_LABEL, fillMessage, inviteState, totals, whatsappUrl, type InviteRow, type InviteState } from '@/lib/inviteview';
+import { fillMessage, inviteState, totals, whatsappUrl, type InviteRow, type InviteState } from '@/lib/inviteview';
+import { useLang, useS } from './LangProvider';
+import { localeOf, type SKey } from '@/lib/site-i18n';
 import { inviteDrafts, makeToken } from '@/lib/invites';
 import { parseLayout, type Guest } from '@/lib/layout';
 import { matches } from '@/lib/search';
 import { browserClient } from '@/lib/supabase/browser';
 
 const COLS = 'token,guest_id,party_size,status,confirmed_count,checked_in_at,sent_at';
-const FILTERS: { key: InviteState | 'all'; label: string }[] = [
-  { key: 'all', label: 'الكل' },
-  { key: 'unsent', label: STATE_LABEL.unsent },
-  { key: 'waiting', label: STATE_LABEL.waiting },
-  { key: 'confirmed', label: STATE_LABEL.confirmed },
-  { key: 'declined', label: STATE_LABEL.declined },
-  { key: 'arrived', label: STATE_LABEL.arrived },
+const FILTER_KEYS: { key: InviteState | 'all'; label: SKey }[] = [
+  { key: 'all', label: 'all' },
+  { key: 'unsent', label: 'stUnsent' },
+  { key: 'waiting', label: 'stWaiting' },
+  { key: 'confirmed', label: 'stConfirmed' },
+  { key: 'declined', label: 'stDeclined' },
+  { key: 'arrived', label: 'stArrived' },
 ];
+const STATE_KEY: Record<InviteState, SKey> = { unsent: 'stUnsent', waiting: 'stWaiting', confirmed: 'stConfirmed', declined: 'stDeclined', arrived: 'stArrived' };
 const SHOWN = 150;
 
 const WaIcon = () => (
@@ -24,14 +27,17 @@ const WaIcon = () => (
   </svg>
 );
 
-/** Arabic number agreement: 1 → رابط واحد, 2 → رابطان, 3–10 → N روابط, 11+ → N رابطًا. */
-function linksWord(n: number): string {
-  if (n === 1) return 'رابط واحد';
-  if (n === 2) return 'رابطان';
-  return n <= 10 ? `${n} روابط` : `${n} رابطًا`;
-}
-
 export default function InvitesPanel({ eventId, eventName, initialGuests, initial, siteUrl }: { eventId: string; eventName: string; initialGuests: Guest[]; initial: InviteRow[]; siteUrl: string }) {
+  const { lang } = useLang();
+  const s = useS();
+  const locale = localeOf(lang);
+  /** Arabic number agreement: 1 → رابط واحد, 2 → رابطان, 3–10 → N روابط, 11+ → N رابطًا. */
+  const linksWord = (n: number): string => {
+    if (lang === 'en') return n === 1 ? s('oneLink') : s('nLinks', { n });
+    if (n === 1) return s('oneLink');
+    if (n === 2) return s('twoLinks');
+    return n <= 10 ? s('nLinks', { n }) : `${n} رابطًا`;
+  };
   const [guests, setGuests] = useState(initialGuests);
   const [rows, setRows] = useState(initial);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
@@ -41,18 +47,19 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
   const [filter, setFilter] = useState<InviteState | 'all'>('all');
   const [group, setGroup] = useState('');
   const [showTpl, setShowTpl] = useState(false);
-  const [tpl, setTpl] = useState(DEFAULT_TEMPLATE);
+  const [savedTpl, setSavedTpl] = useState<string | null>(null);
+  const tpl = savedTpl ?? s('defaultTemplate');
   const pending = useRef(new Set<string>()); // tokens being changed here; a refresh must not undo them
 
   useEffect(() => {
     try {
-      const s = localStorage.getItem(`invite-template:${eventId}`);
-      if (s) setTpl(s);
+      const stored = localStorage.getItem(`invite-template:${eventId}`);
+      if (stored) setSavedTpl(stored);
     } catch { /* storage unavailable */ }
   }, [eventId]);
-  const saveTpl = (v: string) => {
-    setTpl(v);
-    try { localStorage.setItem(`invite-template:${eventId}`, v); } catch { /* ignore */ }
+  const saveTpl = (v: string | null) => {
+    setSavedTpl(v);
+    try { if (v === null) localStorage.removeItem(`invite-template:${eventId}`); else localStorage.setItem(`invite-template:${eventId}`, v); } catch { /* ignore */ }
   };
 
   const byGuest = useMemo(() => new Map(guests.map((g) => [g.id, g])), [guests]);
@@ -93,13 +100,13 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
     for (let i = 0; i < made.length; i += 200) {
       const { data, error } = await browserClient().from('invites').insert(made.slice(i, i + 200)).select(COLS);
       if (error) {
-        setMsg({ kind: 'err', text: 'تعذّر إنشاء الدعوات: ' + error.message });
+        setMsg({ kind: 'err', text: s('createFailedMsg') + error.message });
         break;
       }
       n += data.length;
       setRows((r) => [...r, ...(data as InviteRow[])]);
     }
-    if (n) setMsg({ kind: 'ok', text: `تم إنشاء ${linksWord(n)}، رابط لكل عائلة.` });
+    if (n) setMsg({ kind: 'ok', text: s('linksCreated', { links: linksWord(n) }) });
     setBusy(false);
   }
 
@@ -113,7 +120,7 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
     pending.current.delete(r.token);
     if (error) {
       setRows((cur) => cur.map((x) => (x.token === r.token ? { ...x, sent_at: r.sent_at } : x)));
-      setMsg({ kind: 'err', text: 'تعذّر تسجيل الإرسال: ' + error.message });
+      setMsg({ kind: 'err', text: s('sentFailed') + error.message });
     }
   }
 
@@ -122,7 +129,7 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
       await navigator.clipboard.writeText(text);
       setMsg({ kind: 'ok', text: done });
     } catch {
-      setMsg({ kind: 'err', text: 'تعذّر النسخ. انسخ يدويًا: ' + text });
+      setMsg({ kind: 'err', text: s('copyFailed') + text });
     }
   }
 
@@ -130,7 +137,7 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
     const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
     const lines = ['name,group,people,status,link', ...rows.map((r) => {
       const g = byGuest.get(r.guest_id);
-      return [esc(g?.name ?? ''), esc(g?.group ?? ''), r.party_size, STATE_LABEL[inviteState(r)], esc(link(r.token))].join(',');
+      return [esc(g?.name ?? ''), esc(g?.group ?? ''), r.party_size, s(STATE_KEY[inviteState(r)]), esc(link(r.token))].join(',');
     })];
     const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
@@ -141,7 +148,7 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
   }
 
   const tot = totals(rows);
-  const groups = useMemo(() => [...new Set(rows.map((r) => byGuest.get(r.guest_id)?.group ?? '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ar')), [rows, byGuest]);
+  const groups = useMemo(() => [...new Set(rows.map((r) => byGuest.get(r.guest_id)?.group ?? '').filter(Boolean))].sort((a, b) => a.localeCompare(b, locale)), [rows, byGuest]);
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: rows.length };
     for (const r of rows) c[inviteState(r)] = (c[inviteState(r)] ?? 0) + 1;
@@ -164,29 +171,34 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
     setConfirmDel(null);
     const sb = browserClient();
     const ev = await sb.from('events').select('layout').eq('id', eventId).maybeSingle();
-    if (!ev.data) return setMsg({ kind: 'err', text: 'تعذّر التحقق من المخطط. حاول مرة أخرى.' });
+    if (!ev.data) return setMsg({ kind: 'err', text: s('planCheckFailed') });
     const live = new Set(parseLayout(ev.data.layout).guests.map((g) => g.id));
     const safe = rows.filter((r) => tokens.includes(r.token) && !live.has(r.guest_id)).map((r) => r.token);
     if (safe.length === 0) return refresh(true);
     for (let i = 0; i < safe.length; i += 100) {
       const { error } = await sb.from('invites').delete().in('token', safe.slice(i, i + 100));
-      if (error) return setMsg({ kind: 'err', text: 'تعذّر الحذف: ' + error.message });
+      if (error) return setMsg({ kind: 'err', text: s('deleteFailedMsg') + error.message });
     }
     setRows((cur) => cur.filter((r) => !safe.includes(r.token)));
-    setMsg({ kind: 'ok', text: `تم حذف ${safe.length} ${safe.length === 1 ? 'رابط' : 'روابط'}.` });
+    setMsg({ kind: 'ok', text: s('linksDeleted', { n: safe.length, w: safe.length === 1 ? s('linkWord') : s('linksWord') }) });
   }
+  const sampleName = useMemo(() => {
+    const nameOf = (id: string) => byGuest.get(id)?.name;
+    const unsent = rows.find((r) => !r.sent_at && r.status === 'pending' && nameOf(r.guest_id));
+    return (unsent && nameOf(unsent.guest_id)) || (missing[0] && nameOf(missing[0].guestId)) || (rows[0] && nameOf(rows[0].guest_id)) || s('name');
+  }, [rows, missing, byGuest, s]);
   const pct = (n: number) => (tot.families ? (n / tot.families) * 100 : 0);
 
   return (
     <>
       <div className="stats">
-        <div className="stat"><b>{tot.families}</b><span>عائلة · {tot.people} شخصًا</span></div>
-        <div className="stat"><b>{tot.sent}</b><span>أُرسلت لها الدعوة</span></div>
-        <div className="stat"><b>{tot.confirmedFamilies}</b><span>أكّدت · {tot.confirmedPeople} شخصًا</span></div>
-        <div className="stat"><b>{tot.declined}</b><span>اعتذرت</span></div>
-        <div className="stat"><b>{tot.arrived}</b><span>وصلت</span></div>
+        <div className="stat"><b>{tot.families}</b><span>{s('famPeople', { n: '', p: tot.people }).trim()}</span></div>
+        <div className="stat"><b>{tot.sent}</b><span>{s('sentTo')}</span></div>
+        <div className="stat"><b>{tot.confirmedFamilies}</b><span>{s('confirmedStat', { p: tot.confirmedPeople })}</span></div>
+        <div className="stat"><b>{tot.declined}</b><span>{s('declinedStat')}</span></div>
+        <div className="stat"><b>{tot.arrived}</b><span>{s('arrivedStat')}</span></div>
       </div>
-      <div className="progress" role="img" aria-label="تقدّم الدعوات">
+      <div className="progress" role="img" aria-label={s('progress')}>
         <i className="p-yes" style={{ width: `${pct(tot.confirmedFamilies)}%` }} />
         <i className="p-no" style={{ width: `${pct(tot.declined)}%` }} />
         <i className="p-sent" style={{ width: `${pct(Math.max(0, tot.sent - tot.confirmedFamilies - tot.declined))}%` }} />
@@ -194,20 +206,20 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
 
       {missing.length > 0 && (
         <div className="notice info" style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-          <span>{rows.length === 0 ? 'لم تُنشأ روابط بعد.' : `${missing.length} عائلة جديدة في المخطط بلا رابط.`} يُنشأ رابط واحد لكل ضيف مُسمّى، ويشمل المرافقين (+1، +2…).</span>
-          <button className="btn primary" disabled={busy} onClick={createMissing}>{busy ? 'جارٍ الإنشاء…' : `إنشاء ${linksWord(missing.length)}`}</button>
+          <span>{rows.length === 0 ? s('noLinksYet') : s('newFamiliesNoLink', { n: missing.length })} {s('oneLinkPerGuestHint')}</span>
+          <button className="btn primary" disabled={busy} onClick={createMissing}>{busy ? s('creating') : s('createLinks', { links: linksWord(missing.length) })}</button>
         </div>
       )}
       {orphans.length > 0 && (
         <div className="notice err" style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-          <span>{orphans.length} {orphans.length === 1 ? 'رابط' : 'روابط'} لضيوف حُذفوا من المخطط. لن يعمل الرابط بعد حذفه{orphans.some((o) => o.checked_in_at) ? '، وبعضها سُجّل دخوله' : ''}.</span>
+          <span>{s('orphanBanner', { n: orphans.length, w: orphans.length === 1 ? s('linkWord') : s('linksWord') })}{orphans.some((o) => o.checked_in_at) ? s('orphanSomeArrived') : ''}.</span>
           {confirmDel === 'all' ? (
             <span style={{ display: 'flex', gap: 8 }}>
-              <button className="btn danger-fill" onClick={() => removeOrphans(orphans.map((o) => o.token))}>نعم، احذف {orphans.length}</button>
-              <button className="btn" onClick={() => setConfirmDel(null)}>إلغاء</button>
+              <button className="btn danger-fill" onClick={() => removeOrphans(orphans.map((o) => o.token))}>{s('yesDelete', { n: orphans.length })}</button>
+              <button className="btn" onClick={() => setConfirmDel(null)}>{s('cancel')}</button>
             </span>
           ) : (
-            <button className="btn danger" onClick={() => setConfirmDel('all')}>حذف الروابط الزائدة…</button>
+            <button className="btn danger" onClick={() => setConfirmDel('all')}>{s('deleteExtraLinks')}</button>
           )}
         </div>
       )}
@@ -215,38 +227,38 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
 
       <div className="card-box">
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <h2>نص الرسالة</h2>
-          <button className="btn small" onClick={() => setShowTpl(!showTpl)}>{showTpl ? 'إخفاء' : 'تعديل النص'}</button>
+          <h2>{s('messageText')}</h2>
+          <button className="btn small" onClick={() => setShowTpl(!showTpl)}>{showTpl ? s('hide') : s('editText')}</button>
         </div>
         {showTpl && (
           <>
-            <label className="field-col">يمكنك استخدام {'{name}'} و{'{event}'} و{'{link}'} و{'{people}'}
+            <label className="field-col">{s('placeholdersHint')}
               <textarea value={tpl} onChange={(e) => saveTpl(e.target.value)} />
             </label>
-            <button className="btn small" style={{ alignSelf: 'flex-start' }} onClick={() => saveTpl(DEFAULT_TEMPLATE)}>استعادة النص الأصلي</button>
+            <button className="btn small" style={{ alignSelf: 'flex-start' }} onClick={() => saveTpl(null)}>{s('restoreText')}</button>
           </>
         )}
-        <p className="muted" style={{ margin: 0, whiteSpace: 'pre-line' }}>{fillMessage(tpl, { name: 'أبو سامي', event: eventName, link: `${siteUrl}/r/…`, people: 4 })}</p>
+        <p className="muted" style={{ margin: 0, whiteSpace: 'pre-line' }}>{fillMessage(tpl, { name: sampleName, event: eventName, link: `${siteUrl}/r/…`, people: 4 })}</p>
       </div>
 
       <div className="toolbar">
         <label className="search">
           <span aria-hidden>🔍</span>
-          <input type="search" placeholder="ابحث عن عائلة أو مجموعة" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="بحث" />
+          <input type="search" placeholder={s('searchPlaceholder')} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={s('searchAria')} />
         </label>
         {groups.length > 1 && (
-          <select value={group} onChange={(e) => setGroup(e.target.value)} aria-label="المجموعة">
-            <option value="">كل المجموعات</option>
+          <select value={group} onChange={(e) => setGroup(e.target.value)} aria-label={s('groupAria')}>
+            <option value="">{s('allGroups')}</option>
             {groups.map((g) => <option key={g} value={g}>{g}</option>)}
           </select>
         )}
-        <span className={`live${live ? '' : ' off'}`}>{live ? 'يتحدّث تلقائيًا' : 'انقطع الاتصال'}</span>
-        <button className="btn small" onClick={csv} disabled={rows.length === 0}>تنزيل الروابط (CSV)</button>
+        <span className={`live${live ? '' : ' off'}`}>{live ? s('liveOn') : s('liveOff')}</span>
+        <button className="btn small" onClick={csv} disabled={rows.length === 0}>{s('downloadLinks')}</button>
       </div>
       <div className="chips">
-        {FILTERS.map((f) => (
+        {FILTER_KEYS.map((f) => (
           <button key={f.key} className={`chip${filter === f.key ? ' on' : ''}`} onClick={() => setFilter(f.key)}>
-            {f.label} <em>{counts[f.key] ?? 0}</em>
+            {s(f.label)} <em>{counts[f.key] ?? 0}</em>
           </button>
         ))}
       </div>
@@ -259,44 +271,44 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
             <li key={r.token} className={`inv${r.sent_at ? ' sent' : ''}`}>
               <div className="inv-main">
                 <div className="inv-name">
-                  <span>{g?.name ?? '— (حُذف من المخطط)'}</span>
-                  {r.party_size > 1 && <span className="party" title="عدد أفراد العائلة المدعوين">+{r.party_size - 1}</span>}
-                  <span className={`pill ${st}`}>{STATE_LABEL[st]}{st === 'confirmed' ? ` (${r.confirmed_count ?? r.party_size}/${r.party_size})` : ''}</span>
+                  <span>{g?.name ?? s('deletedFromPlan')}</span>
+                  {r.party_size > 1 && <span className="party" title={s('partyTitle')}>+{r.party_size - 1}</span>}
+                  <span className={`pill ${st}`}>{s(STATE_KEY[st])}{st === 'confirmed' ? ` (${r.confirmed_count ?? r.party_size}/${r.party_size})` : ''}</span>
                 </div>
                 <div className="inv-sub">
                   {g?.group && <span>{g.group}</span>}
-                  {r.sent_at && <span>أُرسلت {new Date(r.sent_at).toLocaleString('ar', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}
+                  {r.sent_at && <span>{s('sentAt', { when: new Date(r.sent_at).toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) })}</span>}
                 </div>
               </div>
               <div className="inv-actions">
                 <a className="btn wa small" href={whatsappUrl(message(r))} target="_blank" rel="noopener noreferrer" onClick={(e) => {
                   if (r.sent_at) {
-                    const when = new Date(r.sent_at).toLocaleString('ar', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-                    if (!window.confirm(`أُرسلت هذه الدعوة بالفعل (${when}). هل تريد إرسالها مرة أخرى؟`)) e.preventDefault();
+                    const when = new Date(r.sent_at).toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                    if (!window.confirm(s('alreadySentConfirm', { when }))) e.preventDefault();
                     return;
                   }
                   void setSent(r, true);
                 }}>
-                  <WaIcon /> واتساب
+                  <WaIcon /> {s('whatsapp')}
                 </a>
-                <button className="btn small" onClick={() => copy(message(r), 'تم نسخ الرسالة مع الرابط')}>نسخ الرسالة</button>
-                <button className="btn small" onClick={() => copy(link(r.token), 'تم نسخ الرابط')}>نسخ الرابط</button>
+                <button className="btn small" onClick={() => copy(message(r), s('messageCopied'))}>{s('copyMessage')}</button>
+                <button className="btn small" onClick={() => copy(link(r.token), s('linkCopied'))}>{s('copyLink')}</button>
                 {!g && (confirmDel === r.token ? (
                   <>
-                    <button className="btn small danger-fill" onClick={() => removeOrphans([r.token])}>تأكيد الحذف</button>
-                    <button className="btn small" onClick={() => setConfirmDel(null)}>إلغاء</button>
+                    <button className="btn small danger-fill" onClick={() => removeOrphans([r.token])}>{s('confirmDelete')}</button>
+                    <button className="btn small" onClick={() => setConfirmDel(null)}>{s('cancel')}</button>
                   </>
                 ) : (
-                  <button className="btn small danger" onClick={() => setConfirmDel(r.token)}>حذف الرابط…</button>
+                  <button className="btn small danger" onClick={() => setConfirmDel(r.token)}>{s('deleteLink')}</button>
                 ))}
-                <button className="btn small" onClick={() => setSent(r, !r.sent_at)}>{r.sent_at ? 'إلغاء «أُرسلت»' : 'تمّ الإرسال'}</button>
+                <button className="btn small" onClick={() => setSent(r, !r.sent_at)}>{r.sent_at ? s('undoSent') : s('markSent')}</button>
               </div>
             </li>
           );
         })}
       </ul>
-      {list.length === 0 && <p className="empty">{rows.length === 0 ? 'لا توجد دعوات بعد.' : 'لا نتائج مطابقة.'}</p>}
-      {list.length > SHOWN && <p className="muted">يظهر أول {SHOWN} من {list.length}. استخدم البحث أو الفلاتر.</p>}
+      {list.length === 0 && <p className="empty">{rows.length === 0 ? s('noInvites') : s('noMatches')}</p>}
+      {list.length > SHOWN && <p className="muted">{s('showingFirst', { n: SHOWN, total: list.length })}</p>}
     </>
   );
 }

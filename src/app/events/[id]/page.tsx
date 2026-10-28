@@ -6,6 +6,7 @@ import { totals, type InviteRow } from '@/lib/inviteview';
 import DeleteEvent from '@/components/DeleteEvent';
 import { renameEvent } from '@/app/actions';
 import { serverClient } from '@/lib/supabase/server';
+import { getS } from '@/lib/lang-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,10 +20,13 @@ export default async function EventHome({ params, searchParams }: { params: Prom
     supabase.from('invites').select('token,guest_id,party_size,status,confirmed_count,checked_in_at,sent_at').eq('event_id', id),
   ]);
   if (!ev) notFound();
+  const { s } = await getS();
   const layout = parseLayout(ev.layout);
   const tables = layout.elements.filter((e) => e.kind === 'table').length;
   const seated = layout.guests.filter((g) => g.tableId).length;
   const t = totals((invites ?? []) as InviteRow[]);
+  const delMsg = q.delete === 'mismatch' ? s('deleteMismatch') : s('deleteFailed');
+  const renameMsg = q.rename === 'saved' ? s('renameSaved') : q.rename === 'invalid' ? s('renameInvalid') : s('renameError');
   return (
     <div className="site">
       <SiteHeader crumb={{ id, name: ev.name }} />
@@ -30,46 +34,42 @@ export default async function EventHome({ params, searchParams }: { params: Prom
         <div className="page-title"><h1>{ev.name}</h1></div>
         <div className="step-cards">
           <section className="step-card">
-            <div className="sc-head"><span className="n">1</span><h3>الضيوف <span className="tag">اختياري</span></h3></div>
+            <div className="sc-head"><span className="n">1</span><h3>{s('guests')} <span className="tag">{s('optional')}</span></h3></div>
             <div className="big">{layout.guests.length}</div>
-            <p className="muted" style={{ margin: 0 }}>{layout.guests.length ? 'ضيفًا في القائمة' : 'ابدأ باستيراد ملف CSV أو Excel، أو تخطَّ وأضفهم من المخطط.'}</p>
-            <Link className="btn" href={`/events/${id}/import`}>{layout.guests.length ? 'استيراد المزيد' : 'استيراد قائمة'}</Link>
+            <p className="muted" style={{ margin: 0 }}>{layout.guests.length ? s('guestsInList') : s('startImportHint')}</p>
+            <Link className="btn" href={`/events/${id}/import`}>{layout.guests.length ? s('importMore') : s('importList')}</Link>
           </section>
           <section className="step-card">
-            <div className="sc-head"><span className="n">2</span><h3>مخطط القاعة</h3></div>
+            <div className="sc-head"><span className="n">2</span><h3>{s('hallPlan')}</h3></div>
             <div className="big">{tables}</div>
-            <p className="muted" style={{ margin: 0 }}>{tables ? `طاولة · أُجلس ${seated} من ${layout.guests.length}` : 'ارسم الطاولات واسحب الضيوف إلى كراسيهم.'}</p>
-            <Link className="btn primary" href={`/events/${id}/preview`}>عرض المخطط</Link>
+            <p className="muted" style={{ margin: 0 }}>{tables ? s('tablesLine', { seated, total: layout.guests.length }) : s('drawHint')}</p>
+            <Link className="btn" href={`/events/${id}/preview`}>{s('viewPlan')}</Link>
           </section>
           <section className="step-card">
-            <div className="sc-head"><span className="n">3</span><h3>الدعوات</h3></div>
+            <div className="sc-head"><span className="n">3</span><h3>{s('invitations')}</h3></div>
             <div className="big">{t.families ? `${t.sent}/${t.families}` : '—'}</div>
-            <p className="muted" style={{ margin: 0 }}>{t.families ? `عائلة أُرسلت لها الدعوة · أكّدت ${t.confirmedFamilies}` : 'رابط واحد لكل عائلة تُرسله لربّها عبر واتساب.'}</p>
-            <Link className="btn" href={`/events/${id}/invites`}>إدارة الدعوات</Link>
+            <p className="muted" style={{ margin: 0 }}>{t.families ? s('sentLine', { yes: t.confirmedFamilies }) : s('oneLinkHint')}</p>
+            <Link className="btn" href={`/events/${id}/invites`}>{s('manageInvites')}</Link>
           </section>
           <section className="step-card">
-            <div className="sc-head"><span className="n">4</span><h3>الدخول</h3></div>
+            <div className="sc-head"><span className="n">4</span><h3>{s('entry')}</h3></div>
             <div className="big">{t.arrived}</div>
-            <p className="muted" style={{ margin: 0 }}>{t.families ? `عائلة وصلت من ${t.confirmedFamilies} مؤكّدة` : 'يوم الحفل: امسح رمز الضيف ليظهر كرسيه.'}</p>
-            <Link className="btn" href={`/events/${id}/scan`}>فتح الماسح</Link>
+            <p className="muted" style={{ margin: 0 }}>{t.families ? s('arrivedLine', { yes: t.confirmedFamilies }) : s('scanHint')}</p>
+            <Link className="btn" href={`/events/${id}/scan`}>{s('openScanner')}</Link>
           </section>
         </div>
-        <p className="muted small-note">الدعوات والمخطط صفحتان منفصلتان: يمكن لشخصين العمل على الاثنين في الوقت نفسه.</p>
+        <p className="muted small-note">{s('splitNote')}</p>
         <details className="event-settings" open={!!q.rename || !!q.delete}>
-          <summary>إعدادات المناسبة</summary>
-          {q.delete && <p className="notice err" role="alert">{q.delete === 'mismatch' ? 'الاسم المكتوب لا يطابق اسم المناسبة.' : 'تعذّر حذف المناسبة. حاول مرة أخرى.'}</p>}
-        {q.rename && (
-          <p className={`notice ${q.rename === 'saved' ? 'ok' : 'err'}`} role="status">
-            {q.rename === 'saved' ? 'تم حفظ التعديل.' : q.rename === 'invalid' ? 'الاسم مطلوب.' : 'تعذّر حفظ التعديل.'}
-          </p>
-        )}
-        <form action={renameEvent} className="rename-form">
-          <input type="hidden" name="id" value={id} />
-          <label className="field-col">الاسم<input name="name" defaultValue={ev.name} required maxLength={120} /></label>
-          <label className="field-col">التاريخ (اختياري)<input name="date" type="date" defaultValue={ev.event_date ?? ''} /></label>
-          <button className="btn">حفظ</button>
-        </form>
-        <DeleteEvent id={id} name={ev.name} />
+          <summary>{s('eventSettings')}</summary>
+          {q.delete && <p className="notice err" role="alert">{delMsg}</p>}
+          {q.rename && <p className={`notice ${q.rename === 'saved' ? 'ok' : 'err'}`} role="status">{renameMsg}</p>}
+          <form action={renameEvent} className="rename-form">
+            <input type="hidden" name="id" value={id} />
+            <label className="field-col">{s('name')}<input name="name" defaultValue={ev.name} required maxLength={120} /></label>
+            <label className="field-col">{s('dateLabel')}<input name="date" type="date" defaultValue={ev.event_date ?? ''} /></label>
+            <button className="btn">{s('save')}</button>
+          </form>
+          <DeleteEvent id={id} name={ev.name} />
         </details>
       </main>
     </div>

@@ -5,12 +5,17 @@ import { SiteHeader, StepBar } from '@/components/Site';
 import type { InviteRow } from '@/lib/inviteview';
 import { parseLayout } from '@/lib/layout';
 import { serverClient } from '@/lib/supabase/server';
+import { getS } from '@/lib/lang-server';
 
-export const metadata = { title: 'الدعوات' };
+export async function generateMetadata() {
+  const { s } = await getS();
+  return { title: `${s('titleInvites')} · ${s('brand')}` };
+}
 
 export default async function InvitesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
+  const { s } = await getS();
   const supabase = await serverClient();
   const { data: ev } = await supabase.from('events').select('id,name,layout').eq('id', id).maybeSingle();
   if (!ev) notFound();
@@ -21,7 +26,7 @@ export default async function InvitesPage({ params }: { params: Promise<{ id: st
     <div className="site">
       <SiteHeader crumb={{ id, name: ev.name }} />
       <main className="container">
-        <div className="page-title"><h1>الدعوات</h1></div>
+        <div className="page-title"><h1>{s('invitesTitle')}</h1></div>
         <StepBar id={id} active="invites" />
         <InvitesPanel eventId={id} eventName={ev.name} initialGuests={parseLayout(ev.layout).guests} initial={(invites ?? []) as InviteRow[]} siteUrl={siteUrl} />
       </main>
