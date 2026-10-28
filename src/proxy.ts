@@ -20,7 +20,7 @@ export async function proxy(req: NextRequest) {
   if (!data?.claims && req.nextUrl.pathname.startsWith('/events')) {
     const url = req.nextUrl.clone();
     url.pathname = '/';
-    url.search = '';
+    url.search = `?next=${encodeURIComponent(req.nextUrl.pathname)}`;
     return NextResponse.redirect(url);
   }
   return res;
