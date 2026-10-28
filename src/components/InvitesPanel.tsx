@@ -78,7 +78,7 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
   }, [eventId]);
 
   useEffect(() => {
-    const tick = setInterval(() => { if (!document.hidden) void refresh(false); }, 8000);
+    const tick = setInterval(() => { if (!document.hidden) void refresh(false); }, 3000);
     const vis = () => { if (!document.hidden) void refresh(true); };
     document.addEventListener('visibilitychange', vis);
     window.addEventListener('focus', vis);
@@ -107,7 +107,9 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
     const value = sent ? new Date().toISOString() : null;
     pending.current.add(r.token);
     setRows((cur) => cur.map((x) => (x.token === r.token ? { ...x, sent_at: value } : x)));
-    const { error } = await browserClient().from('invites').update({ sent_at: value }).eq('token', r.token);
+    // Marking as sent only fills an empty time, so a second phone never overwrites the first one's timestamp.
+    const q = browserClient().from('invites').update({ sent_at: value }).eq('token', r.token);
+    const { error } = await (sent ? q.is('sent_at', null) : q);
     pending.current.delete(r.token);
     if (error) {
       setRows((cur) => cur.map((x) => (x.token === r.token ? { ...x, sent_at: r.sent_at } : x)));
@@ -235,7 +237,14 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
                 </div>
               </div>
               <div className="inv-actions">
-                <a className="btn wa small" href={whatsappUrl(message(r))} target="_blank" rel="noopener noreferrer" onClick={() => { if (!r.sent_at) void setSent(r, true); }}>
+                <a className="btn wa small" href={whatsappUrl(message(r))} target="_blank" rel="noopener noreferrer" onClick={(e) => {
+                  if (r.sent_at) {
+                    const when = new Date(r.sent_at).toLocaleString('ar', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                    if (!window.confirm(`أُرسلت هذه الدعوة بالفعل (${when}). هل تريد إرسالها مرة أخرى؟`)) e.preventDefault();
+                    return;
+                  }
+                  void setSent(r, true);
+                }}>
                   <WaIcon /> واتساب
                 </a>
                 <button className="btn small" onClick={() => copy(message(r), 'تم نسخ الرسالة مع الرابط')}>نسخ الرسالة</button>
