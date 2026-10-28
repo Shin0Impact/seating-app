@@ -6,6 +6,7 @@ import SiteSettings from '@/components/SiteSettings';
 import { getS } from '@/lib/lang-server';
 import { localeOf } from '@/lib/site-i18n';
 import { Logo } from '@/components/Site';
+import MoreRequest from '@/components/MoreRequest';
 import ChangeRequestButton from '@/components/ChangeRequestButton';
 import HallPreview from '@/components/HallPreview';
 import { parseLayout, type Guest } from '@/lib/layout';
@@ -27,8 +28,20 @@ async function answer(form: FormData) {
   redirect(`/r/${token}`);
 }
 
-export default async function Rsvp({ params }: { params: Promise<{ token: string }> }) {
+async function askMore(form: FormData) {
+  'use server';
+  const token = String(form.get('token') ?? '');
+  if (!isToken(token)) return;
+  const n = Number.parseInt(String(form.get('extra') ?? ''), 10);
+  if (!Number.isFinite(n) || n < 1) redirect(`/r/${token}`);
+  const supabase = await serverClient();
+  await supabase.rpc('rsvp_request_more', { p_token: token, p_extra: Math.min(n, 20) });
+  redirect(`/r/${token}?more=1`);
+}
+
+export default async function Rsvp({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ more?: string }> }) {
   const { token } = await params;
+  const q = await searchParams;
   if (!isToken(token)) notFound();
   const { lang, s } = await getS();
   const supabase = await serverClient();
@@ -86,6 +99,7 @@ export default async function Rsvp({ params }: { params: Promise<{ token: string
                 <HallPreview layout={planLayout} label={s('yourTable')} focus={focus} />
               </div>
             )}
+            <MoreRequest action={askMore} token={token} sent={q.more === '1'} />
             <ChangeRequestButton action={answer} token={token} />
           </section>
         )}

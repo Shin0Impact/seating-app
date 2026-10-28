@@ -1,7 +1,7 @@
 /** Fits a guest's name onto a chair. "Name +1" keeps its "+1" (shown as a small second line, or kept at the end of one line). */
 export type ChairLabel = { main: string; plus: string | null; scale: number; twoLines: boolean };
 
-const PLUS = /^(.*\S)\s\+(\d{1,3})$/;
+const PLUS = /^(.*\S)\s*\+(\d{1,2})$/;
 export const splitPlus = (name: string): { base: string; plus: string | null } => {
   const m = PLUS.exec(name.trim());
   return m ? { base: m[1], plus: `+${m[2]}` } : { base: name.trim(), plus: null };

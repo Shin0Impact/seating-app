@@ -26,6 +26,7 @@ export default async function EventHome({ params, searchParams }: { params: Prom
   const seated = layout.guests.filter((g) => g.tableId).length;
   const t = totals((invites ?? []) as InviteRow[]);
   const changeCount = ((invites ?? []) as InviteRow[]).filter((r) => r.change_requested_at && r.status === 'pending').length;
+  const moreCount = ((invites ?? []) as InviteRow[]).filter((r) => (r.extra_requested ?? 0) > 0).length;
   const delMsg = q.delete === 'mismatch' ? s('deleteMismatch') : s('deleteFailed');
   const renameMsg = q.rename === 'saved' ? s('renameSaved') : q.rename === 'invalid' ? s('renameInvalid') : s('renameError');
   return (
@@ -51,6 +52,7 @@ export default async function EventHome({ params, searchParams }: { params: Prom
             <div className="big">{t.families ? `${t.sent}/${t.families}` : '—'}</div>
             <p className="muted" style={{ margin: 0 }}>{t.families ? s('sentLine', { yes: t.confirmedFamilies }) : s('oneLinkHint')}</p>
             {changeCount > 0 && <p className="notice info" style={{ margin: 0 }}>{s('changeBanner', { n: changeCount })}</p>}
+            {moreCount > 0 && <p className="notice info" style={{ margin: 0 }}>{s('moreBanner', { n: moreCount })}</p>}
             <Link className="btn" href={`/events/${id}/invites`}>{s('manageInvites')}</Link>
           </section>
           <section className="step-card">

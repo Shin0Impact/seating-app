@@ -7,7 +7,7 @@ describe('splitPlus', () => {
   it('separates the +N', () => {
     expect(splitPlus('ضيف تجريبي +2')).toEqual({ base: 'ضيف تجريبي', plus: '+2' });
     expect(splitPlus('Sami')).toEqual({ base: 'Sami', plus: null });
-    expect(splitPlus('A+1')).toEqual({ base: 'A+1', plus: null });
+    expect(splitPlus('A+1')).toEqual({ base: 'A', plus: '+1' });
   });
 });
 

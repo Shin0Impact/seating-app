@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Guest, LIMITS, TableEl, firstFreeSeat, newGuest, seatGuest, seatedCounts } from '@/lib/layout';
 import { Key } from '@/lib/i18n';
+import { PLUS } from '@/lib/invites';
 import { matches } from '@/lib/search';
 import { Icon, IconButton } from './Icon';
 import { ImportGuests } from './ImportGuests';
@@ -25,6 +26,7 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onImportA
   const [group, setGroup] = useState('');
   const [tableId, setTableId] = useState('');
   const [stepFree, setStepFree] = useState(false);
+  const [extra, setExtra] = useState(0);
   const [several, setSeveral] = useState(false);
   const [bulk, setBulk] = useState('');
   const [query, setQuery] = useState('');
@@ -62,8 +64,13 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onImportA
   };
   const addOne = () => {
     if (!name.trim() || room <= 0) return;
-    addGuests([name]);
+    // "Sami +3" or "Sami+3" in the name box means Sami and three more
+    const typed = PLUS.exec(name.trim());
+    const n = Math.min(Math.max(0, typed ? Number(typed[2]) : Math.floor(extra) || 0), 99, room - 1);
+    const base = (typed ? typed[1] : name.trim()).slice(0, LIMITS.nameMax - 5);
+    addGuests([base, ...Array.from({ length: n }, (_, i) => `${base} +${i + 1}`)]);
     setName('');
+    setExtra(0);
     nameRef.current?.focus();
   };
   const addMany = () => {
@@ -109,9 +116,15 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onImportA
                 <input ref={nameRef} type="text" maxLength={LIMITS.nameMax} value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
               </label>
             ) : (
-              <label className="field af-name">
+              <label className="field af-name" style={{ gridColumn: 'span 2' }}>
                 <span>{t('severalHint')}</span>
                 <textarea rows={5} value={bulk} onChange={(e) => setBulk(e.target.value)} />
+              </label>
+            )}
+            {!several && (
+              <label className="field af-extra">
+                <span>{t('extraPeople')}</span>
+                <input type="number" inputMode="numeric" min={0} max={99} value={extra || ''} placeholder="0" onChange={(e) => setExtra(Math.max(0, Math.min(99, parseInt(e.target.value, 10) || 0)))} />
               </label>
             )}
             <label className="field af-group">

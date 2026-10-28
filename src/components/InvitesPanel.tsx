@@ -165,10 +165,17 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
   );
   const orphans = useMemo(() => rows.filter((r) => !byGuest.has(r.guest_id)), [rows, byGuest]);
   const changeReqs = useMemo(() => rows.filter((r) => r.change_requested_at && r.status === 'pending'), [rows]);
+  const moreReqs = useMemo(() => rows.filter((r) => (r.extra_requested ?? 0) > 0), [rows]);
   async function dismissChange(r: InviteRow) {
     pending.current.add(r.token);
     setRows((cur) => cur.map((x) => (x.token === r.token ? { ...x, change_requested_at: null } : x)));
     await browserClient().from('invites').update({ change_requested_at: null }).eq('token', r.token);
+    pending.current.delete(r.token);
+  }
+  async function dismissMore(r: InviteRow) {
+    pending.current.add(r.token);
+    setRows((cur) => cur.map((x) => (x.token === r.token ? { ...x, extra_requested: 0 } : x)));
+    await browserClient().from('invites').update({ extra_requested: 0 }).eq('token', r.token);
     pending.current.delete(r.token);
   }
   const [confirmDel, setConfirmDel] = useState<string | null>(null); // token, or 'all'
@@ -221,6 +228,12 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
         <div className="notice info" role="status">
           <b>{s('changeBanner', { n: changeReqs.length })}</b>
           {changeReqs.map((r) => <span key={r.token} style={{ display: 'inline-block', marginInlineStart: 10 }}>{byGuest.get(r.guest_id)?.name ?? ''}</span>)}
+        </div>
+      )}
+      {moreReqs.length > 0 && (
+        <div className="notice info" role="status">
+          <b>{s('moreBanner', { n: moreReqs.length })}</b>
+          {moreReqs.map((r) => <span key={r.token} style={{ display: 'inline-block', marginInlineStart: 10 }}>{byGuest.get(r.guest_id)?.name ?? ''} +{r.extra_requested}</span>)}
         </div>
       )}
       {orphans.length > 0 && (
@@ -288,6 +301,7 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
                   {r.party_size > 1 && <span className="party" title={s('partyTitle')}>+{r.party_size - 1}</span>}
                   <span className={`pill ${st}`}>{s(STATE_KEY[st])}{st === 'confirmed' ? ` (${r.confirmed_count ?? r.party_size}/${r.party_size})` : ''}</span>
                   {r.change_requested_at && r.status === 'pending' && <span className="pill waiting">{s('changeRequested')} <button className="linkbtn" style={{ marginInlineStart: 4 }} onClick={() => dismissChange(r)}>{s('dismiss')}</button></span>}
+                  {(r.extra_requested ?? 0) > 0 && <span className="pill waiting">{s('moreRequested', { n: r.extra_requested ?? 0 })} <button className="linkbtn" style={{ marginInlineStart: 4 }} onClick={() => dismissMore(r)}>{s('dismiss')}</button></span>}
                 </div>
                 <div className="inv-sub">
                   {g?.group && <span>{g.group}</span>}
