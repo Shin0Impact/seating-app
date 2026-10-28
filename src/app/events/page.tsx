@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { SiteHeader } from '@/components/Site';
 import { emptyLayout } from '@/lib/layout';
-import { setUsername } from '@/app/actions';
+import { changePassword, setUsername } from '@/app/actions';
 import { serverClient, whoAmI } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/supabase/env';
 
@@ -28,7 +28,7 @@ async function create(form: FormData) {
 
 const fmtDate = (d: string | null) => (d ? new Date(d + 'T00:00:00').toLocaleDateString('ar', { day: 'numeric', month: 'long', year: 'numeric' }) : 'بدون تاريخ');
 
-export default async function Events({ searchParams }: { searchParams: Promise<{ error?: string; deleted?: string; username?: string }> }) {
+export default async function Events({ searchParams }: { searchParams: Promise<{ error?: string; deleted?: string; username?: string; password?: string }> }) {
   if (!supabaseConfigured) redirect('/');
   const q = await searchParams;
   const supabase = await serverClient();
@@ -52,6 +52,11 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
         {q.username && (
           <p className={`notice ${q.username === 'saved' ? 'ok' : 'err'}`} role="status">
             {{ saved: 'تم حفظ اسم المستخدم.', taken: 'اسم المستخدم هذا مستخدم من قبل.', invalid: 'اسم المستخدم من 2 إلى 30 حرفًا بدون مسافات أو @.' }[q.username] ?? 'تعذّر حفظ اسم المستخدم.'}
+          </p>
+        )}
+        {q.password && (
+          <p className={`notice ${q.password === 'saved' ? 'ok' : 'err'}`} role="status">
+            {{ saved: 'تم تغيير كلمة المرور.', wrong: 'كلمة المرور الحالية غير صحيحة.', short: 'كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل.', mismatch: 'كلمتا المرور الجديدتان غير متطابقتين.' }[q.password] ?? 'تعذّر تغيير كلمة المرور.'}
           </p>
         )}
         {q.deleted && <p className="notice ok" role="status">تم حذف المناسبة.</p>}
@@ -82,6 +87,13 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
           <p className="muted" style={{ margin: 0 }}>{me.username ? 'يمكنك الدخول به بدل البريد الإلكتروني.' : 'اختر اسمًا لتدخل به بدل البريد الإلكتروني.'}</p>
           <label className="field-col">الاسم<input name="username" defaultValue={me.username ?? ''} required minLength={2} maxLength={30} autoCapitalize="none" autoComplete="off" dir="ltr" placeholder="jihad" /></label>
           <button className="btn">{me.username ? 'تغيير الاسم' : 'حفظ الاسم'}</button>
+        </form>
+        <form action={changePassword} className="card-box">
+          <h2>تغيير كلمة المرور</h2>
+          <label className="field-col">كلمة المرور الحالية<input name="current" type="password" required autoComplete="current-password" dir="ltr" /></label>
+          <label className="field-col">كلمة المرور الجديدة (8 أحرف على الأقل)<input name="next" type="password" required minLength={8} autoComplete="new-password" dir="ltr" /></label>
+          <label className="field-col">أعد كتابة الجديدة<input name="again" type="password" required minLength={8} autoComplete="new-password" dir="ltr" /></label>
+          <button className="btn">تغيير كلمة المرور</button>
         </form>
       </main>
     </div>

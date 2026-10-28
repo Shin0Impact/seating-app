@@ -156,6 +156,25 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
     }),
     [rows, byGuest, filter, group, query],
   );
+  const orphans = useMemo(() => rows.filter((r) => !byGuest.has(r.guest_id)), [rows, byGuest]);
+  const [confirmDel, setConfirmDel] = useState<string | null>(null); // token, or 'all'
+
+  /** Deletes invite links whose guest is no longer in the plan. The saved plan is re-read first, so a stale tab can't delete a live invite. */
+  async function removeOrphans(tokens: string[]) {
+    setConfirmDel(null);
+    const sb = browserClient();
+    const ev = await sb.from('events').select('layout').eq('id', eventId).maybeSingle();
+    if (!ev.data) return setMsg({ kind: 'err', text: 'تعذّر التحقق من المخطط. حاول مرة أخرى.' });
+    const live = new Set(parseLayout(ev.data.layout).guests.map((g) => g.id));
+    const safe = rows.filter((r) => tokens.includes(r.token) && !live.has(r.guest_id)).map((r) => r.token);
+    if (safe.length === 0) return refresh(true);
+    for (let i = 0; i < safe.length; i += 100) {
+      const { error } = await sb.from('invites').delete().in('token', safe.slice(i, i + 100));
+      if (error) return setMsg({ kind: 'err', text: 'تعذّر الحذف: ' + error.message });
+    }
+    setRows((cur) => cur.filter((r) => !safe.includes(r.token)));
+    setMsg({ kind: 'ok', text: `تم حذف ${safe.length} ${safe.length === 1 ? 'رابط' : 'روابط'}.` });
+  }
   const pct = (n: number) => (tot.families ? (n / tot.families) * 100 : 0);
 
   return (
@@ -177,6 +196,19 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
         <div className="notice info" style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
           <span>{rows.length === 0 ? 'لم تُنشأ روابط بعد.' : `${missing.length} عائلة جديدة في المخطط بلا رابط.`} يُنشأ رابط واحد لكل ضيف مُسمّى، ويشمل المرافقين (+1، +2…).</span>
           <button className="btn primary" disabled={busy} onClick={createMissing}>{busy ? 'جارٍ الإنشاء…' : `إنشاء ${linksWord(missing.length)}`}</button>
+        </div>
+      )}
+      {orphans.length > 0 && (
+        <div className="notice err" style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+          <span>{orphans.length} {orphans.length === 1 ? 'رابط' : 'روابط'} لضيوف حُذفوا من المخطط. لن يعمل الرابط بعد حذفه{orphans.some((o) => o.checked_in_at) ? '، وبعضها سُجّل دخوله' : ''}.</span>
+          {confirmDel === 'all' ? (
+            <span style={{ display: 'flex', gap: 8 }}>
+              <button className="btn danger-fill" onClick={() => removeOrphans(orphans.map((o) => o.token))}>نعم، احذف {orphans.length}</button>
+              <button className="btn" onClick={() => setConfirmDel(null)}>إلغاء</button>
+            </span>
+          ) : (
+            <button className="btn danger" onClick={() => setConfirmDel('all')}>حذف الروابط الزائدة…</button>
+          )}
         </div>
       )}
       {msg && <p className={`notice ${msg.kind}`} role="status">{msg.text}</p>}
@@ -249,6 +281,14 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
                 </a>
                 <button className="btn small" onClick={() => copy(message(r), 'تم نسخ الرسالة مع الرابط')}>نسخ الرسالة</button>
                 <button className="btn small" onClick={() => copy(link(r.token), 'تم نسخ الرابط')}>نسخ الرابط</button>
+                {!g && (confirmDel === r.token ? (
+                  <>
+                    <button className="btn small danger-fill" onClick={() => removeOrphans([r.token])}>تأكيد الحذف</button>
+                    <button className="btn small" onClick={() => setConfirmDel(null)}>إلغاء</button>
+                  </>
+                ) : (
+                  <button className="btn small danger" onClick={() => setConfirmDel(r.token)}>حذف الرابط…</button>
+                ))}
                 <button className="btn small" onClick={() => setSent(r, !r.sent_at)}>{r.sent_at ? 'إلغاء «أُرسلت»' : 'تمّ الإرسال'}</button>
               </div>
             </li>
