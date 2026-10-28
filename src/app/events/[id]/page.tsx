@@ -16,7 +16,7 @@ export default async function EventHome({ params, searchParams }: { params: Prom
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const supabase = await serverClient();
   const [{ data: ev }, { data: invites }] = await Promise.all([
-    supabase.from('events').select('id,name,event_date,event_time,venue,venue_url,layout').eq('id', id).maybeSingle(),
+    supabase.from('events').select('*').eq('id', id).maybeSingle(),
     supabase.from('invites').select('*').eq('event_id', id),
   ]);
   if (!ev) notFound();
