@@ -7,8 +7,10 @@ export default async function HallPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const supabase = await serverClient();
-  const { data } = await supabase.from('events').select('id,name,layout,version').eq('id', id).maybeSingle();
+  const [{ data }, me] = await Promise.all([
+    supabase.from('events').select('id,name,layout,version').eq('id', id).maybeSingle(),
+    whoAmI(supabase),
+  ]);
   if (!data) notFound();
-  const me = await whoAmI(supabase);
   return <EventEditor user={me.label} id={data.id} name={data.name} initial={parseLayout(data.layout)} version={data.version} />;
 }

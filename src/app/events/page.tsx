@@ -32,10 +32,11 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
   if (!supabaseConfigured) redirect('/');
   const q = await searchParams;
   const supabase = await serverClient();
-  const me = await whoAmI(supabase);
-  const { data: events } = await supabase.from('events').select('id,name,event_date,updated_at').order('updated_at', { ascending: false });
-  const ids = (events ?? []).map((e) => e.id);
-  const { data: inv } = ids.length ? await supabase.from('invites').select('event_id,status,sent_at,party_size') : { data: [] };
+  const [me, { data: events }, { data: inv }] = await Promise.all([
+    whoAmI(supabase),
+    supabase.from('events').select('id,name,event_date,updated_at').order('updated_at', { ascending: false }),
+    supabase.from('invites').select('event_id,status,sent_at,party_size'),
+  ]);
   const stat = new Map<string, { families: number; sent: number; yes: number }>();
   for (const r of inv ?? []) {
     const s = stat.get(r.event_id) ?? { families: 0, sent: 0, yes: 0 };

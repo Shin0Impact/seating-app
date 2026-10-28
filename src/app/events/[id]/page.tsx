@@ -14,9 +14,11 @@ export default async function EventHome({ params, searchParams }: { params: Prom
   const q = await searchParams;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const supabase = await serverClient();
-  const { data: ev } = await supabase.from('events').select('id,name,event_date,layout').eq('id', id).maybeSingle();
+  const [{ data: ev }, { data: invites }] = await Promise.all([
+    supabase.from('events').select('id,name,event_date,layout').eq('id', id).maybeSingle(),
+    supabase.from('invites').select('token,guest_id,party_size,status,confirmed_count,checked_in_at,sent_at').eq('event_id', id),
+  ]);
   if (!ev) notFound();
-  const { data: invites } = await supabase.from('invites').select('token,guest_id,party_size,status,confirmed_count,checked_in_at,sent_at').eq('event_id', id);
   const layout = parseLayout(ev.layout);
   const tables = layout.elements.filter((e) => e.kind === 'table').length;
   const seated = layout.guests.filter((g) => g.tableId).length;
