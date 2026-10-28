@@ -44,8 +44,8 @@ describe('locate', () => {
     const u = newGuest('B', '', null, false, null);
     l.guests = [g, u];
     expect(locate(l, [g.id, u.id, 'missing'])).toEqual([
-      { name: 'A', table: 'Table 7', seat: 4 },
-      { name: 'B', table: null, seat: null },
+      { name: 'A', table: 'Table 7', seat: 4, tableId: t.id },
+      { name: 'B', table: null, seat: null, tableId: null },
     ]);
   });
 });
