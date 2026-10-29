@@ -79,9 +79,17 @@ const box = (sh: Shape): [number, number, number, number] => {
 
 /** Shortest walk from the nearest entrance to the chair, around tables, columns and the stage, preferring the dance floor. */
 export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt } | null {
+  return findRoutes(layout, [chair])[0];
+}
+
+type Walk = { route: Pt[]; start: Pt } | null;
+
+/** Routes to several chairs at once: the hall grid is built a single time and every search reuses it. */
+export function findRoutes(layout: Layout, chairs: Pt[]): Walk[] {
+  const none = () => chairs.map((): Walk => null);
   const { elements, settings } = layout;
   const entrances = elements.filter((e): e is MarkerEl => e.kind === 'marker' && e.marker === 'entrance');
-  if (!entrances.length) return null;
+  if (!entrances.length || !chairs.length) return none();
 
   const solids: Shape[] = [];
   const floors: Shape[] = [];
@@ -111,14 +119,14 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
   };
   for (const s of [...solids, ...floors, ...walkways]) grow(box(s));
   for (const en of entrances) grow([en.x - en.w / 2, en.y - en.h / 2, en.x + en.w / 2, en.y + en.h / 2]);
-  grow([chair.x, chair.y, chair.x, chair.y]);
+  for (const c of chairs) grow([c.x, c.y, c.x, c.y]);
   const pad = 2;
   x0 -= pad;
   y0 -= pad;
   x1 += pad;
   y1 += pad;
   let cell = 0.25;
-  if (![x0, y0, x1, y1].every(Number.isFinite)) return null;
+  if (![x0, y0, x1, y1].every(Number.isFinite)) return none();
   for (let g = 0; g < 200 && ((x1 - x0) / cell) * ((y1 - y0) / cell) > 160000; g++) cell *= 1.4;
   const cols = Math.ceil((x1 - x0) / cell),
     rows = Math.ceil((y1 - y0) / cell);
@@ -215,11 +223,6 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     return null;
   };
 
-  const goal = nearestFree(chair);
-  if (goal === null) return null;
-  const gi = goal % cols,
-    gj = Math.floor(goal / cols);
-
   // The search state is a cell plus the direction we arrived in, so changing direction can cost extra.
   const NONE = 8;
   const DIRS = [
@@ -232,7 +235,18 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     [0, -1],
     [1, -1],
   ];
-  const astar = (start: number, costs: Float32Array, withWalk: boolean): number[] | null => {
+  /** One search from `start` that reaches every cell in `goals`; with a single goal it is a guided A* search. */
+  const astar = (
+    start: number,
+    goals: number[],
+    costs: Float32Array,
+    withWalk: boolean,
+  ): Map<number, number[]> | null => {
+    const wanted = new Set(goals);
+    const reached = new Map<number, number>();
+    const gi = goals[0] % cols,
+      gj = Math.floor(goals[0] / cols);
+    const guided = wanted.size === 1;
     const states = cols * rows * 9;
     // Float64: with Float32 rounding a state could look improvable forever and the search never ended (ran out of memory)
     const dist = new Float64Array(states).fill(Infinity);
@@ -241,6 +255,7 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     const prev = new Int32Array(states).fill(-1);
     const heap = new Heap();
     const h = (i: number, j: number) => {
+      if (!guided) return 0;
       const dx = Math.abs(i - gi),
         dy = Math.abs(j - gj);
       return (
@@ -251,7 +266,6 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     const s0 = start * 9 + NONE;
     dist[s0] = 0;
     heap.push(h(start % cols, Math.floor(start / cols)), s0);
-    let goalState = -1;
     while (heap.size) {
       if (--budget < 0) return null; // safety net: never spin
       const [, st] = heap.pop();
@@ -259,9 +273,9 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
       closed[st] = 1;
       const cur = Math.floor(st / 9);
       const dir = st % 9;
-      if (cur === goal) {
-        goalState = st;
-        break;
+      if (wanted.has(cur) && !reached.has(cur)) {
+        reached.set(cur, st);
+        if (reached.size === wanted.size) break;
       }
       const ci = cur % cols,
         cj = Math.floor(cur / cols);
@@ -288,10 +302,14 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
         }
       }
     }
-    if (goalState < 0) return null;
-    const out: number[] = [];
-    for (let c = goalState; c !== -1 && out.length <= cols * rows; c = prev[c]) out.push(Math.floor(c / 9));
-    return out.reverse();
+    if (!reached.size) return null;
+    const paths = new Map<number, number[]>();
+    for (const [g, goalState] of reached) {
+      const out: number[] = [];
+      for (let c = goalState; c !== -1 && out.length <= cols * rows; c = prev[c]) out.push(Math.floor(c / 9));
+      paths.set(g, out.reverse());
+    }
+    return paths;
   };
 
   const free = (a: Pt, b: Pt) => {
@@ -340,28 +358,40 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     return len;
   };
 
-  let best: { route: Pt[]; len: number; start: Pt } | null = null;
-  for (const en of entrances) {
-    const s = nearestFree({ x: en.x, y: en.y });
-    if (s === null) continue;
-    const start = { x: en.x, y: en.y };
-    // The straightest way there, ignoring drawn walkways.
-    const plainCells = astar(s, costNoWalk, false);
-    if (!plainCells) continue;
-    let route = dropJogs([start, ...simplify(toPoints(plainCells)), chair]);
-    // A drawn walkway is followed unless that makes the line far more bendy or much longer.
-    if (walkways.length) {
-      const walkCells = astar(s, cost, true);
-      if (walkCells) {
-        const walked = dropJogs([start, ...simplify(toPoints(walkCells)), chair]);
-        if (walked.length <= route.length + 4 && lengthOf(walked) <= lengthOf(route) * 1.6) route = walked;
-      }
+  const goalOf = chairs.map((c) => nearestFree(c));
+  const goals = [...new Set(goalOf.filter((g): g is number => g !== null))];
+  const bestFor = new Map<number, { route: Pt[]; len: number; start: Pt }>();
+  if (goals.length) {
+    for (const en of entrances) {
+      const s = nearestFree({ x: en.x, y: en.y });
+      if (s === null) continue;
+      const start = { x: en.x, y: en.y };
+      // The straightest way there, ignoring drawn walkways.
+      const plain = astar(s, goals, costNoWalk, false);
+      if (!plain) continue;
+      const walk = walkways.length ? astar(s, goals, cost, true) : null;
+      goalOf.forEach((goal, n) => {
+        if (goal === null) return;
+        const plainCells = plain.get(goal);
+        if (!plainCells) return;
+        const chair = chairs[n];
+        let route = dropJogs([start, ...simplify(toPoints(plainCells)), chair]);
+        // A drawn walkway is followed unless that makes the line far more bendy or much longer.
+        const walkCells = walk?.get(goal);
+        if (walkCells) {
+          const walked = dropJogs([start, ...simplify(toPoints(walkCells)), chair]);
+          if (walked.length <= route.length + 4 && lengthOf(walked) <= lengthOf(route) * 1.6) route = walked;
+        }
+        const len = lengthOf(route);
+        const cur = bestFor.get(n);
+        if (!cur || len < cur.len) bestFor.set(n, { route, len, start });
+      });
     }
-    const len = lengthOf(route);
-    if (!best || len < best.len) best = { route, len, start };
   }
-  if (!best) return null;
-  return { route: best.route, start: best.start };
+  return chairs.map((_, n): Walk => {
+    const b = bestFor.get(n);
+    return b ? { route: b.route, start: b.start } : null;
+  });
 }
 
 /** Removes tiny zig-zags: a point right next to the start, or one only a few centimetres before the next turn. */
@@ -396,14 +426,19 @@ export function buildFocus(layout: Layout, guestIds: string[]): Focus | null {
   let pick: { g: typeof head; chair: Pt | null } = options[0] ?? { g: head, chair: null };
   let found: ReturnType<typeof findRoute> = null;
   let bestLen = Infinity;
-  for (const o of options.slice(0, 4)) {
-    let r: ReturnType<typeof findRoute> = null;
-    try {
-      r = findRoute(layout, o.chair);
-    } catch {
-      /* a drawing problem must never break the page */
-    }
-    if (!r) continue;
+  const tried = options.slice(0, 12);
+  let routes: ReturnType<typeof findRoutes> = [];
+  try {
+    routes = findRoutes(
+      layout,
+      tried.map((o) => o.chair),
+    );
+  } catch {
+    /* a drawing problem must never break the page */
+  }
+  tried.forEach((o, n) => {
+    const r = routes[n];
+    if (!r) return;
     let len = 0;
     for (let k = 1; k < r.route.length; k++)
       len += Math.hypot(r.route[k].x - r.route[k - 1].x, r.route[k].y - r.route[k - 1].y);
@@ -412,7 +447,7 @@ export function buildFocus(layout: Layout, guestIds: string[]): Focus | null {
       found = r;
       pick = o;
     }
-  }
+  });
   if (!found && !options.length) {
     // no chair position known: lead to the middle of the table
     try {
