@@ -63,7 +63,14 @@ const ROUTE = '#e0a53a';
  * Draws the whole hall in one pass. `ctx` must already map one unit to one meter (see HallCanvas);
  * everything is plain fills and strokes, so a redraw costs a few milliseconds at any zoom.
  */
-export function drawHall(ctx: CanvasRenderingContext2D, layout: Layout, focus: Focus | null | undefined, p: Palette) {
+export function drawHall(
+  ctx: CanvasRenderingContext2D,
+  layout: Layout,
+  focus: Focus | null | undefined,
+  p: Palette,
+  /** Device pixels per meter, used to skip detail too small to see. */
+  scale = 40,
+) {
   const { elements, guests, settings } = layout;
   const marked = new Set(focus?.tableIds ?? []);
   const seated = new Map<string, Set<number>>();
@@ -110,17 +117,38 @@ export function drawHall(ctx: CanvasRenderingContext2D, layout: Layout, focus: F
     ctx.restore();
   };
 
+  // chairs are most of the shapes: batch them into a few paths (by dimmed / taken) instead of one draw each
+  const chairR = settings.seatWidth * 0.36;
+  const showChairEdge = chairR * scale >= 2.5;
+  const batches = [0, 1, 2, 3].map(() => new Path2D());
+  for (const e of elements) {
+    if (e.kind !== 'table') continue;
+    const taken = seated.get(e.id);
+    const dim = focus && !marked.has(e.id) ? 2 : 0;
+    chairSlots(e, settings).forEach((c, i) => {
+      const w = toWorld(e, c.x, c.y);
+      const b = batches[dim + (taken?.has(i) ? 1 : 0)];
+      b.moveTo(w.x + chairR, w.y);
+      b.arc(w.x, w.y, chairR, 0, Math.PI * 2);
+    });
+  }
+  batches.forEach((path, i) => {
+    ctx.globalAlpha = i >= 2 ? 0.45 : 1;
+    const on = i % 2 === 1;
+    ctx.fillStyle = on ? p.accent : p.chip;
+    ctx.fill(path);
+    if (showChairEdge || on) {
+      ctx.strokeStyle = on ? p.accent : p.line;
+      ctx.lineWidth = 0.04;
+      ctx.stroke(path);
+    }
+  });
+  ctx.globalAlpha = 1;
+
   for (const e of elements) {
     if (e.kind === 'table') {
       const d = tableDims(e, settings);
-      const taken = seated.get(e.id);
       ctx.globalAlpha = focus && !marked.has(e.id) ? 0.45 : 1;
-      chairSlots(e, settings).forEach((c, i) => {
-        const w = toWorld(e, c.x, c.y);
-        circle(w.x, w.y, settings.seatWidth * 0.36);
-        if (taken?.has(i)) stroke(p.accent, p.accent, 0.04);
-        else stroke(p.chip, p.line, 0.04);
-      });
       if (d.shape === 'round') {
         circle(e.x, e.y, d.diameter / 2);
         stroke(p.surface, p.line, 0.06);
@@ -129,7 +157,7 @@ export function drawHall(ctx: CanvasRenderingContext2D, layout: Layout, focus: F
           rrect(-d.length / 2, -d.width / 2, d.length, d.width, 0.1);
           stroke(p.surface, p.line, 0.06);
         });
-      label(e.label, e.x, e.y);
+      if (0.45 * scale >= 6) label(e.label, e.x, e.y);
       ctx.globalAlpha = 1;
     } else if (e.kind === 'column') {
       if (e.shape === 'circle') {
@@ -146,7 +174,7 @@ export function drawHall(ctx: CanvasRenderingContext2D, layout: Layout, focus: F
         rrect(-e.w / 2, -e.h / 2, e.w, e.h, 0.15);
         if (e.marker === 'exit') stroke('#bfe8c9', '#1f8a4c', 0.08);
         else stroke(p.chip, p.line, 0.05);
-        if (e.label) label(e.label, 0, 0);
+        if (e.label && 0.45 * scale >= 6) label(e.label, 0, 0);
       });
     } else if (e.kind === 'zone' && e.steps > 0) {
       // a small staircase symbol centred on the stair line
