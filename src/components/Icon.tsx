@@ -85,6 +85,15 @@ const PATHS = {
       <line x1="3" y1="15" x2="21" y2="15" />
     </>
   ),
+  ruler: (
+    <>
+      <rect x="2" y="8" width="20" height="8" rx="1.5" />
+      <line x1="6" y1="8" x2="6" y2="12" />
+      <line x1="10" y1="8" x2="10" y2="11" />
+      <line x1="14" y1="8" x2="14" y2="12" />
+      <line x1="18" y1="8" x2="18" y2="11" />
+    </>
+  ),
   lock: (
     <>
       <rect x="5" y="11" width="14" height="9" rx="2" />
@@ -199,8 +208,10 @@ export function IconButton(props: {
   disabled?: boolean;
   danger?: boolean;
   pressed?: boolean;
+  /** Small count shown on the corner of the button. */
+  count?: number;
 }) {
-  const { icon, label, onClick, disabled, danger, pressed } = props;
+  const { icon, label, onClick, disabled, danger, pressed, count } = props;
   return (
     <button
       type="button"
@@ -212,6 +223,7 @@ export function IconButton(props: {
       onClick={onClick}
     >
       <Icon name={icon} />
+      {count !== undefined && <span className="icon-count">{count}</span>}
     </button>
   );
 }

@@ -11,7 +11,6 @@ import {
   Settings,
   TableEl,
   findIssues,
-  placeNewTables,
   normalizeSeats,
   chairWorld,
   overfullTables,
@@ -27,7 +26,6 @@ import { Key, STRINGS, dirOf } from '@/lib/i18n';
 import { ChairPicker } from './ChairPicker';
 import { ContextMenu, MenuItem } from './ContextMenu';
 import { applyPalette, ChairTip, ElementNode, FONT, IssueState } from './ElementNode';
-import { GuestsView } from './GuestsView';
 import { round2 } from './NumField';
 import { SeatList } from './SeatList';
 import { TablesView } from './TablesView';
@@ -49,7 +47,7 @@ import { useLongPress } from './editor/useLongPress';
 import { buildMenuItems, type MenuState } from './editor/contextMenuItems';
 import { useLayoutHistory } from './editor/useLayoutHistory';
 import { useHallDrop } from './editor/useHallDrop';
-import { EditorHeader } from './editor/EditorHeader';
+import { EditorHeader, type EditorView } from './editor/EditorHeader';
 import { AddPopover } from './editor/AddPopover';
 import { useElementActions } from './editor/useElementActions';
 import { useSeatingActions } from './editor/useSeatingActions';
@@ -86,7 +84,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   const { layout, setLayout, layoutRef, commit, undo, redo, canUndo, canRedo } = useLayoutHistory();
   const [hydrated, setHydrated] = useState(false);
 
-  const [view_, setViewTab] = useState<'hall' | 'guests' | 'tables'>('hall');
+  const [view_, setViewTab] = useState<EditorView>('hall');
   const inHall = view_ === 'hall';
   const [selection, setSelection] = useState<string[]>([]);
   const selectionRef = useRef<string[]>([]);
@@ -307,8 +305,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     const l = layoutRef.current;
     commit({ ...l, settings: { ...l.settings, ...patch } }, `settings:${key}`);
   };
-
-  const setGuests = useCallback((guests: Guest[], key = '') => commit({ ...layoutRef.current, guests }, key), [commit]);
 
   const viewCenter = () => ({
     x: snapV((size.w / 2 - view.x) / view.scale),
@@ -781,7 +777,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
         leading={leading}
         view={view_}
         onView={setViewTab}
-        guestCount={layout.guests.length}
         tableCount={tables.length}
         canUndo={canUndo}
         canRedo={canRedo}
@@ -1166,24 +1161,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
         )}
       </div>
 
-      {view_ === 'guests' && (
-        <GuestsView
-          t={t}
-          guests={layout.guests}
-          tables={tables}
-          onChange={setGuests}
-          onLocate={(g) => locateGuestId(g.id)}
-          onAskRemove={removeGuestById}
-          onImportAll={(added, made) => {
-            const l = layoutRef.current;
-            commit({
-              ...l,
-              elements: [...l.elements, ...placeNewTables(l.elements, l.settings, made)],
-              guests: [...l.guests, ...added],
-            });
-          }}
-        />
-      )}
       {view_ === 'tables' && (
         <TablesView
           t={t}

@@ -137,6 +137,22 @@ button.primary:hover:not(:disabled) {
 .icon-btn {
   width: 42px;
   padding: 0;
+  position: relative;
+}
+.icon-count {
+  position: absolute;
+  top: -6px;
+  inset-inline-end: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
 }
 .icon-btn.danger {
   color: var(--danger);
@@ -683,29 +699,6 @@ textarea {
   gap: 6px;
 }
 
-/* top navigation between the three views */
-.views {
-  display: flex;
-  gap: 6px;
-  background: var(--chip);
-  padding: 4px;
-  border-radius: 12px;
-}
-.views button {
-  border: 0;
-  background: transparent;
-  font-weight: 600;
-  min-height: 38px;
-  border-radius: 9px;
-}
-.views button.on {
-  background: var(--surface);
-  color: var(--accent);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-}
-.views button:hover:not(.on) {
-  background: rgba(255, 255, 255, 0.55);
-}
 .main.hidden {
   display: none;
 }
@@ -1000,14 +993,6 @@ textarea {
 }
 
 @media (max-width: 900px) {
-  .views {
-    order: 3;
-    width: 100%;
-    justify-content: center;
-  }
-  .views button {
-    flex: 1;
-  }
   .add-form {
     grid-template-columns: 1fr;
   }
@@ -1196,11 +1181,6 @@ button.primary.danger-fill {
   .bar .lang {
     min-height: 40px;
     padding: 4px 12px;
-  }
-  .views button {
-    min-height: 40px;
-    padding: 4px 8px;
-    font-size: 0.95em;
   }
   .tablebar {
     flex-wrap: nowrap;
@@ -2890,10 +2870,6 @@ button.primary.danger-fill {
     flex: none;
     justify-content: flex-end;
     gap: 4px;
-  }
-  .bar > .views {
-    order: 3;
-    width: 100%;
   }
   .event-lead {
     gap: 8px;
