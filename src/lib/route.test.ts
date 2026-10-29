@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { chairSlots, emptyLayout, intersects, parseLayout, tableFootprint, type Layout, type TableEl } from './layout';
 import { buildFocus, findRoute, softPath } from './route';
@@ -205,5 +206,16 @@ describe('groups and walkways', () => {
     };
     const f = buildFocus(l, ['g0'])!;
     expect(f.route!.length).toBeLessThanOrEqual(9);
+  });
+});
+
+describe('group on a long table', () => {
+  it('leads to the first chair you reach, not one further along the table', () => {
+    // a real hall (names removed): one invite of eight people seated at the end of table 18, beside a drawn walkway
+    const layout = parseLayout(JSON.parse(readFileSync('src/lib/fixtures/real-hall.json', 'utf8')));
+    const ids = layout.guests.filter((g) => g.tableId).map((g) => g.id);
+    expect(ids).toHaveLength(7);
+    // seat 10 is the end chair; seat 9 is the one beside it
+    expect(buildFocus(layout, ids)!.seat).toBe(10);
   });
 });

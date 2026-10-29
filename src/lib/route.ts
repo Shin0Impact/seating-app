@@ -414,6 +414,9 @@ function dropJogs(route: Pt[]): Pt[] {
   return out;
 }
 
+/** Chairs whose walks differ by less than this many meters count as equally far. */
+const TIE = 0.5;
+
 /** What the "where do I sit" map should highlight for the people on one invite. */
 export function buildFocus(layout: Layout, guestIds: string[]): Focus | null {
   const byId = new Map(layout.guests.map((g) => [g.id, g]));
@@ -443,14 +446,34 @@ export function buildFocus(layout: Layout, guestIds: string[]): Focus | null {
   } catch {
     /* a drawing problem must never break the page */
   }
-  tried.forEach((o, n) => {
+  let cur = -1;
+  tried.forEach((_, n) => {
     const r = routes[n];
     if (r && r.score < bestLen) {
       bestLen = r.score;
-      found = r;
-      pick = o;
+      cur = n;
     }
   });
+  // Chairs a stride apart are a tie on walking distance. Then the one nearest where the line makes its last bend
+  // wins, i.e. the first chair you reach, instead of one further along the table.
+  if (cur >= 0) {
+    const line = routes[cur]!.route;
+    const bend = line[Math.max(0, line.length - 3)];
+    let near = Infinity;
+    tried.forEach((o, n) => {
+      const r = routes[n];
+      if (!r || r.score > bestLen + TIE) return;
+      const d = Math.hypot(o.chair.x - bend.x, o.chair.y - bend.y);
+      if (d < near) {
+        near = d;
+        cur = n;
+      }
+    });
+  }
+  if (cur >= 0) {
+    found = routes[cur];
+    pick = tried[cur];
+  }
   if (!found && !options.length) {
     // no chair position known: lead to the middle of the table
     try {
