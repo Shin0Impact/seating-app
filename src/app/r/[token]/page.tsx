@@ -103,9 +103,9 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
       <main className="rsvp-card">
         <span className="rc-corner tl" aria-hidden /><span className="rc-corner tr" aria-hidden /><span className="rc-corner bl" aria-hidden /><span className="rc-corner br" aria-hidden />
         <header className="rc-head">
-          <div className="rc-logo"><Logo size={44} /></div>
+          <div className="rc-logo"><Logo size={40} /></div>
           <p className="rc-eyebrow">{s('youAreInvited')}</p>
-          <h1 className="rc-title">{inv.event_name}</h1>
+          <h1 className="rc-title"><bdi>{inv.event_name}</bdi></h1>
           <div className="rc-orn" aria-hidden><i /><b /><i /></div>
           <p className="rc-hello">{s('hello', { name: inv.guest_name })}</p>
         </header>
@@ -123,11 +123,13 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
                 <p className="rc-line"><svg viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg><span>{inv.event_time}</span></p>
               )}
               {inv.venue && (
-                <p className="rc-line"><svg viewBox="0 0 24 24" aria-hidden><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg><span>{inv.venue}</span></p>
+                <p className="rc-line"><svg viewBox="0 0 24 24" aria-hidden><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg><span><bdi>{inv.venue}</bdi></span></p>
               )}
-              {inv.venue_url && <a className="rc-map" href={inv.venue_url} target="_blank" rel="noopener noreferrer">{s('openMaps')} ↗</a>}
+              <div className="rc-actions">
+                {inv.venue_url && <a className="rc-map" href={inv.venue_url} target="_blank" rel="noopener noreferrer">{s('openMaps')} ↗</a>}
+                {ics && <a className="rc-map" href={ics} download="invitation.ics">{s('addToCalendar')}</a>}
+              </div>
               {countdown && <p className="rc-count">{countdown}</p>}
-              {ics && <a className="rc-cal" href={ics} download="invitation.ics">{s('addToCalendar')}</a>}
             </div>
           </section>
         )}
@@ -144,15 +146,14 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
         )}
         {inv.status === 'confirmed' && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p className="notice ok" style={{ margin: 0 }}>{s('rsvpConfirmedShort')}</p>
+            <p className="notice ok rc-confirmed" style={{ margin: 0 }}>{s('rsvpConfirmedShort')}</p>
             <GuestCount count={inv.confirmed_count ?? inv.party_size} token={token} action={changeCount} waitingExtra={inv.extra_requested ?? 0} saved={q.saved === '1'} />
             <p style={{ margin: 0 }}>{s('showCode')}</p>
             <div className="qr" role="img" aria-label={s('entryCode')} dangerouslySetInnerHTML={{ __html: qr }} />
             {focus && planLayout && (
-              <div className="where-map">
-                <h2 style={{ fontSize: '1.05em', margin: '0 0 4px' }}>{s('yourTable')}: {focus.seat ? s('tableSeat', { table: focus.table, n: focus.seat }) : s('tableOnly', { table: focus.table })}</h2>
-                <ZoomPan><HallPreview layout={planLayout} label={s('yourTable')} focus={focus} /></ZoomPan>
-              </div>
+              <ZoomPan label={`${s('yourTable')}: ${focus.seat ? s('tableSeat', { table: focus.table, n: focus.seat }) : s('tableOnly', { table: focus.table })}`}>
+                <HallPreview layout={planLayout} label={s('yourTable')} focus={focus} />
+              </ZoomPan>
             )}
             <ChangeRequestButton action={answer} token={token} />
           </section>

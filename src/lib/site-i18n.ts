@@ -542,7 +542,8 @@ export function makeS(lang: Lang): S {
   const d = SITE[lang];
   return (k, vars) => {
     let v = d[k];
-    if (vars) for (const [name, val] of Object.entries(vars)) v = v.split(`{${name}}`).join(String(val));
+    // text typed by people (names, venues) is wrapped in bidi isolates so Arabic and English never reorder each other
+    if (vars) for (const [name, val] of Object.entries(vars)) v = v.split(`{${name}}`).join(typeof val === 'string' && val ? `\u2068${val}\u2069` : String(val));
     return v;
   };
 }
