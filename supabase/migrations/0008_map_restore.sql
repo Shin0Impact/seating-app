@@ -1,4 +1,5 @@
--- A family only gets the hall map once staff have scanned its code at the entrance.
+-- A confirmed family can see where its table is (shapes and its own seats only, never other guests' names).
+-- This restores the original rule in case an earlier version of this file was run: no scan needed.
 create or replace function public.rsvp_map(p_token text)
 returns jsonb
 language plpgsql
@@ -10,7 +11,7 @@ declare
   ev public.events;
 begin
   select * into inv from public.invites where token = p_token;
-  if not found or inv.status <> 'confirmed' or inv.checked_in_at is null then return null; end if;
+  if not found or inv.status <> 'confirmed' then return null; end if;
   select * into ev from public.events where id = inv.event_id;
   if not found then return null; end if;
   return jsonb_build_object(

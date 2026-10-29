@@ -8,7 +8,6 @@ import SiteSettings from '@/components/SiteSettings';
 import { getS } from '@/lib/lang-server';
 import { localeOf } from '@/lib/site-i18n';
 import { Logo } from '@/components/Site';
-import ScanWatcher from '@/components/ScanWatcher';
 import GuestCount from '@/components/GuestCount';
 import ZoomPan from '@/components/ZoomPan';
 import ChangeRequestButton from '@/components/ChangeRequestButton';
@@ -99,7 +98,7 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
   }
 
   return (
-    <div className="site rsvp-wrap">
+    <div className={`site rsvp-wrap${inv.status === 'confirmed' ? ' is-conf' : ''}`}>
       <div className="theme-float"><LangToggle /><SiteSettings /></div>
       <main className="rsvp-card">
         <span className="rc-corner tl" aria-hidden /><span className="rc-corner tr" aria-hidden /><span className="rc-corner bl" aria-hidden /><span className="rc-corner br" aria-hidden />
@@ -110,7 +109,16 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
           <div className="rc-orn" aria-hidden><i /><b /><i /></div>
           <p className="rc-hello">{s('hello', { name: inv.guest_name })}</p>
         </header>
-        {(d || inv.event_time || inv.venue) && (
+        {inv.status === 'confirmed' && (d || inv.event_time || inv.venue) && (
+          <p className="rc-brief">
+            {[d ? `${weekday} ${dayNum} ${monthName}` : '', inv.event_time ?? ''].filter(Boolean).join(' · ')}
+            {inv.venue && <> · <bdi>{inv.venue}</bdi></>}
+            </p>
+        )}
+        {inv.status === 'confirmed' && inv.venue_url && (
+          <p className="rc-brief"><a href={inv.venue_url} target="_blank" rel="noopener noreferrer">{s('openMaps')} ↗</a></p>
+        )}
+        {inv.status !== 'confirmed' && (d || inv.event_time || inv.venue) && (
           <section className="rc-when" aria-label={s('whenWhere')}>
             {d && (
               <div className="rc-date" aria-label={`${weekday} ${dayNum} ${monthName} ${yearNum}`}>
@@ -156,7 +164,6 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
                 <HallPreview layout={planLayout} label={s('yourTable')} focus={focus} />
               </ZoomPan>
             )}
-            {!planLayout && <><p className="muted" style={{ margin: 0, fontSize: '.88em' }}>{s('mapAfterScan')}</p><ScanWatcher /></>}
             <ChangeRequestButton action={answer} token={token} />
           </section>
         )}
