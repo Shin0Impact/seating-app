@@ -3430,9 +3430,19 @@ button.primary.danger-fill {
   -webkit-user-select: none;
 }
 .zp-surface .hall-canvas {
-  display: block;
+  position: relative;
   width: 100%;
   height: 100%;
+}
+.hall-canvas canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.hall-canvas .hall-canvas-ov {
+  pointer-events: none;
 }
 .zp-surface .zp-inner.live {
   will-change: transform;

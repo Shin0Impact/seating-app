@@ -70,6 +70,10 @@ export function drawHall(
   p: Palette,
   /** Device pixels per meter, used to skip detail too small to see. */
   scale = 40,
+  /** 'base' is the still hall; 'overlay' is the animated route, rings and seat dot, drawn alone on their own canvas. */
+  part: 'base' | 'overlay' = 'base',
+  /** Seconds, drives the moving dashes and the pulse. */
+  time = 0,
 ) {
   const { elements, guests, settings } = layout;
   const marked = new Set(focus?.tableIds ?? []);
@@ -117,92 +121,96 @@ export function drawHall(
     ctx.restore();
   };
 
-  // chairs are most of the shapes: batch them into a few paths (by dimmed / taken) instead of one draw each
-  const chairR = settings.seatWidth * 0.36;
-  const showChairEdge = chairR * scale >= 2.5;
-  const batches = [0, 1, 2, 3].map(() => new Path2D());
-  for (const e of elements) {
-    if (e.kind !== 'table') continue;
-    const taken = seated.get(e.id);
-    const dim = focus && !marked.has(e.id) ? 2 : 0;
-    chairSlots(e, settings).forEach((c, i) => {
-      const w = toWorld(e, c.x, c.y);
-      const b = batches[dim + (taken?.has(i) ? 1 : 0)];
-      b.moveTo(w.x + chairR, w.y);
-      b.arc(w.x, w.y, chairR, 0, Math.PI * 2);
+  if (part === 'base') {
+    // chairs are most of the shapes: batch them into a few paths (by dimmed / taken) instead of one draw each
+    const chairR = settings.seatWidth * 0.36;
+    const showChairEdge = chairR * scale >= 2.5;
+    const batches = [0, 1, 2, 3].map(() => new Path2D());
+    for (const e of elements) {
+      if (e.kind !== 'table') continue;
+      const taken = seated.get(e.id);
+      const dim = focus && !marked.has(e.id) ? 2 : 0;
+      chairSlots(e, settings).forEach((c, i) => {
+        const w = toWorld(e, c.x, c.y);
+        const b = batches[dim + (taken?.has(i) ? 1 : 0)];
+        b.moveTo(w.x + chairR, w.y);
+        b.arc(w.x, w.y, chairR, 0, Math.PI * 2);
+      });
+    }
+    batches.forEach((path, i) => {
+      ctx.globalAlpha = i >= 2 ? 0.45 : 1;
+      const on = i % 2 === 1;
+      ctx.fillStyle = on ? p.accent : p.chip;
+      ctx.fill(path);
+      if (showChairEdge || on) {
+        ctx.strokeStyle = on ? p.accent : p.line;
+        ctx.lineWidth = 0.04;
+        ctx.stroke(path);
+      }
     });
-  }
-  batches.forEach((path, i) => {
-    ctx.globalAlpha = i >= 2 ? 0.45 : 1;
-    const on = i % 2 === 1;
-    ctx.fillStyle = on ? p.accent : p.chip;
-    ctx.fill(path);
-    if (showChairEdge || on) {
-      ctx.strokeStyle = on ? p.accent : p.line;
-      ctx.lineWidth = 0.04;
-      ctx.stroke(path);
-    }
-  });
-  ctx.globalAlpha = 1;
+    ctx.globalAlpha = 1;
 
-  for (const e of elements) {
-    if (e.kind === 'table') {
-      const d = tableDims(e, settings);
-      ctx.globalAlpha = focus && !marked.has(e.id) ? 0.45 : 1;
-      if (d.shape === 'round') {
-        circle(e.x, e.y, d.diameter / 2);
-        stroke(p.surface, p.line, 0.06);
-      } else
-        placed(e.x, e.y, e.rotation, () => {
-          rrect(-d.length / 2, -d.width / 2, d.length, d.width, 0.1);
+    for (const e of elements) {
+      if (e.kind === 'table') {
+        const d = tableDims(e, settings);
+        ctx.globalAlpha = focus && !marked.has(e.id) ? 0.45 : 1;
+        if (d.shape === 'round') {
+          circle(e.x, e.y, d.diameter / 2);
           stroke(p.surface, p.line, 0.06);
-        });
-      if (0.45 * scale >= 6) label(e.label, e.x, e.y);
-      ctx.globalAlpha = 1;
-    } else if (e.kind === 'column') {
-      if (e.shape === 'circle') {
-        circle(e.x, e.y, e.size / 2);
-        stroke(p.line, null, 0);
-      } else
-        placed(e.x, e.y, e.rotation, () => {
-          ctx.beginPath();
-          ctx.rect(-e.size / 2, -e.size / 2, e.size, e.size);
+        } else
+          placed(e.x, e.y, e.rotation, () => {
+            rrect(-d.length / 2, -d.width / 2, d.length, d.width, 0.1);
+            stroke(p.surface, p.line, 0.06);
+          });
+        if (0.45 * scale >= 6) label(e.label, e.x, e.y);
+        ctx.globalAlpha = 1;
+      } else if (e.kind === 'column') {
+        if (e.shape === 'circle') {
+          circle(e.x, e.y, e.size / 2);
           stroke(p.line, null, 0);
+        } else
+          placed(e.x, e.y, e.rotation, () => {
+            ctx.beginPath();
+            ctx.rect(-e.size / 2, -e.size / 2, e.size, e.size);
+            stroke(p.line, null, 0);
+          });
+      } else if (e.kind === 'marker' && e.marker !== 'walkway') {
+        placed(e.x, e.y, e.rotation, () => {
+          rrect(-e.w / 2, -e.h / 2, e.w, e.h, 0.15);
+          if (e.marker === 'exit') stroke('#bfe8c9', '#1f8a4c', 0.08);
+          else stroke(p.chip, p.line, 0.05);
+          if (e.label && 0.45 * scale >= 6) label(e.label, 0, 0);
         });
-    } else if (e.kind === 'marker' && e.marker !== 'walkway') {
-      placed(e.x, e.y, e.rotation, () => {
-        rrect(-e.w / 2, -e.h / 2, e.w, e.h, 0.15);
-        if (e.marker === 'exit') stroke('#bfe8c9', '#1f8a4c', 0.08);
-        else stroke(p.chip, p.line, 0.05);
-        if (e.label && 0.45 * scale >= 6) label(e.label, 0, 0);
-      });
-    } else if (e.kind === 'zone' && e.steps > 0) {
-      // a small staircase symbol centred on the stair line
-      const k = Math.min(1.1, Math.max(0.6, Math.min(e.w, e.h) * 0.35)) / 1.1;
-      placed(e.x, e.y, e.rotation, () => {
-        ctx.translate(0, e.h / 2 + (0.28 * e.steps) / 2);
-        ctx.rotate((-e.rotation * Math.PI) / 180);
-        ctx.scale(k, k);
-        circle(0, 0, 0.78);
-        stroke('#f3e3b3', '#9a7a2e', 0.07);
-        ctx.beginPath();
-        ctx.moveTo(-0.5, 0.4);
-        ctx.lineTo(-0.17, 0.4);
-        ctx.lineTo(-0.17, 0.1);
-        ctx.lineTo(0.17, 0.1);
-        ctx.lineTo(0.17, -0.2);
-        ctx.lineTo(0.5, -0.2);
-        ctx.lineTo(0.5, -0.5);
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        stroke(null, '#5f4608', 0.12);
-        ctx.lineJoin = 'miter';
-        ctx.lineCap = 'butt';
-      });
+      } else if (e.kind === 'zone' && e.steps > 0) {
+        // a small staircase symbol centred on the stair line
+        const k = Math.min(1.1, Math.max(0.6, Math.min(e.w, e.h) * 0.35)) / 1.1;
+        placed(e.x, e.y, e.rotation, () => {
+          ctx.translate(0, e.h / 2 + (0.28 * e.steps) / 2);
+          ctx.rotate((-e.rotation * Math.PI) / 180);
+          ctx.scale(k, k);
+          circle(0, 0, 0.78);
+          stroke('#f3e3b3', '#9a7a2e', 0.07);
+          ctx.beginPath();
+          ctx.moveTo(-0.5, 0.4);
+          ctx.lineTo(-0.17, 0.4);
+          ctx.lineTo(-0.17, 0.1);
+          ctx.lineTo(0.17, 0.1);
+          ctx.lineTo(0.17, -0.2);
+          ctx.lineTo(0.5, -0.2);
+          ctx.lineTo(0.5, -0.5);
+          ctx.lineJoin = 'round';
+          ctx.lineCap = 'round';
+          stroke(null, '#5f4608', 0.12);
+          ctx.lineJoin = 'miter';
+          ctx.lineCap = 'butt';
+        });
+      }
     }
   }
-  if (!focus) return;
+  if (!focus || part === 'base') return;
 
+  const pulse = 0.775 + 0.225 * Math.cos((time * Math.PI * 2) / 1.6); // 1 -> 0.55 -> 1 every 1.6 s
+  ctx.globalAlpha = pulse;
   ctx.setLineDash([0.5, 0.3]);
   for (const e of elements) {
     if (e.kind !== 'table' || !marked.has(e.id)) continue;
@@ -221,14 +229,17 @@ export function drawHall(
     stroke(null, p.accent, 0.14);
   }
   ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
   if (focus.route) {
     ctx.setLineDash([0.7, 0.5]);
+    ctx.lineDashOffset = -(time % 1.2); // dashes flow toward the seat, one meter per second
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = ROUTE;
     ctx.lineWidth = 0.24;
     ctx.stroke(new Path2D(softPath(focus.route)));
     ctx.setLineDash([]);
+    ctx.lineDashOffset = 0;
     ctx.lineCap = 'butt';
     ctx.lineJoin = 'miter';
   }
@@ -237,7 +248,9 @@ export function drawHall(
     stroke(p.accent, p.panel, 0.1);
   }
   if (focus.chair) {
+    ctx.globalAlpha = pulse;
     circle(focus.chair.x, focus.chair.y, 0.5);
     stroke(ROUTE, p.panel, 0.12);
+    ctx.globalAlpha = 1;
   }
 }
