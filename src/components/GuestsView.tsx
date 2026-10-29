@@ -35,7 +35,10 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
   const [filter, setFilter] = useState<Filter>('all');
   const [groupFilter, setGroupFilter] = useState('');
   const [importing, setImporting] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [justAdded, setJustAdded] = useState(0);
   const [askDeleteAll, setAskDeleteAll] = useState(false);
+  const [typed, setTyped] = useState('');
   const nameRef = useRef<HTMLInputElement>(null);
 
   const counts = useMemo(() => seatedCounts(guests), [guests]);
@@ -63,6 +66,7 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
       next = [...next, g];
     }
     onChange(next);
+    setJustAdded((n) => n + names.length);
   };
   const addOne = () => {
     if (!name.trim() || room <= 0) return;
@@ -102,8 +106,20 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
   return (
     <div className="page">
       <div className="page-inner guests">
-        <section className="card">
-          <h2>{t('addGuestCard')}</h2>
+        <section className="card add-bar">
+          <button type="button" className="primary" onClick={() => { setJustAdded(0); setAdding(true); }} disabled={room <= 0}>
+            <Icon name="plus" size={18} /> {t('addGuest')}
+          </button>
+          <button type="button" className="import-btn" onClick={() => setImporting(true)}>
+            <Icon name="upload" size={18} /> {t('importGuests')}
+          </button>
+          {importing && <ImportGuests t={t} guests={guests} tables={tables} onImport={(added, made) => (onImportAll && made.length ? onImportAll(added, made) : onChange([...guests, ...added]))} onClose={() => setImporting(false)} />}
+        </section>
+        {adding && (
+          <>
+            <div className="picker-backdrop" onMouseDown={() => setAdding(false)} />
+            <div className="import-dialog add-dialog" role="dialog" aria-label={t('addGuestCard')} onKeyDown={(e) => e.key === 'Escape' && setAdding(false)}>
+              <h3>{t('addGuestCard')}</h3>
           <form
             className="add-form"
             onSubmit={(e) => {
@@ -115,7 +131,7 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
             {!several ? (
               <label className="field af-name">
                 <span>{t('guestName')}</span>
-                <input ref={nameRef} type="text" maxLength={LIMITS.nameMax} value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
+                <input ref={nameRef} autoFocus type="text" maxLength={LIMITS.nameMax} value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
               </label>
             ) : (
               <label className="field af-name" style={{ gridColumn: 'span 2' }}>
@@ -156,13 +172,13 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
               <button type="button" onClick={() => setSeveral(!several)}>
                 {several ? t('addGuest') : t('addSeveral')}
               </button>
-              <button type="button" className="import-btn" onClick={() => setImporting(true)}>
-                <Icon name="upload" size={18} /> {t('importGuests')}
-              </button>
             </div>
           </form>
-          {importing && <ImportGuests t={t} guests={guests} tables={tables} onImport={(added, made) => (onImportAll && made.length ? onImportAll(added, made) : onChange([...guests, ...added]))} onClose={() => setImporting(false)} />}
-        </section>
+              {justAdded > 0 && <p className="notice ok" role="status" style={{ margin: 0 }}>✓ {justAdded}</p>}
+              <button type="button" onClick={() => setAdding(false)}>{t('done')}</button>
+            </div>
+          </>
+        )}
 
         <section className="card">
           <div className="list-head">
@@ -171,23 +187,6 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
               {t('guestsTotal')}: {guests.length} · {t('seated')}: {seatedTotal} · {t('noTable')}: {guests.length - seatedTotal}
             </p>
           </div>
-          {guests.length > 0 && (
-            <div className="row delete-all">
-              {!askDeleteAll ? (
-                <button type="button" onClick={() => setAskDeleteAll(true)}>
-                  <Icon name="trash" size={18} /> {t('deleteAllGuests')}
-                </button>
-              ) : (
-                <>
-                  <span className="error">{t('confirmDeleteAll')} ({guests.length})</span>
-                  <button type="button" className="primary danger-fill" onClick={() => { onChange([]); setAskDeleteAll(false); }}>
-                    {t('deleteAllGuests')}
-                  </button>
-                  <button type="button" onClick={() => setAskDeleteAll(false)}>{t('importCancel')}</button>
-                </>
-              )}
-            </div>
-          )}
           <div className="filters">
             <label className="search">
               <Icon name="search" size={18} />
@@ -296,6 +295,29 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
               );
             })}
           </ul>
+          {guests.length > 0 && (
+            <details className="danger-zone" onToggle={(e) => { if (!(e.target as HTMLDetailsElement).open) { setAskDeleteAll(false); setTyped(''); } }}>
+              <summary>{t('dangerZone')}</summary>
+              {!askDeleteAll ? (
+                <button type="button" onClick={() => setAskDeleteAll(true)}>
+                  <Icon name="trash" size={18} /> {t('deleteAllGuests')}
+                </button>
+              ) : (
+                <div className="column-gap">
+                  <span className="error">{t('confirmDeleteAll')} ({guests.length})</span>
+                  <label className="field"><span>{t('typeToConfirm')} «{t('deleteWord')}»</span>
+                    <input type="text" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />
+                  </label>
+                  <div className="row">
+                    <button type="button" className="primary danger-fill" disabled={typed.trim().toLowerCase() !== t('deleteWord').toLowerCase()} onClick={() => { onChange([]); setAskDeleteAll(false); setTyped(''); }}>
+                      {t('deleteAllGuests')}
+                    </button>
+                    <button type="button" onClick={() => { setAskDeleteAll(false); setTyped(''); }}>{t('importCancel')}</button>
+                  </div>
+                </div>
+              )}
+            </details>
+          )}
         </section>
       </div>
     </div>

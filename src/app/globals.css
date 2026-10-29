@@ -848,3 +848,13 @@ button.primary.danger-fill { background: var(--danger); border-color: var(--dang
 
 .guests-step { display: flex; flex-direction: column; gap: 8px; }
 .guests-step .page { padding: 0 0 24px; overflow: visible; }
+
+.add-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.add-dialog { width: min(520px, calc(100vw - 24px)); }
+.add-dialog .add-form { grid-template-columns: 1fr 1fr; }
+.add-dialog .af-name, .add-dialog .af-actions, .add-dialog .af-step { grid-column: 1 / -1; }
+@media (max-width: 560px) { .add-dialog .add-form { grid-template-columns: 1fr; } }
+.danger-zone { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 10px; color: var(--muted); }
+.danger-zone summary { cursor: pointer; font-size: .92em; }
+.danger-zone > button, .danger-zone .column-gap { margin-top: 10px; }
+.danger-zone .column-gap { display: flex; flex-direction: column; gap: 10px; }
