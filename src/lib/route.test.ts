@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { chairSlots, emptyLayout, intersects, parseLayout, tableFootprint, type Layout, type TableEl } from './layout';
-import { buildFocus, findRoute } from './route';
+import { buildFocus, findRoute, softPath } from './route';
 
 const hall = (guestsAt: { tableId: string; seat: number }[], entrance = true) =>
   parseLayout({
@@ -143,5 +143,32 @@ describe('safe routes and half tables', () => {
     const slots = chairSlots(t, l.settings);
     expect(slots).toHaveLength(6);
     expect(slots.every((s) => s.y > 0)).toBe(true);
+  });
+});
+
+describe('straight, soft routes', () => {
+  it('keeps the number of turns small on an open floor', () => {
+    const l = hall([{ tableId: 't2', seat: 0 }]);
+    const r = findRoute(l, buildFocus(l, ['g0'])!.chair!)!;
+    expect(r.route.length).toBeLessThanOrEqual(6);
+  });
+
+  it('rounds corners in the drawn path and leaves straight lines alone', () => {
+    expect(
+      softPath([
+        { x: 0, y: 0 },
+        { x: 4, y: 0 },
+      ]),
+    ).toBe('M0 0 L4 0');
+    const bent = softPath(
+      [
+        { x: 0, y: 0 },
+        { x: 4, y: 0 },
+        { x: 4, y: 4 },
+      ],
+      1,
+    );
+    expect(bent).toContain('Q4 0');
+    expect(bent.startsWith('M0 0 L3 0')).toBe(true);
   });
 });
