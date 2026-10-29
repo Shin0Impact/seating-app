@@ -52,11 +52,16 @@ export default function HallPreview({ layout, label, focus }: { layout: Layout; 
         if (e.kind === 'zone') {
           // guests only need the stairs, not the raised area itself
           if (e.steps <= 0) return null;
-          const d = 0.28, hh = d * e.steps;
+          const d = 0.34, hh = d * e.steps;
+          const n = Math.max(1, Math.floor(e.w / 1.4));
           return (
             <g key={e.id} transform={`translate(${e.x} ${e.y}) rotate(${e.rotation})`} aria-hidden>
               <rect x={-e.w / 2} y={e.h / 2} width={e.w} height={hh} className="hp-stairs" />
               {Array.from({ length: e.steps - 1 }, (_, i) => <line key={i} x1={-e.w / 2} x2={e.w / 2} y1={e.h / 2 + d * (i + 1)} y2={e.h / 2 + d * (i + 1)} className="hp-stair-line" />)}
+              {Array.from({ length: n }, (_, i) => {
+                const cx = -e.w / 2 + (e.w * (i + 0.5)) / n, cy = e.h / 2 + hh / 2;
+                return <path key={`c${i}`} d={`M ${cx - 0.28} ${cy + 0.14} L ${cx} ${cy - 0.14} L ${cx + 0.28} ${cy + 0.14}`} className="hp-stair-arrow" />;
+              })}
             </g>
           );
         }
