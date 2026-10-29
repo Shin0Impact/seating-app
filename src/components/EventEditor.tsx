@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Layout } from '@/lib/layout';
 import { signOut } from '@/app/actions';
@@ -15,6 +15,7 @@ type Status = 'saved' | 'saving' | 'error' | 'conflict';
 /** The hall editor backed by the database: changes are saved a moment after you stop, and a stale tab cannot overwrite a newer save. */
 export default function EventEditor({ id, name, initial, version, focusGuest }: { id: string; name: string; initial: Layout; version: number; user?: string; focusGuest?: string }) {
   const s = useS();
+  const router = useRouter();
   const [status, setStatus] = useState<Status>('saved');
   const ver = useRef(version);
   const last = useRef(JSON.stringify(initial));
@@ -71,7 +72,7 @@ export default function EventEditor({ id, name, initial, version, focusGuest }: 
       account={{ eventId: id, signOut }}
       leading={
         <div className="event-lead">
-          <Link href={`/events/${id}`} className="back-link" aria-label={s('backToEventAria')}>{s('backToEvent')}</Link>
+          <button type="button" className="back-link" aria-label={s('backToEventAria')} onClick={() => (window.history.length > 1 ? router.back() : router.push(`/events/${id}`))}>{s('backToEvent')}</button>
           <h1>{name}</h1>
           <span className={`save-status ${status}`} role="status">{label}</span>
         </div>
