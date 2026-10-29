@@ -82,7 +82,8 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
   return findRoutes(layout, [chair])[0];
 }
 
-type Walk = { route: Pt[]; start: Pt } | null;
+/** `score` is the exact walking distance on the grid (used to compare chairs); `route` is the tidied line for drawing. */
+type Walk = { route: Pt[]; start: Pt; score: number } | null;
 
 /** Routes to several chairs at once: the hall grid is built a single time and every search reuses it. */
 export function findRoutes(layout: Layout, chairs: Pt[]): Walk[] {
@@ -360,7 +361,7 @@ export function findRoutes(layout: Layout, chairs: Pt[]): Walk[] {
 
   const goalOf = chairs.map((c) => nearestFree(c));
   const goals = [...new Set(goalOf.filter((g): g is number => g !== null))];
-  const bestFor = new Map<number, { route: Pt[]; len: number; start: Pt }>();
+  const bestFor = new Map<number, { route: Pt[]; score: number; start: Pt }>();
   if (goals.length) {
     for (const en of entrances) {
       const s = nearestFree({ x: en.x, y: en.y });
@@ -376,21 +377,27 @@ export function findRoutes(layout: Layout, chairs: Pt[]): Walk[] {
         if (!plainCells) return;
         const chair = chairs[n];
         let route = dropJogs([start, ...simplify(toPoints(plainCells)), chair]);
+        let cells = plainCells;
         // A drawn walkway is followed unless that makes the line far more bendy or much longer.
         const walkCells = walk?.get(goal);
         if (walkCells) {
           const walked = dropJogs([start, ...simplify(toPoints(walkCells)), chair]);
-          if (walked.length <= route.length + 4 && lengthOf(walked) <= lengthOf(route) * 1.6) route = walked;
+          if (walked.length <= route.length + 4 && lengthOf(walked) <= lengthOf(route) * 1.6) {
+            route = walked;
+            cells = walkCells;
+          }
         }
-        const len = lengthOf(route);
+        // chairs are compared on the exact grid walk plus the last step to the chair, not on the tidied line
+        const end = centre(goal % cols, Math.floor(goal / cols));
+        const score = lengthOf(toPoints(cells)) + Math.hypot(end.x - chair.x, end.y - chair.y);
         const cur = bestFor.get(n);
-        if (!cur || len < cur.len) bestFor.set(n, { route, len, start });
+        if (!cur || score < cur.score) bestFor.set(n, { route, score, start });
       });
     }
   }
   return chairs.map((_, n): Walk => {
     const b = bestFor.get(n);
-    return b ? { route: b.route, start: b.start } : null;
+    return b ? { route: b.route, start: b.start, score: b.score } : null;
   });
 }
 
@@ -438,12 +445,8 @@ export function buildFocus(layout: Layout, guestIds: string[]): Focus | null {
   }
   tried.forEach((o, n) => {
     const r = routes[n];
-    if (!r) return;
-    let len = 0;
-    for (let k = 1; k < r.route.length; k++)
-      len += Math.hypot(r.route[k].x - r.route[k - 1].x, r.route[k].y - r.route[k - 1].y);
-    if (len < bestLen) {
-      bestLen = len;
+    if (r && r.score < bestLen) {
+      bestLen = r.score;
       found = r;
       pick = o;
     }
