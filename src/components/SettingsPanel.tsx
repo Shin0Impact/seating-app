@@ -2,6 +2,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { Icon, IconButton } from './Icon';
+import InstallApp from './InstallApp';
 import { useLang, useS } from './LangProvider';
 import { useTheme } from '@/lib/theme';
 import { updatePassword, updateUsername } from '@/app/actions';
@@ -224,6 +225,8 @@ export default function SettingsPanel({
           </div>
           <small className="muted">{s('themeHint')}</small>
         </section>
+
+        <InstallApp />
 
         {children}
 

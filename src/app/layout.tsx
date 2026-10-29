@@ -5,13 +5,16 @@ import { THEME_BOOT } from '@/lib/theme';
 import { LangProvider } from '@/components/LangProvider';
 import { getLang } from '@/lib/lang-server';
 import { dirOf } from '@/lib/i18n';
+import PwaRegister from '@/components/PwaRegister';
 
 export const metadata: Metadata = {
   title: 'طاولتنا · Our Table',
   description: 'Hall seating plans, guest invitations and check-in',
+  icons: { icon: '/icons/icon-192.png', apple: '/icons/apple-touch-icon.png' },
+  appleWebApp: { capable: true, title: 'طاولتنا', statusBarStyle: 'default' },
 };
 
-export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#2f5fc4' };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const lang = await getLang();
@@ -22,6 +25,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         <LangProvider initial={lang}>{children}</LangProvider>
+        <PwaRegister />
       </body>
     </html>
   );
