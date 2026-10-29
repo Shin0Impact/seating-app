@@ -3860,3 +3860,19 @@ button.primary.danger-fill {
     grid-column: 1 / -1;
   }
 }
+
+/* the hall is two stacked layers: the plan, and the moving route and rings above it */
+.hp-stack {
+  position: relative;
+}
+.hp-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.hp-overlay {
+  pointer-events: none;
+  will-change: transform;
+}
