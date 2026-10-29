@@ -72,7 +72,6 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
                 <button className="btn primary">{s('signIn')}</button>
               </form>
             )}
-            <p className="hero-foot"><Link href="/editor">{s('tryDesigner')}</Link></p>
           </div>
         </div>
       </section>

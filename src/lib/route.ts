@@ -16,6 +16,7 @@ export type Focus = {
   seat: number | null;
 };
 
+const WALK_COST = 0.2;
 const BLOCKING_MARKERS = new Set(['stage', 'buffet', 'other']);
 
 class Heap {
@@ -66,6 +67,7 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
 
   const solids: Shape[] = [];
   const floors: Shape[] = [];
+  const walkways: Shape[] = [];
   for (const e of elements) {
     if (e.kind === 'table') solids.push(tableFootprint(e, settings, 0.12));
     else if (e.kind === 'column') {
@@ -75,12 +77,13 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
       const r: Shape = { type: 'rect', cx: e.x, cy: e.y, w: e.w, h: e.h, rot: e.rotation };
       if (BLOCKING_MARKERS.has(e.marker)) solids.push({ ...r, type: 'rect', w: e.w + 0.2, h: e.h + 0.2 } as Shape);
       else if (e.marker === 'dancefloor') floors.push(r);
+      else if (e.marker === 'walkway') walkways.push(r);
     }
   }
 
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   const grow = (b: [number, number, number, number]) => { x0 = Math.min(x0, b[0]); y0 = Math.min(y0, b[1]); x1 = Math.max(x1, b[2]); y1 = Math.max(y1, b[3]); };
-  for (const s of [...solids, ...floors]) grow(box(s));
+  for (const s of [...solids, ...floors, ...walkways]) grow(box(s));
   for (const en of entrances) grow([en.x - en.w / 2, en.y - en.h / 2, en.x + en.w / 2, en.y + en.h / 2]);
   grow([chair.x, chair.y, chair.x, chair.y]);
   const pad = 2;
@@ -103,6 +106,8 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     }
   };
   for (const f of floors) paint(f, (idx) => { cost[idx] = 0.55; });
+  // drawn safe routes: the guests' usual foot traffic, so the line strongly prefers them (never blocked, just cheaper)
+  for (const w of walkways) paint(w, (idx) => { cost[idx] = WALK_COST; });
   for (const s of solids) paint(s, (idx) => { blocked[idx] = 1; });
 
   const cellOf = (p: Pt): [number, number] => [
@@ -138,7 +143,7 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     const heap = new Heap();
     const h = (i: number, j: number) => {
       const dx = Math.abs(i - gi), dy = Math.abs(j - gj);
-      return (dx + dy + (Math.SQRT2 - 2) * Math.min(dx, dy)) * 0.55;
+      return (dx + dy + (Math.SQRT2 - 2) * Math.min(dx, dy)) * (walkways.length ? WALK_COST : 0.55);
     };
     dist[start] = 0;
     heap.push(h(start % cols, Math.floor(start / cols)), start);
@@ -183,10 +188,16 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     const cells = astar(s);
     if (!cells) continue;
     const raw = cells.map((c) => centre(c % cols, Math.floor(c / cols)));
-    // pull the string tight: keep only the corners that matter
+    // pull the string tight: keep only the corners that matter (with drawn walkways only straight-run merging, so the line stays on them)
     const pts: Pt[] = [raw[0]];
     let at = 0;
-    while (at < raw.length - 1) {
+    while (walkways.length && at < raw.length - 1) {
+      let to = at + 1;
+      while (to < raw.length - 1 && Math.abs((raw[to].x - raw[at].x) * (raw[to + 1].y - raw[at].y) - (raw[to].y - raw[at].y) * (raw[to + 1].x - raw[at].x)) < 1e-9) to++;
+      pts.push(raw[to]);
+      at = to;
+    }
+    while (!walkways.length && at < raw.length - 1) {
       let to = raw.length - 1;
       while (to > at + 1 && !free(raw[at], raw[to])) to--;
       pts.push(raw[to]);

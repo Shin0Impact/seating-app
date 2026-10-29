@@ -48,6 +48,7 @@ export default function HallPreview({ layout, label, focus }: { layout: Layout; 
           return e.shape === 'circle'
             ? <circle key={e.id} cx={e.x} cy={e.y} r={e.size / 2} className="hp-col" />
             : <rect key={e.id} x={-e.size / 2} y={-e.size / 2} width={e.size} height={e.size} className="hp-col" transform={`translate(${e.x} ${e.y}) rotate(${e.rotation})`} />;
+        if (e.kind === 'marker' && e.marker === 'walkway') return null;
         return (
           <g key={e.id} transform={`translate(${e.x} ${e.y}) rotate(${e.rotation})`}>
             <rect x={-e.w / 2} y={-e.h / 2} width={e.w} height={e.h} rx={0.15} className={e.kind === 'zone' ? 'hp-zone' : 'hp-marker'} />

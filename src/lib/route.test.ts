@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyLayout, intersects, parseLayout, tableFootprint, type Layout, type TableEl } from './layout';
+import { chairSlots, emptyLayout, intersects, parseLayout, tableFootprint, type Layout, type TableEl } from './layout';
 import { buildFocus, findRoute } from './route';
 
 const hall = (guestsAt: { tableId: string; seat: number }[], entrance = true) =>
@@ -64,5 +64,24 @@ describe('findRoute stays finite', () => {
     const t0 = Date.now();
     for (const c of [{ x: 0, y: 0 }, { x: 12, y: -3 }, { x: -20, y: 25 }, { x: 25, y: 10 }]) findRoute(l, c);
     expect(Date.now() - t0).toBeLessThan(4000);
+  });
+});
+
+describe('safe routes and half tables', () => {
+  it('detours along a drawn walkway', () => {
+    const base = hall([{ tableId: 't2', seat: 0 }]);
+    const withWalk: Layout = { ...base, elements: [...base.elements, { id: 'w1', kind: 'marker', marker: 'walkway', w: 1.2, h: 14, x: 20.5, y: 9, rotation: 0, label: 'W' } as Layout['elements'][number]] };
+    const plain = findRoute(base, buildFocus(base, ['g0'])!.chair!)!;
+    const walked = findRoute(withWalk, buildFocus(withWalk, ['g0'])!.chair!)!;
+    expect(walked.route.some((p) => Math.abs(p.x - 20.5) < 0.8)).toBe(true);
+    expect(plain.route.some((p) => Math.abs(p.x - 20.5) < 0.8)).toBe(false);
+  });
+  it('seats a half table on one side only', () => {
+    const l = parseLayout({ version: 1, settings: {}, elements: [{ id: 'h', kind: 'table', shape: 'rect', half: true, seats: 6, x: 0, y: 0, rotation: 0, label: 'H' }], guests: [] });
+    const t = l.elements[0] as TableEl;
+    expect(t.half).toBe(true);
+    const slots = chairSlots(t, l.settings);
+    expect(slots).toHaveLength(6);
+    expect(slots.every((s) => s.y > 0)).toBe(true);
   });
 });

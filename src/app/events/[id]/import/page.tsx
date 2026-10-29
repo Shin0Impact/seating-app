@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import ImportStep from '@/components/ImportStep';
+import GuestsStep from '@/components/GuestsStep';
 import { SiteHeader, StepBar } from '@/components/Site';
 import { parseLayout } from '@/lib/layout';
 import { serverClient } from '@/lib/supabase/server';
@@ -21,9 +21,9 @@ export default async function ImportPage({ params }: { params: Promise<{ id: str
     <div className="site">
       <SiteHeader crumb={{ id, name: ev.name }} />
       <main className="container">
-        <div className="page-title"><h1>{s('importGuests')} <span className="tag">{s('optional')}</span></h1></div>
+        <div className="page-title"><h1>{s('stepGuests')} <span className="tag">{s('optional')}</span></h1></div>
         <StepBar id={id} active="import" />
-        <ImportStep id={id} initial={parseLayout(ev.layout)} version={ev.version} />
+        <GuestsStep id={id} initial={parseLayout(ev.layout)} version={ev.version} />
       </main>
     </div>
   );

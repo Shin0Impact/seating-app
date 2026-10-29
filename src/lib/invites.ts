@@ -49,3 +49,35 @@ export function locate(layout: Layout, ids: string[]): Placement[] {
     return [{ name: g.name, table: t ? t.label : null, seat: t && g.seat !== null ? g.seat + 1 : null, tableId: t ? t.id : null }];
   });
 }
+
+/** Sorted, merged runs of chair numbers: [5,6,7,11,12] -> [[5,7],[11,12]]. */
+export function seatRanges(seats: number[]): [number, number][] {
+  const sorted = [...new Set(seats)].sort((a, b) => a - b);
+  const out: [number, number][] = [];
+  for (const n of sorted) {
+    const last = out[out.length - 1];
+    if (last && n === last[1] + 1) last[1] = n;
+    else out.push([n, n]);
+  }
+  return out;
+}
+
+/** "1-8" or "5-7 and 11-14" (a lone chair is just its number). */
+export function formatRanges(ranges: [number, number][], and: string): string {
+  const one = ([a, b]: [number, number]) => (a === b ? `${a}` : `${a}-${b}`);
+  if (ranges.length <= 1) return ranges.map(one).join('');
+  return ranges.slice(0, -1).map(one).join(', ') + ` ${and} ` + one(ranges[ranges.length - 1]);
+}
+
+/** "Table 3 · chairs 1-8" for the given people, one entry per table they sit at. */
+export function seatsSummary(
+  layout: Pick<Layout, 'elements' | 'guests'>,
+  ids: string[],
+  make: (table: string, count: number, chairs: string) => string,
+  and: string,
+): string {
+  const want = new Set(ids);
+  const byTable = new Map<string, number[]>();
+  for (const g of layout.guests) if (want.has(g.id) && g.tableId && g.seat !== null) byTable.set(g.tableId, [...(byTable.get(g.tableId) ?? []), g.seat + 1]);
+  return [...byTable.entries()].map(([id, seats]) => make(layout.elements.find((e) => e.id === id)?.label ?? '', seats.length, formatRanges(seatRanges(seats), and))).join(' | ');
+}

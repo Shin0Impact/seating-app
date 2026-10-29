@@ -101,9 +101,11 @@ export type EditorProps = {
   leading?: React.ReactNode;
   /** Set when the editor runs inside an event: adds the Account section to Settings. */
   account?: AccountProps;
+  /** Open zoomed in on this guest's chair (from the guests page pin). */
+  focusGuest?: string;
 };
 
-export default function Editor({ initial, onChange, leading, account }: EditorProps = {}) {
+export default function Editor({ initial, onChange, leading, account, focusGuest }: EditorProps = {}) {
   const { lang } = useLang();
   const t = useCallback((k: Key) => STRINGS[lang][k], [lang]);
   const langRef = useRef(lang);
@@ -390,7 +392,7 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
   };
   const addTableAt = (shape: 'round' | 'rect', seats: number, x: number, y: number) => addSpecAt({ kind: 'table', shape, seats }, x, y);
 
-  const markerLabel = (k: MarkerKind) => t(k);
+  const markerLabel = (k: MarkerKind) => (k === 'walkway' ? t('safeRoute') : t(k));
 
   /** Click on a palette item: tables and columns go to the first free spot nearest the view centre. */
   const addPreset = (sp: Spec) => {
@@ -763,6 +765,19 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
     const elements = l.elements.map((e) => (e.kind === 'table' ? { ...e, seats } : e));
     commit({ ...l, elements, guests: normalizeSeats(elements, l.guests) });
   };
+  /** Zoom (moderately) onto a guest's chair and select their table. */
+  const locateGuestId = (guestId: string): boolean => {
+    const l = layoutRef.current;
+    const g = l.guests.find((x) => x.id === guestId);
+    if (!g || !g.tableId) return false;
+    const spot = chairWorld(l.elements, l.settings, g) ?? l.elements.find((e) => e.id === g.tableId);
+    if (!spot) return false;
+    const scale = clamp(size.w / 11, 32, 80);
+    setViewTab('hall');
+    setSelection([g.tableId]);
+    setView({ scale, x: size.w / 2 - spot.x * scale, y: size.h / 2 - spot.y * scale });
+    return true;
+  };
   const locate = (id: string) => {
     const el = layoutRef.current.elements.find((e) => e.id === id);
     setViewTab('hall');
@@ -818,7 +833,7 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
   /** Turn the given tables round or rectangular; chairs and guests stay with them. */
   const setShape = (ids: string[], shape: 'round' | 'rect') => {
     const l = layoutRef.current;
-    commit({ ...l, elements: l.elements.map((e) => (e.kind === 'table' && ids.includes(e.id) ? ({ ...e, shape } as Element) : e)) });
+    commit({ ...l, elements: l.elements.map((e) => (e.kind === 'table' && ids.includes(e.id) ? ({ ...e, shape, ...(shape === 'round' ? { half: undefined } : {}) } as Element) : e)) });
   };
   const emptyChair = (guestId: string) => {
     const l = layoutRef.current;
@@ -1168,6 +1183,7 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
   useEffect(() => {
     if (!hydrated || !measured || !fitOnLoad.current || size.w < 50) return;
     fitOnLoad.current = false;
+    if (focusGuest && locateGuestId(focusGuest)) return;
     if (layout.elements.length > 0) fit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, measured, size, layout]);
@@ -1760,6 +1776,12 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
                         ))}
                       </div>
                     </div>
+                    {selected.shape === 'rect' && (
+                      <label className="field check">
+                        <input type="checkbox" checked={!!selected.half} onChange={(e) => { const l = layoutRef.current; commit({ ...l, elements: l.elements.map((x) => (x.id === selected.id && x.kind === 'table' ? ({ ...x, half: e.target.checked } as Element) : x)) }); }} />
+                        <span>{t('halfTable')}</span>
+                      </label>
+                    )}
                     <NumField label={t('chairs')} value={selected.seats} min={LIMITS.seatsMin} max={LIMITS.seatsMax} step={1} int onChange={(v) => changeSeats(selected.id, v)} />
                     {dims?.shape === 'round' && <p className="muted">{t('diameter')}: {round2(dims.diameter)} m</p>}
                     {dims?.shape === 'rect' && <p className="muted">{t('length')}: {round2(dims.length)} m × {round2(dims.width)} m</p>}
@@ -1846,6 +1868,7 @@ export default function Editor({ initial, onChange, leading, account }: EditorPr
           guests={layout.guests}
           tables={tables}
           onChange={setGuests}
+          onLocate={(g) => locateGuestId(g.id)}
           onAskRemove={removeGuestById}
           onImportAll={(added, made) => {
             const l = layoutRef.current;

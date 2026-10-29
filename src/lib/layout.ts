@@ -21,10 +21,10 @@ export const DEFAULT_SETTINGS: Settings = {
 
 type Base = { id: string; x: number; y: number; rotation: number; label: string };
 
-export type TableEl = Base & { kind: 'table'; shape: 'round' | 'rect'; seats: number };
+export type TableEl = Base & { kind: 'table'; shape: 'round' | 'rect'; seats: number; /** rectangular only: chairs on one side */ half?: boolean };
 export type ColumnEl = Base & { kind: 'column'; shape: 'circle' | 'square'; size: number };
 export type ZoneEl = Base & { kind: 'zone'; w: number; h: number; steps: number };
-export type MarkerKind = 'stage' | 'dancefloor' | 'entrance' | 'buffet' | 'other';
+export type MarkerKind = 'stage' | 'dancefloor' | 'entrance' | 'buffet' | 'other' | 'walkway';
 export type MarkerEl = Base & { kind: 'marker'; marker: MarkerKind; w: number; h: number };
 
 export type Element = TableEl | ColumnEl | ZoneEl | MarkerEl;
@@ -43,13 +43,14 @@ export type Guest = {
 
 export type Layout = { version: 1; settings: Settings; elements: Element[]; guests: Guest[] };
 
-export const MARKER_KINDS: MarkerKind[] = ['stage', 'dancefloor', 'entrance', 'buffet', 'other'];
+export const MARKER_KINDS: MarkerKind[] = ['stage', 'dancefloor', 'entrance', 'buffet', 'other', 'walkway'];
 export const MARKER_NAMES: Record<MarkerKind, string> = {
   stage: 'Stage',
   dancefloor: 'Dance floor',
   entrance: 'Entrance',
   buffet: 'Buffet',
   other: 'Other',
+  walkway: 'Safe route',
 };
 
 export const LIMITS = {
@@ -81,12 +82,12 @@ export type TableDims =
   | { shape: 'rect'; length: number; width: number };
 
 /** Table size follows from the number of chairs entered. */
-export function tableDims(t: Pick<TableEl, 'shape' | 'seats'>, s: Settings): TableDims {
+export function tableDims(t: Pick<TableEl, 'shape' | 'seats' | 'half'>, s: Settings): TableDims {
   if (t.shape === 'round') {
     const diameter = Math.max(0.9, (t.seats * s.seatWidth) / Math.PI);
     return { shape: 'round', diameter };
   }
-  const perSide = Math.ceil(t.seats / 2);
+  const perSide = t.half ? t.seats : Math.ceil(t.seats / 2);
   return { shape: 'rect', length: Math.max(1.2, perSide * s.seatWidth), width: s.rectTableWidth };
 }
 
@@ -252,7 +253,7 @@ export type ChairSlot = { x: number; y: number; /** degrees, facing the table */
  * Chair positions in table-local meters, in seat order. Round tables count clockwise
  * from the top; rectangular tables count left to right along the top, then along the bottom.
  */
-export function chairSlots(t: Pick<TableEl, 'shape' | 'seats'>, s: Settings): ChairSlot[] {
+export function chairSlots(t: Pick<TableEl, 'shape' | 'seats' | 'half'>, s: Settings): ChairSlot[] {
   const d = tableDims(t, s);
   const out: ChairSlot[] = [];
   if (d.shape === 'round') {
@@ -263,7 +264,7 @@ export function chairSlots(t: Pick<TableEl, 'shape' | 'seats'>, s: Settings): Ch
     }
     return out;
   }
-  const top = Math.ceil(t.seats / 2);
+  const top = t.half ? 0 : Math.ceil(t.seats / 2);
   const bottom = t.seats - top;
   const y = d.width / 2 + s.chairDepth / 2;
   for (let i = 0; i < top; i++) out.push({ x: -d.length / 2 + (d.length * (i + 0.5)) / top, y: -y, rot: 0 });
@@ -413,6 +414,7 @@ export function parseLayout(raw: unknown): Layout {
           kind: 'table',
           shape: e.shape === 'rect' ? 'rect' : 'round',
           seats: Math.round(num(e.seats, LIMITS.seatsMin, LIMITS.seatsMax)),
+          ...(e.shape === 'rect' && e.half === true ? { half: true } : {}),
         } as TableEl;
       case 'column':
         return {
@@ -487,6 +489,7 @@ export function newMarker(x: number, y: number, marker: MarkerKind): MarkerEl {
     entrance: [2, 0.5],
     buffet: [4, 1],
     other: [2, 2],
+    walkway: [8, 1.2],
   };
   const [w, h] = size[marker];
   return { id: uid(), kind: 'marker', x, y, rotation: 0, label: MARKER_NAMES[marker], marker, w, h };

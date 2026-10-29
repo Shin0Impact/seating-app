@@ -200,7 +200,7 @@ textarea { resize: vertical; }
 .pg.zone { border-style: dashed; border-color: #9a7a2e; background: rgba(176, 141, 60, 0.18); }
 .pg.mk { border-color: var(--muted); border-width: 1.5px; border-radius: 4px; }
 .pg.mk-stage { background: var(--mk-stage); } .pg.mk-dancefloor { background: var(--mk-dance); } .pg.mk-entrance { background: var(--mk-ent); }
-.pg.mk-buffet { background: var(--mk-buffet); } .pg.mk-other { background: var(--mk-other); }
+.pg.mk-walkway { background: repeating-linear-gradient(90deg, var(--mk-ent) 0 4px, transparent 4px 8px); } .pg.mk-buffet { background: var(--mk-buffet); } .pg.mk-other { background: var(--mk-other); }
 
 /* compact guest list in the hall view */
 .seatlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 340px; overflow-y: auto; }
@@ -222,6 +222,7 @@ textarea { resize: vertical; }
 .add-form .check { margin: 0 0 12px; }
 .filters { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-bottom: 12px; }
 .filters .search { margin: 0; }
+.grow.pin { grid-template-columns: 2.2rem minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 1.5fr) minmax(0, 7.5rem) 42px 42px 42px; }
 .grow { display: grid; grid-template-columns: 2.2rem minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 1.5fr) minmax(0, 7.5rem) 42px 42px; gap: 8px; align-items: center; }
 .guest-top, .guest-bottom { display: contents; }
 .glist { gap: 6px; }
@@ -248,7 +249,9 @@ textarea { resize: vertical; }
   .views button { flex: 1; }
   .add-form { grid-template-columns: 1fr; }
   .filters { grid-template-columns: 1fr; }
-  .grow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 42px 42px; }
+  .grow, .grow.pin { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 42px 42px; }
+  .grow.pin { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 4.2rem; }
+  .grow.pin .icon-btn { justify-self: center; }
   .grow .c-num, .glist-head { display: none; }
   .grow .guest-name { grid-column: 1 / -1; }
   .glist .guest { padding: 8px; row-gap: 8px; }
@@ -483,7 +486,7 @@ button.primary.danger-fill { background: var(--danger); border-color: var(--dang
 .event-lead a { text-decoration: none; font-size: 20px; color: inherit; }
 .save-status { font-size: 13px; color: var(--muted); white-space: nowrap; }
 .save-status.error, .save-status.conflict { color: var(--danger); font-weight: 600; }
-.import-dialog.inline { position: static; inset: auto; margin: 0; width: 100%; max-height: none; box-shadow: none; border-radius: 14px; }
+.import-dialog.inline { z-index: auto; position: static; inset: auto; margin: 0; width: 100%; max-height: none; box-shadow: none; border-radius: 14px; }
 
 @media (max-width: 760px) {
   .hero-inner { grid-template-columns: 1fr; gap: 22px; }
@@ -711,10 +714,10 @@ button.primary.danger-fill { background: var(--danger); border-color: var(--dang
 @keyframes rc-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .rsvp-card, .rsvp-card > * { animation: none !important; } }
 .rc-corner { position: absolute; width: 34px; height: 34px; pointer-events: none; border: 2px solid var(--gold); opacity: .8; }
-.rc-corner.tl { top: 12px; inset-inline-start: 12px; border-width: 2px 0 0 2px; border-start-start-radius: 14px; }
-.rc-corner.tr { top: 12px; inset-inline-end: 12px; border-width: 2px 2px 0 0; border-start-end-radius: 14px; }
-.rc-corner.bl { bottom: 12px; inset-inline-start: 12px; border-width: 0 0 2px 2px; border-end-start-radius: 14px; }
-.rc-corner.br { bottom: 12px; inset-inline-end: 12px; border-width: 0 2px 2px 0; border-end-end-radius: 14px; }
+.rc-corner.tl { top: 12px; left: 12px; border-width: 2px 0 0 2px; border-top-left-radius: 14px; }
+.rc-corner.tr { top: 12px; right: 12px; border-width: 2px 2px 0 0; border-top-right-radius: 14px; }
+.rc-corner.bl { bottom: 12px; left: 12px; border-width: 0 0 2px 2px; border-bottom-left-radius: 14px; }
+.rc-corner.br { bottom: 12px; right: 12px; border-width: 0 2px 2px 0; border-bottom-right-radius: 14px; }
 .rc-head { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .rc-logo { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--surface); border: 1px solid color-mix(in srgb, var(--gold) 45%, var(--line)); box-shadow: 0 6px 18px rgba(60,45,15,.12); }
 .rc-eyebrow { margin: 6px 0 0; color: var(--gold); letter-spacing: .08em; font-size: .95em; font-weight: 600; }
@@ -767,6 +770,8 @@ button.primary.danger-fill { background: var(--danger); border-color: var(--dang
 /* ---- compact so the invitation fits a phone screen ---- */
 .rc-line span { text-align: start; }
 .zp-open { display: inline-flex; gap: 8px; align-items: center; justify-content: center; width: 100%; }
+.zp-open.zp-small { width: auto; }
+.zp-open.zp-small svg { width: 16px; height: 16px; }
 .zp-open svg { width: 20px; height: 20px; fill: none; stroke: var(--gold); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .zp-title { position: absolute; inset-block-start: 14px; inset-inline-start: 14px; max-width: calc(100% - 90px); padding: 8px 14px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); font-weight: 600; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
 .rc-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -810,6 +815,12 @@ button.primary.danger-fill { background: var(--danger); border-color: var(--dang
   .rsvp-card .qr { width: min(40vw, 150px); }
   .rsvp-card > section > p:not(.notice) { font-size: .9em; }
   .zp-open { min-height: 40px !important; }
+}
+
+/* phones: the card fills the screen instead of hugging its content */
+@media (max-width: 560px) {
+  .rsvp-wrap { align-content: stretch; grid-template-rows: auto 1fr; }
+  .rsvp-card { justify-content: space-evenly; align-self: stretch; }
 }
 
 /* confirmed = second screen: the confirmation and the QR get the room */

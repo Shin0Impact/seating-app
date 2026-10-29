@@ -13,7 +13,7 @@ const Editor = dynamic(() => import('./Editor'), { ssr: false, loading: () => <p
 type Status = 'saved' | 'saving' | 'error' | 'conflict';
 
 /** The hall editor backed by the database: changes are saved a moment after you stop, and a stale tab cannot overwrite a newer save. */
-export default function EventEditor({ id, name, initial, version }: { id: string; name: string; initial: Layout; version: number; user?: string }) {
+export default function EventEditor({ id, name, initial, version, focusGuest }: { id: string; name: string; initial: Layout; version: number; user?: string; focusGuest?: string }) {
   const s = useS();
   const [status, setStatus] = useState<Status>('saved');
   const ver = useRef(version);
@@ -66,6 +66,7 @@ export default function EventEditor({ id, name, initial, version }: { id: string
   return (
     <Editor
       initial={initial}
+      focusGuest={focusGuest}
       onChange={onChange}
       account={{ eventId: id, signOut }}
       leading={
