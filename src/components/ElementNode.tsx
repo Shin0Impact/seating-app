@@ -101,6 +101,7 @@ const MARKER_LIGHT: Record<string, string> = {
   buffet: '#e3edd2',
   other: '#e8e4dc',
   walkway: '#f3e6b8',
+  exit: '#bfe8c9',
 };
 const MARKER_DARK: Record<string, string> = {
   stage: '#473458',
@@ -109,6 +110,7 @@ const MARKER_DARK: Record<string, string> = {
   buffet: '#3b4a2a',
   other: '#3b3a37',
   walkway: '#5a4c1f',
+  exit: '#1f5a33',
 };
 
 /** Canvas colors are plain values (Konva can't read CSS variables). The editor calls applyPalette() on every

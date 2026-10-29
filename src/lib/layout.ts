@@ -24,7 +24,7 @@ type Base = { id: string; x: number; y: number; rotation: number; label: string 
 export type TableEl = Base & { kind: 'table'; shape: 'round' | 'rect'; seats: number; /** rectangular only: chairs on one side */ half?: boolean };
 export type ColumnEl = Base & { kind: 'column'; shape: 'circle' | 'square'; size: number };
 export type ZoneEl = Base & { kind: 'zone'; w: number; h: number; steps: number };
-export type MarkerKind = 'stage' | 'dancefloor' | 'entrance' | 'buffet' | 'other' | 'walkway';
+export type MarkerKind = 'stage' | 'dancefloor' | 'entrance' | 'buffet' | 'other' | 'walkway' | 'exit';
 export type MarkerEl = Base & { kind: 'marker'; marker: MarkerKind; w: number; h: number };
 
 export type Element = TableEl | ColumnEl | ZoneEl | MarkerEl;
@@ -43,7 +43,7 @@ export type Guest = {
 
 export type Layout = { version: 1; settings: Settings; elements: Element[]; guests: Guest[] };
 
-export const MARKER_KINDS: MarkerKind[] = ['stage', 'dancefloor', 'entrance', 'buffet', 'other', 'walkway'];
+export const MARKER_KINDS: MarkerKind[] = ['stage', 'dancefloor', 'entrance', 'buffet', 'other', 'walkway', 'exit'];
 export const MARKER_NAMES: Record<MarkerKind, string> = {
   stage: 'Stage',
   dancefloor: 'Dance floor',
@@ -51,6 +51,7 @@ export const MARKER_NAMES: Record<MarkerKind, string> = {
   buffet: 'Buffet',
   other: 'Other',
   walkway: 'Safe route',
+  exit: 'Emergency exit',
 };
 
 export const LIMITS = {
@@ -490,6 +491,7 @@ export function newMarker(x: number, y: number, marker: MarkerKind): MarkerEl {
     buffet: [4, 1],
     other: [2, 2],
     walkway: [8, 1.2],
+    exit: [1.6, 0.4],
   };
   const [w, h] = size[marker];
   return { id: uid(), kind: 'marker', x, y, rotation: 0, label: MARKER_NAMES[marker], marker, w, h };

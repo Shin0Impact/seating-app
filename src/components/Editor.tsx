@@ -61,13 +61,13 @@ const ORDER: Record<Element['kind'], number> = { zone: 0, marker: 1, table: 2, c
 const USAGE_KEY = 'seating-table-usage-v1';
 /** Shown when nothing has been used yet; usage then reorders them and brings in new sizes. */
 const DEFAULT_PRESETS: { shape: 'round' | 'rect'; seats: number }[] = [
+  { shape: 'round', seats: 20 },
   { shape: 'round', seats: 10 },
   { shape: 'round', seats: 8 },
   { shape: 'round', seats: 12 },
-  { shape: 'round', seats: 6 },
+  { shape: 'rect', seats: 20 },
   { shape: 'rect', seats: 10 },
   { shape: 'rect', seats: 8 },
-  { shape: 'rect', seats: 12 },
 ];
 const PRESET_SLOTS = 7;
 
@@ -392,7 +392,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   };
   const addTableAt = (shape: 'round' | 'rect', seats: number, x: number, y: number) => addSpecAt({ kind: 'table', shape, seats }, x, y);
 
-  const markerLabel = (k: MarkerKind) => (k === 'walkway' ? t('safeRoute') : t(k));
+  const markerLabel = (k: MarkerKind) => (k === 'walkway' ? t('safeRoute') : k === 'exit' ? t('emergencyExit') : t(k));
 
   /** Click on a palette item: tables and columns go to the first free spot nearest the view centre. */
   const addPreset = (sp: Spec) => {

@@ -105,7 +105,7 @@ function Surface({ children, label, onClose }: { children: React.ReactNode; labe
           });
         }}
       >
-        <div className="zp-inner" style={{ transform: `translate(${v.x}px, ${v.y}px) scale(${v.k})` }}>{children}</div>
+        <div className="zp-inner" style={{ width: `${v.k * 100}%`, height: `${v.k * 100}%`, transform: `translate(${v.x}px, ${v.y}px)` }}>{children}</div>
       </div>
       <div className="zp-title">{label}</div>
       <div className="zp-btns">
