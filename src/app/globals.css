@@ -3451,6 +3451,12 @@ button.primary.danger-fill {
 }
 .zp-surface .zp-inner {
   transform-origin: 0 0;
+  will-change: transform;
+}
+.zp-full.moving .hp-route,
+.zp-full.moving .hp-ring,
+.zp-full.moving .hp-you {
+  animation-play-state: paused;
 }
 .zp-surface .hall-preview {
   width: 100%;

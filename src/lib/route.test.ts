@@ -172,3 +172,38 @@ describe('straight, soft routes', () => {
     expect(bent.startsWith('M0 0 L3 0')).toBe(true);
   });
 });
+
+describe('groups and walkways', () => {
+  it('leads a group to the closest of its chairs', () => {
+    const l = hall([
+      { tableId: 't1', seat: 4 },
+      { tableId: 't3', seat: 0 },
+    ]);
+    const f = buildFocus(l, ['g0', 'g1'])!;
+    const t3 = l.elements.find((e) => e.id === 't3')!;
+    expect(Math.hypot(f.chair!.x - t3.x, f.chair!.y - t3.y)).toBeLessThan(3);
+    expect(f.table).toBe('3');
+  });
+
+  it('stays straight when staggered walkways could pull the line into a wave', () => {
+    const base = hall([{ tableId: 't2', seat: 0 }]);
+    const strip = (id: string, x: number, y: number) =>
+      ({
+        id,
+        kind: 'marker',
+        marker: 'walkway',
+        w: 0.8,
+        h: 5,
+        x,
+        y,
+        rotation: 0,
+        label: 'W',
+      }) as Layout['elements'][number];
+    const l: Layout = {
+      ...base,
+      elements: [...base.elements, strip('a', 12, 14), strip('b', 14, 10), strip('c', 16, 6)],
+    };
+    const f = buildFocus(l, ['g0'])!;
+    expect(f.route!.length).toBeLessThanOrEqual(6);
+  });
+});
