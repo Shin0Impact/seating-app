@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { SiteHeader } from '@/components/Site';
+import { SiteHeader, StepBar } from '@/components/Site';
 import { parseLayout } from '@/lib/layout';
 import { totals, type InviteRow } from '@/lib/inviteview';
 import DeleteEvent from '@/components/DeleteEvent';
@@ -35,6 +35,7 @@ export default async function EventHome({ params, searchParams }: { params: Prom
       <SiteHeader crumb={{ id, name: ev.name }} />
       <main className="container">
         <div className="page-title"><h1>{ev.name}</h1></div>
+        <StepBar id={id} active="home" />
         <div className="step-cards">
           <section className="step-card">
             <div className="sc-head"><span className="n">1</span><h3>{s('guests')}</h3></div>

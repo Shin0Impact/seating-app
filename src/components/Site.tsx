@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import SiteSettings from './SiteSettings';
 import { getS } from '@/lib/lang-server';
-import { Icon } from './Icon';
+import { Icon, type IconName } from './Icon';
 import { signOut } from '@/app/actions';
 
 export function Logo({ size = 34 }: { size?: number }) {
@@ -51,25 +51,24 @@ export async function SiteHeader({ crumb, children }: { crumb?: { id: string; na
   );
 }
 
-export type StepKey = 'import' | 'hall' | 'invites' | 'scan';
+export type StepKey = 'home' | 'import' | 'hall' | 'invites' | 'scan';
 
+/** The event's navigation: tabs under the title on a computer, a bar along the bottom of the screen on a phone. */
 export async function StepBar({ id, active }: { id: string; active: StepKey }) {
   const { s } = await getS();
-  const steps: { key: StepKey; label: string; sub: string; path: string }[] = [
-    { key: 'import', label: s('stepGuests'), sub: s('stepGuestsSub'), path: 'import' },
-    { key: 'hall', label: s('stepHall'), sub: s('stepHallSub'), path: 'preview' },
-    { key: 'invites', label: s('stepInvites'), sub: s('stepInvitesSub'), path: 'invites' },
-    { key: 'scan', label: s('stepEntry'), sub: s('stepEntrySub'), path: 'scan' },
+  const items: { key: StepKey; label: string; path: string; icon: IconName }[] = [
+    { key: 'home', label: s('navHome'), path: '', icon: 'home' },
+    { key: 'import', label: s('stepGuests'), path: '/import', icon: 'users' },
+    { key: 'hall', label: s('stepHall'), path: '/preview', icon: 'grid' },
+    { key: 'invites', label: s('stepInvites'), path: '/invites', icon: 'list' },
+    { key: 'scan', label: s('stepEntry'), path: '/scan', icon: 'scan' },
   ];
   return (
-    <nav className="stepbar" aria-label={s('steps')}>
-      {steps.map((st, i) => (
-        <Link key={st.key} href={`/events/${id}/${st.path}`} className={`step${st.key === active ? ' on' : ''}`} aria-current={st.key === active ? 'step' : undefined}>
-          <span className="n">{i + 1}</span>
-          <span>
-            {st.label}
-            <small>{st.sub}</small>
-          </span>
+    <nav className="eventnav" aria-label={s('steps')}>
+      {items.map((it) => (
+        <Link key={it.key} href={`/events/${id}${it.path}`} className={`en-item${it.key === active ? ' on' : ''}`} aria-current={it.key === active ? 'page' : undefined}>
+          <Icon name={it.icon} size={20} />
+          <span>{it.label}</span>
         </Link>
       ))}
     </nav>
