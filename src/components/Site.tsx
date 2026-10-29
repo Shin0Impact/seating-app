@@ -49,14 +49,6 @@ export async function SiteHeader({ crumb, children }: { crumb?: { id: string; na
       </div>
       <div className="site-actions">
         {children}
-        {crumb && (
-          <Link className="btn small bar-btn" href="/events" aria-label={s('allEvents')} title={s('allEvents')}>
-            <span className="ico">
-              <Icon name="list" size={18} />
-            </span>
-            <span className="lbl">{s('allEvents')}</span>
-          </Link>
-        )}
         <SiteSettings account={{ eventId: crumb?.id, signOut }} />
       </div>
     </header>

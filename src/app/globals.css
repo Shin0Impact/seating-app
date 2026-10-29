@@ -2555,9 +2555,6 @@ button.primary.danger-fill {
   opacity: 0.4;
 }
 
-.bar-btn .ico {
-  display: none;
-}
 @media (max-width: 640px) {
   .site-bar {
     padding: 8px 10px;
@@ -2588,17 +2585,6 @@ button.primary.danger-fill {
   .site-actions {
     gap: 6px;
     flex: none;
-  }
-  .bar-btn {
-    width: 40px;
-    min-height: 40px;
-    padding: 0;
-  }
-  .bar-btn .ico {
-    display: inline-flex;
-  }
-  .bar-btn .lbl {
-    display: none;
   }
   .site-actions .icon-btn {
     width: 40px;
@@ -2905,12 +2891,12 @@ button.primary.danger-fill {
 }
 
 .set-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .set-grid > * {
-  width: 100%;
+  flex: 1 1 calc(50% - 4px);
 }
 
 .preview-card {
@@ -3836,7 +3822,7 @@ button.primary.danger-fill {
   margin: 0;
 }
 .set-grid .set-wide {
-  grid-column: 1 / -1;
+  flex-basis: 100%;
 }
 .set-grid .set-wide button {
   width: 100%;
@@ -3854,5 +3840,17 @@ button.primary.danger-fill {
     top: -14px;
     margin: -14px -14px 0;
     padding: 10px 14px;
+  }
+}
+
+/* an odd last item in a two-column grid takes the whole row instead of leaving a gap */
+@media (max-width: 1000px) {
+  .step-cards > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 760px) {
+  .inv-actions > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 }
