@@ -4,9 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 export type ThemePref = 'auto' | 'light' | 'dark';
 export type Theme = 'light' | 'dark';
 export const THEME_KEY = 'seating-theme';
+/** Colour of the top bar, also used for the phone's status bar. */
+export const BAR_COLOR: Record<Theme, string> = { light: '#fffdf8', dark: '#1f2125' };
 
 /** Runs before first paint (inlined in <head>) so there is no light flash in dark mode. */
-export const THEME_BOOT = `(function(){try{var p=localStorage.getItem('${THEME_KEY}');var d=p==='dark'||(p==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.setAttribute('data-theme',d?'dark':'light')}catch(e){}})()`;
+export const THEME_BOOT = `(function(){try{var p=localStorage.getItem('${THEME_KEY}');var d=p==='dark'||(p==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.setAttribute('data-theme',d?'dark':'light');var m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',d?'${BAR_COLOR.dark}':'${BAR_COLOR.light}')}catch(e){}})()`;
 
 export function readPref(): ThemePref {
   try {
@@ -24,6 +26,7 @@ export function resolve(pref: ThemePref): Theme {
 
 function apply(t: Theme) {
   document.documentElement.setAttribute('data-theme', t);
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', BAR_COLOR[t]);
 }
 
 /** Theme preference (auto follows the device) and the resolved light/dark value. */
