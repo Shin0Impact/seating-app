@@ -690,8 +690,9 @@ button.primary.danger-fill { background: var(--danger); border-color: var(--dang
 .hp-chair.on { fill: var(--accent); stroke: var(--accent); }
 .hp-col { fill: var(--line-strong); }
 .hp-zone { fill: var(--accent-soft); stroke: var(--line-strong); stroke-width: 0.05; stroke-dasharray: 0.3 0.2; }
-.hp-stairs { fill: var(--accent-soft); stroke: var(--line-strong); stroke-width: 0.05; }
-.hp-stair-line { stroke: var(--line-strong); stroke-width: 0.05; }
+.hp-stairs { fill: #f3e3b3; stroke: #9a7a2e; stroke-width: 0.07; }
+.hp-stair-line { stroke: #9a7a2e; stroke-width: 0.07; }
+.hp-stair-arrow { fill: none; stroke: #7a5c14; stroke-width: 0.1; stroke-linecap: round; stroke-linejoin: round; }
 .hp-exit { fill: #bfe8c9; stroke: #1f8a4c; stroke-width: 0.08; }
 .hp-marker { fill: var(--chip); stroke: var(--line-strong); stroke-width: 0.05; }
 .hp-text { fill: var(--ink); pointer-events: none; }
@@ -779,7 +780,7 @@ button.primary.danger-fill { background: var(--danger); border-color: var(--dang
 .zoompan .hall-preview { height: min(52vh, 420px); border: 0; pointer-events: none; }
 .zoompan .zp-hint { position: absolute; inset-block-end: 8px; inset-inline-end: 8px; padding: 4px 12px; border-radius: 99px; background: var(--panel); border: 1px solid var(--line); font-size: .82em; color: var(--muted); }
 .zp-full { position: fixed; inset: 0; z-index: 1000; background: var(--canvas); }
-.zp-surface { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.zp-surface { direction: ltr; position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
 .zp-surface .zp-inner { transform-origin: 0 0; }
 .zp-surface .hall-preview { width: 100%; height: 100%; max-height: none; border: 0; background: transparent; }
 .zp-full .zp-btns { position: absolute; inset-block-start: 14px; inset-inline-end: 14px; display: flex; flex-direction: column; gap: 8px; }
