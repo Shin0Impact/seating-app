@@ -52,13 +52,12 @@ export default function HallPreview({ layout, label, focus }: { layout: Layout; 
         if (e.kind === 'zone') {
           // guests only need the stairs, not the raised area itself
           if (e.steps <= 0) return null;
-          // a small staircase symbol in the middle of the raised area
+          // a small staircase symbol centred on the stair line (the steps run along the bottom edge)
           const k = Math.min(1.1, Math.max(0.6, Math.min(e.w, e.h) * 0.35)) / 1.1;
           return (
-            <g key={e.id} transform={`translate(${e.x} ${e.y}) rotate(${-e.rotation}) scale(${k})`} aria-hidden>
+            <g key={e.id} transform={`translate(${e.x} ${e.y}) rotate(${e.rotation}) translate(0 ${e.h / 2 + (0.28 * e.steps) / 2}) rotate(${-e.rotation}) scale(${k})`} aria-hidden>
               <circle r={0.78} className="hp-stairs-bg" />
               <path d="M -0.5 0.4 H -0.17 V 0.1 H 0.17 V -0.2 H 0.5 V -0.5" className="hp-stairs-icon" />
-              <path d="M 0.3 -0.45 L 0.5 -0.5 L 0.45 -0.3" className="hp-stairs-icon" />
             </g>
           );
         }
