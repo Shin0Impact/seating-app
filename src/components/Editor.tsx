@@ -2,31 +2,18 @@
 
 import type Konva from 'konva';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Layer, Line, Stage, Transformer } from 'react-konva';
+import { Layer, Stage, Transformer } from 'react-konva';
 import {
   Element,
   Guest,
   Layout,
   LIMITS,
-  MARKER_KINDS,
-  MarkerKind,
   Settings,
   TableEl,
-  emptyLayout,
   findIssues,
-  firstFreeSeat,
-  nearestChair,
-  newGuest,
   placeNewTables,
   normalizeSeats,
-  seatGuest,
-  seatMany,
   chairWorld,
-  tableAt,
-  newColumn,
-  newMarker,
-  newTable,
-  newZone,
   overfullTables,
   parseLayout,
   seatedCounts,
@@ -41,32 +28,35 @@ import { ChairPicker } from './ChairPicker';
 import { ContextMenu, MenuItem } from './ContextMenu';
 import { applyPalette, ChairTip, ElementNode, FONT, IssueState } from './ElementNode';
 import { GuestsView } from './GuestsView';
-import { NumField, round2 } from './NumField';
+import { round2 } from './NumField';
 import { SeatList } from './SeatList';
 import { TablesView } from './TablesView';
-import { IconButton } from './Icon';
 import SettingsDialog from './SettingsDialog';
 import type { AccountProps } from './SettingsPanel';
 import { useLang } from './LangProvider';
 import { useTheme } from '@/lib/theme';
 import { GuestEditPopup } from './ChairPicker';
-import { inviteDrafts } from '@/lib/invites';
-import { clamp, DEFAULT_PRESETS, PRESET_SLOTS, USAGE_KEY, parseSpec, specToString, type Spec } from './editor-specs';
+import { clamp, DEFAULT_PRESETS, PRESET_SLOTS, USAGE_KEY } from './editor-specs';
 import { QuickTablesBar } from './QuickTablesBar';
 import { PropertiesCard } from './PropertiesCard';
 import { WarningsCard } from './WarningsCard';
-import { coarsePointer, readPayload, TouchPayload } from '@/lib/touchdrag';
+import { ConfirmDialog } from './editor/ConfirmDialog';
+import { GridLayer } from './editor/GridLayer';
+import { CanvasTools, MarqueeBox, PickBar, ScaleBar } from './editor/CanvasOverlays';
+import { resizePatch } from './editor/resizeElement';
+import { useEditorKeys, useShiftHeld } from './editor/useEditorKeys';
+import { useLongPress } from './editor/useLongPress';
+import { buildMenuItems, type MenuState } from './editor/contextMenuItems';
+import { useLayoutHistory } from './editor/useLayoutHistory';
+import { useHallDrop } from './editor/useHallDrop';
+import { EditorHeader } from './editor/EditorHeader';
+import { AddPopover } from './editor/AddPopover';
+import { useElementActions } from './editor/useElementActions';
+import { useSeatingActions } from './editor/useSeatingActions';
+import { useTouchDrag } from './editor/useTouchDrag';
 
 const STORAGE_KEY = 'seating-layout-v1';
 const ORDER: Record<Element['kind'], number> = { zone: 0, marker: 1, table: 2, column: 3 };
-
-type MenuState = {
-  x: number;
-  y: number;
-  wx: number;
-  wy: number;
-  target: { kind: 'blank' } | { kind: 'element'; id: string } | { kind: 'chair'; tableId: string; seat: number };
-};
 
 type View = { scale: number; x: number; y: number };
 
@@ -93,12 +83,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   /** Anything destructive that is not undone by a click asks first; the pending action runs on Delete. */
   const [pendingDelete, setPendingDelete] = useState<{ text: string; run: () => void } | null>(null);
 
-  const [layout, setLayout] = useState<Layout>(emptyLayout);
-  const layoutRef = useRef(layout);
-  layoutRef.current = layout;
-  const past = useRef<Layout[]>([]);
-  const future = useRef<Layout[]>([]);
-  const lastEdit = useRef<{ key: string; time: number }>({ key: '', time: 0 });
+  const { layout, setLayout, layoutRef, commit, undo, redo, canUndo, canRedo } = useLayoutHistory();
   const [hydrated, setHydrated] = useState(false);
 
   const [view_, setViewTab] = useState<'hall' | 'guests' | 'tables'>('hall');
@@ -158,8 +143,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   };
   const [addOpen, setAddOpen] = useState(false);
   const [addPos, setAddPos] = useState<{ x: number; y: number } | null>(null);
-  const [dragHide, setDragHide] = useState(false);
-  const addRef = useRef<HTMLDivElement>(null);
   const addBtnRef = useRef<HTMLButtonElement>(null);
   const snapStep = snapGrid ? 1 : 0.1;
   /** Snaps the left and bottom of what is actually drawn (the blue box) to the grid. */
@@ -180,7 +163,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       localStorage.setItem('seating-snap-grid', n ? '1' : '0');
     } catch {}
   };
-  const [shiftHeld, setShiftHeld] = useState(false);
+  const shiftHeld = useShiftHeld();
   const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   const marqueeRef = useRef(marquee);
   marqueeRef.current = marquee;
@@ -190,9 +173,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   const [error, setError] = useState('');
   const [fontTick, setFontTick] = useState(0);
   const [tip, setTip] = useState<ChairTip | null>(null);
-  const [dropHint, setDropHint] = useState<{ tableId: string; seat: number | null } | null>(null);
   const [picker, setPicker] = useState<{ tableId: string; seat: number; x: number; y: number } | null>(null);
-  const [presetOver, setPresetOver] = useState(false);
   const [copies, setCopies] = useState(1);
 
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -307,36 +288,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     prevSize.current = size;
   }, [size]);
 
-  const commit = useCallback((next: Layout, key = '') => {
-    const now = Date.now();
-    const coalesce = key !== '' && lastEdit.current.key === key && now - lastEdit.current.time < 800;
-    if (!coalesce) {
-      past.current.push(layoutRef.current);
-      if (past.current.length > 60) past.current.shift();
-    }
-    future.current = [];
-    lastEdit.current = { key, time: now };
-    setLayout(next);
-  }, []);
-
-  const undo = useCallback(() => {
-    const prev = past.current.pop();
-    if (prev) {
-      future.current.push(layoutRef.current);
-      lastEdit.current = { key: '', time: 0 };
-      setLayout(prev);
-    }
-  }, []);
-
-  const redo = useCallback(() => {
-    const next = future.current.pop();
-    if (next) {
-      past.current.push(layoutRef.current);
-      lastEdit.current = { key: '', time: 0 };
-      setLayout(next);
-    }
-  }, []);
-
   const patchEl = useCallback(
     (id: string, patch: Partial<Element>, key = '') => {
       const l = layoutRef.current;
@@ -364,165 +315,34 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     y: snapV((size.h / 2 - view.y) / view.scale),
   });
 
-  const makeElement = (sp: Spec, x: number, y: number): Element => {
-    const l = layoutRef.current;
-    if (sp.kind === 'table') {
-      const n = l.elements.filter((e) => e.kind === 'table').length + 1;
-      return {
-        ...newTable(x, y, sp.shape, clamp(Math.round(sp.seats), LIMITS.seatsMin, LIMITS.seatsMax), n),
-        label: `${t('table')} ${n}`,
-      };
-    }
-    if (sp.kind === 'column') return { ...newColumn(x, y, sp.shape), label: t('column') };
-    if (sp.kind === 'zone') return { ...newZone(x, y), label: t('raisedArea') };
-    return { ...newMarker(x, y, sp.marker), label: markerLabel(sp.marker) };
-  };
-
-  /** Adds anything from the palette at a world position (drop point, menu point or free spot). */
-  const addSpecAt = (sp: Spec, x: number, y: number) => {
-    const l = layoutRef.current;
-    if (l.elements.length >= LIMITS.maxElements) return;
-    const el = makeElement(sp, snapV(x), snapV(y));
-    commit({ ...l, elements: [...l.elements, el] });
-    if (el.kind === 'table') bumpUsage(el.shape, el.seats);
-    setSelectedId(el.id);
-  };
-  const addTableAt = (shape: 'round' | 'rect', seats: number, x: number, y: number) =>
-    addSpecAt({ kind: 'table', shape, seats }, x, y);
-
-  const markerLabel = (k: MarkerKind) => (k === 'walkway' ? t('safeRoute') : k === 'exit' ? t('emergencyExit') : t(k));
-
-  /** Click on a palette item: tables and columns go to the first free spot nearest the view centre. */
-  const addPreset = (sp: Spec) => {
-    const l = layoutRef.current;
-    const c = viewCenter();
-    let best = { x: c.x, y: c.y };
-    if (sp.kind === 'table' || sp.kind === 'column') {
-      const probe = makeElement(sp, 0, 0);
-      search: for (let ring = 0; ring <= 8; ring++) {
-        for (let i = -ring; i <= ring; i++) {
-          for (let j = -ring; j <= ring; j++) {
-            if (Math.max(Math.abs(i), Math.abs(j)) !== ring) continue;
-            const trial = { ...probe, x: c.x + i * 1.5, y: c.y + j * 1.5 };
-            if (!findIssues([...l.elements, trial], l.settings).some((is) => is.a === trial.id || is.b === trial.id)) {
-              best = { x: trial.x, y: trial.y };
-              break search;
-            }
-          }
-        }
-      }
-    } else {
-      const nudge = (l.elements.length % 5) * 0.5;
-      best = { x: c.x + nudge, y: c.y + nudge };
-    }
-    addSpecAt(sp, best.x, best.y);
-  };
-
+  const {
+    markerLabel,
+    addSpecAt,
+    addTableAt,
+    addPreset,
+    removeSelected,
+    copySelected,
+    pasteClipboard,
+    duplicateSelected,
+    rotateSelected,
+    emptyTable,
+  } = useElementActions({
+    t,
+    langRef,
+    layoutRef,
+    selectionRef,
+    lockedRef,
+    lockMsgRef,
+    commit,
+    setSelection,
+    setSelectedId,
+    setToast,
+    setPendingDelete,
+    snapV,
+    bumpUsage,
+    viewCenter,
+  });
   const selected = layout.elements.find((e) => e.id === selectedId) ?? null;
-
-  const removeSelected = useCallback(() => {
-    if (lockedRef.current) {
-      setToast(lockMsgRef.current);
-      return;
-    }
-    const l = layoutRef.current;
-    const ids = new Set(selectionRef.current);
-    if (ids.size === 0) return;
-    const run = () => {
-      const cur = layoutRef.current;
-      commit({
-        ...cur,
-        elements: cur.elements.filter((e) => !ids.has(e.id)),
-        guests: cur.guests.map((g) => (g.tableId && ids.has(g.tableId) ? { ...g, tableId: null, seat: null } : g)),
-      });
-      setSelection([]);
-    };
-    const tableIds = l.elements.filter((e) => e.kind === 'table' && ids.has(e.id)).map((e) => e.id);
-    if (tableIds.length === 0) return run(); // plain shapes: Undo is enough
-    const seated = l.guests.filter((g) => g.tableId && tableIds.includes(g.tableId)).length;
-    setPendingDelete({
-      text: STRINGS[langRef.current].confirmRemoveTables
-        .replace('{n}', String(tableIds.length))
-        .replace('{k}', String(seated)),
-      run,
-    });
-  }, [commit]);
-
-  /** Adds copies of the given elements, shifted; tables get the next table numbers and no guests. */
-  const pasteElements = (src: Element[], shift: number) => {
-    if (lockedRef.current) {
-      setToast(lockMsgRef.current);
-      return;
-    }
-    const l = layoutRef.current;
-    let n = l.elements.filter((e) => e.kind === 'table').length;
-    const made: Element[] = [];
-    for (const e of src) {
-      const copy = { ...e, id: uid(), x: round2(e.x + shift), y: round2(e.y + shift) } as Element;
-      if (copy.kind === 'table') {
-        n += 1;
-        copy.label = `${t('table')} ${n}`;
-        bumpUsage(copy.shape, copy.seats);
-      }
-      made.push(copy);
-    }
-    if (made.length === 0 || l.elements.length + made.length > LIMITS.maxElements) return;
-    commit({ ...l, elements: [...l.elements, ...made] });
-    setSelection(made.map((e) => e.id));
-  };
-  const clipboard = useRef<{ els: Element[]; pastes: number }>({ els: [], pastes: 0 });
-  const selectedElements = () => {
-    const ids = new Set(selectionRef.current);
-    return layoutRef.current.elements.filter((e) => ids.has(e.id));
-  };
-  const copySelected = () => {
-    const els = selectedElements();
-    if (els.length === 0) return;
-    clipboard.current = { els: els.map((e) => ({ ...e })), pastes: 0 };
-  };
-  const pasteClipboard = () => {
-    const c = clipboard.current;
-    if (c.els.length === 0) return;
-    c.pastes += 1;
-    pasteElements(c.els, 0.8 * c.pastes);
-  };
-  const duplicateSelected = () => pasteElements(selectedElements(), 0.8);
-
-  /** Quarter turn; a group turns around its own centre so the arrangement is kept. */
-  const rotateSelected = () => {
-    if (lockedRef.current) {
-      setToast(lockMsgRef.current);
-      return;
-    }
-    const l = layoutRef.current;
-    const ids = new Set(selectionRef.current);
-    const picked = l.elements.filter((e) => ids.has(e.id));
-    if (picked.length === 0) return;
-    const cx = picked.reduce((a, e) => a + e.x, 0) / picked.length;
-    const cy = picked.reduce((a, e) => a + e.y, 0) / picked.length;
-    const turn = (r: number) => {
-      let v = Math.round(r + 90);
-      if (v > 180) v -= 360;
-      return v;
-    };
-    commit({
-      ...l,
-      elements: l.elements.map((e) =>
-        !ids.has(e.id)
-          ? e
-          : ({
-              ...e,
-              rotation: turn(e.rotation),
-              ...(picked.length > 1 ? { x: round2(cx - (e.y - cy)), y: round2(cy + (e.x - cx)) } : {}),
-            } as Element),
-      ),
-    });
-  };
-
-  const emptyTable = (tableId: string) => {
-    const l = layoutRef.current;
-    commit({ ...l, guests: l.guests.map((g) => (g.tableId === tableId ? { ...g, tableId: null, seat: null } : g)) });
-  };
 
   const selectElement = (id: string, toggle: boolean) => {
     setMenu(null);
@@ -666,103 +486,31 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     setMenu({ x: cx, y: cy, wx: w.x, wy: w.y, target });
   };
 
-  const longPress = useRef<{ timer: number; x: number; y: number; ready?: boolean } | null>(null);
-  /** When a finger last touched the canvas. Android fires its own long-press "contextmenu" (sometimes as a plain mouse event); it must never open the menu. */
-  const lastTouchAt = useRef(0);
-  const cancelLongPress = () => {
-    if (longPress.current) window.clearTimeout(longPress.current.timer);
-    longPress.current = null;
-  };
+  const { handlers: pressHandlers, cancel: cancelLongPress, lastTouchAt } = useLongPress(wrapRef, stageRef, openMenu);
 
-  const menuItems = (m: MenuState): MenuItem[] => {
-    const l = layoutRef.current;
-    if (m.target.kind === 'chair') {
-      const { tableId, seat } = m.target;
-      const occ = l.guests.find((g) => g.tableId === tableId && g.seat === seat);
-      const party = occ
-        ? inviteDrafts(l.guests).find((d) => d.guestId === occ.id || d.memberIds.includes(occ.id))
-        : undefined;
-      const partyIds = party
-        ? [party.guestId, ...party.memberIds].filter((id) => l.guests.some((g) => g.id === id && g.tableId))
-        : [];
-      return [
-        {
-          label: occ ? t('changeGuest') : t('seatGuestHere'),
-          onClick: () => setPicker({ tableId, seat, x: m.x, y: m.y }),
-        },
-        ...(occ ? [{ label: `${t('emptyChair')} (${occ.name})`, onClick: () => emptyChair(occ.id) }] : []),
-        ...(partyIds.length > 1
-          ? [
-              {
-                label: `${t('selectParty')} (${partyIds.length})`,
-                onClick: () => {
-                  setPeopleSel(partyIds);
-                  setPeopleTool(true);
-                  setSelectTool(false);
-                  setToast(t('partySelected'));
-                },
-              },
-            ]
-          : []),
-      ];
-    }
-    if (m.target.kind === 'element') {
-      const sel = selectionRef.current;
-      const many = sel.length > 1;
-      const only = !many ? l.elements.find((e) => e.id === sel[0]) : undefined;
-      const items: MenuItem[] = [
-        {
-          label: many
-            ? `${t('duplicate')} (${sel.length})`
-            : only?.kind === 'table'
-              ? `${t('copyTable')} (${only.seats})`
-              : t('duplicate'),
-          onClick: duplicateSelected,
-        },
-        { label: t('rotate90'), onClick: rotateSelected },
-      ];
-      const tablesSel = sel
-        .map((id) => l.elements.find((e) => e.id === id))
-        .filter((e): e is TableEl => !!e && e.kind === 'table');
-      if (tablesSel.length > 0) {
-        const toRect = tablesSel.some((x) => x.shape === 'round');
-        items.push({
-          label: toRect ? t('makeRect') : t('makeRound'),
-          onClick: () =>
-            setShape(
-              tablesSel.map((x) => x.id),
-              toRect ? 'rect' : 'round',
-            ),
-        });
-      }
-      if (only && only.kind === 'table' && l.guests.some((g) => g.tableId === only.id)) {
-        items.push({ label: t('emptyTable'), onClick: () => emptyTable(only.id) });
-      }
-      items.push('sep', {
-        label: many ? `${t('remove')} (${sel.length})` : t('remove'),
-        danger: true,
-        onClick: removeSelected,
-      });
-      return items;
-    }
-    const at = (make: (x: number, y: number) => Element) => () => {
-      if (l.elements.length >= LIMITS.maxElements) return;
-      const el = make(snapV(m.wx), snapV(m.wy));
-      commit({ ...l, elements: [...l.elements, el] });
-      setSelectedId(el.id);
-    };
-    return [
-      { label: `+ ${t('roundTable')} (${seatsToAdd})`, onClick: () => addTableAt('round', seatsToAdd, m.wx, m.wy) },
-      { label: `+ ${t('rectTable')} (${seatsToAdd})`, onClick: () => addTableAt('rect', seatsToAdd, m.wx, m.wy) },
-      { label: `+ ${t('roundColumn')}`, onClick: at((x, y) => ({ ...newColumn(x, y, 'circle'), label: t('column') })) },
-      {
-        label: `+ ${t('squareColumn')}`,
-        onClick: at((x, y) => ({ ...newColumn(x, y, 'square'), label: t('column') })),
-      },
-      'sep',
-      { label: t('selectAll'), disabled: l.elements.length === 0, onClick: selectAll },
-    ];
-  };
+  const menuItems = (m: MenuState): MenuItem[] =>
+    buildMenuItems(m, {
+      t,
+      layout: layoutRef.current,
+      selection: selectionRef.current,
+      seatsToAdd,
+      snapV,
+      commit,
+      setSelectedId,
+      setPicker,
+      setPeopleSel,
+      setPeopleTool,
+      setSelectTool,
+      setToast,
+      emptyChair,
+      emptyTable,
+      duplicateSelected,
+      rotateSelected,
+      setShape,
+      removeSelected,
+      addTableAt,
+      selectAll,
+    });
 
   /** Copies the selected table (same shape, chairs and angle, no guests) in a row beside it. */
   const copyTable = () => {
@@ -785,24 +533,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     setSelectedId(made[made.length - 1].id);
   };
 
-  const removeOne = (id: string) => {
-    const run = () => {
-      const l = layoutRef.current;
-      commit({
-        ...l,
-        elements: l.elements.filter((e) => e.id !== id),
-        guests: l.guests.map((g) => (g.tableId === id ? { ...g, tableId: null, seat: null } : g)),
-      });
-      setSelection((cur) => cur.filter((x) => x !== id));
-    };
-    const seated = layoutRef.current.guests.filter((g) => g.tableId === id).length;
-    setPendingDelete({ text: t('confirmRemoveTables').replace('{n}', '1').replace('{k}', String(seated)), run });
-  };
-  const setAllSeats = (seats: number) => {
-    const l = layoutRef.current;
-    const elements = l.elements.map((e) => (e.kind === 'table' ? { ...e, seats } : e));
-    commit({ ...l, elements, guests: normalizeSeats(elements, l.guests) });
-  };
   /** Zoom (moderately) onto a guest's chair and select their table. */
   const locateGuestId = (guestId: string): boolean => {
     const l = layoutRef.current;
@@ -827,51 +557,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       });
   };
 
-  const pickGuest = (guestId: string) => {
-    if (!picker) return;
-    const l = layoutRef.current;
-    commit({ ...l, guests: seatGuest(l.guests, guestId, picker.tableId, picker.seat) });
-    setSelectedId(picker.tableId);
-    setPicker(null);
-  };
-  const addAndSeat = (name: string) => {
-    if (!picker) return;
-    const l = layoutRef.current;
-    const g = newGuest(name.slice(0, LIMITS.nameMax), '', null, false);
-    commit({ ...l, guests: seatGuest([...l.guests, g], g.id, picker.tableId, picker.seat) });
-    setSelectedId(picker.tableId);
-    setPicker(null);
-  };
-  const editGuest = (id: string, patch: Partial<Guest>) => {
-    const l = layoutRef.current;
-    commit(
-      {
-        ...l,
-        guests: l.guests.map((g) =>
-          g.id === id
-            ? {
-                ...g,
-                ...patch,
-                name: (patch.name ?? g.name).slice(0, LIMITS.nameMax),
-                group: (patch.group ?? g.group).slice(0, LIMITS.nameMax),
-              }
-            : g,
-        ),
-      },
-      `guest:${id}`,
-    );
-  };
-  const removeGuestById = (id: string) => {
-    const name = layoutRef.current.guests.find((g) => g.id === id)?.name ?? '';
-    setPicker(null);
-    setPendingDelete({
-      text: t('confirmRemoveGuest').replace('{name}', name),
-      run: () => {
-        const l = layoutRef.current;
-        commit({ ...l, guests: l.guests.filter((g) => g.id !== id) });
-      },
-    });
-  };
   const [guestEdit, setGuestEdit] = useState<{ id: string; x: number; y: number } | null>(null);
   /** Double-click on an element: select it and show its properties in the side panel. */
   const openProps = (id: string) => {
@@ -883,297 +568,66 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       (box?.querySelector('input[type=text]') as HTMLInputElement | null)?.focus({ preventScroll: true });
     }, 60);
   };
-  /** Turn the given tables round or rectangular; chairs and guests stay with them. */
-  const setShape = (ids: string[], shape: 'round' | 'rect') => {
-    const l = layoutRef.current;
-    commit({
-      ...l,
-      elements: l.elements.map((e) =>
-        e.kind === 'table' && ids.includes(e.id)
-          ? ({ ...e, shape, ...(shape === 'round' ? { half: undefined } : {}) } as Element)
-          : e,
-      ),
-    });
-  };
-  const emptyChair = (guestId: string) => {
-    const l = layoutRef.current;
-    commit({ ...l, guests: seatGuest(l.guests, guestId, null, null) });
-    setPicker(null);
-  };
-
-  const changeSeats = (id: string, seats: number) => {
-    const l = layoutRef.current;
-    const elements = l.elements.map((e) => (e.id === id ? ({ ...e, seats } as Element) : e));
-    commit({ ...l, elements, guests: normalizeSeats(elements, l.guests) }, `${id}:seats`);
-  };
-
-  /** Which table and chair a drop at this world position means, if any. */
-  const resolveDrop = (wx: number, wy: number, ignoreId?: string) => {
-    const l = layoutRef.current;
-    const c = nearestChair(l.elements, l.settings, wx, wy, 0.6);
-    if (c) return { tableId: c.tableId, seat: c.seat as number | null };
-    const tb = tableAt(l.elements, l.settings, wx, wy);
-    if (tb) return { tableId: tb.id, seat: firstFreeSeat(tb, l.guests, ignoreId) };
-    return null;
-  };
-
-  const idsOfGroup = (group: string) =>
-    layoutRef.current.guests.filter((g) => g.group === group && !g.tableId).map((g) => g.id);
-
-  /** Seat several guests at the table (or chair) under a drop point, filling chairs in order. */
-  const dropMany = (ids: string[], wx: number, wy: number) => {
-    const l = layoutRef.current;
-    const r = resolveDrop(wx, wy);
-    if (!r || ids.length === 0) return;
-    const res = seatMany(l.elements, l.settings, l.guests, ids, r.tableId, r.seat);
-    if (res.placed > 0) {
-      commit({ ...l, guests: res.guests });
-      setSelectedId(r.tableId);
-    }
-    setToast(
-      res.left > 0 ? `${res.placed} ${t('seatedN')} · ${res.left} ${t('didNotFit')}` : `${res.placed} ${t('seatedN')}`,
-    );
-  };
-
-  const dropGuest = (guestId: string, wx: number, wy: number) => {
-    const sel = peopleSelRef.current;
-    if (sel.length > 1 && sel.includes(guestId)) {
-      dropMany([guestId, ...sel.filter((x) => x !== guestId)], wx, wy);
-      setPeopleSel([]);
-      return;
-    }
-    const l = layoutRef.current;
-    const me = l.guests.find((g) => g.id === guestId);
-    const r = resolveDrop(wx, wy, guestId);
-    if (!me || !r) return;
-    if (me.tableId === r.tableId && me.seat === r.seat) return; // dropped back where it was
-    commit({ ...l, guests: seatGuest(l.guests, guestId, r.tableId, r.seat) });
-    setSelectedId(r.tableId);
-  };
+  const {
+    removeOne,
+    setAllSeats,
+    pickGuest,
+    addAndSeat,
+    editGuest,
+    removeGuestById,
+    setShape,
+    emptyChair,
+    changeSeats,
+    resolveDrop,
+    idsOfGroup,
+    dropMany,
+    dropGuest,
+  } = useSeatingActions({
+    t,
+    layoutRef,
+    peopleSelRef,
+    commit,
+    picker,
+    setPicker,
+    setSelection,
+    setSelectedId,
+    setPeopleSel,
+    setToast,
+    setPendingDelete,
+  });
 
   const worldFromClient = (cx: number, cy: number) => {
     const r = wrapRef.current?.getBoundingClientRect();
     return { x: (cx - (r?.left ?? 0) - view.x) / view.scale, y: (cy - (r?.top ?? 0) - view.y) / view.scale };
   };
 
-  useEffect(() => {
-    if (!addOpen) return;
-    const down = (e: Event) => {
-      const n = e.target as Node;
-      if (addRef.current?.contains(n) || addBtnRef.current?.contains(n)) return;
-      setAddOpen(false);
-    };
-    const gone = () => {
-      setDragHide(false);
-      setAddOpen(false);
-    };
-    const tdrag = (e: Event) => {
-      const ph = (e as CustomEvent).detail;
-      if (ph === 'start') setDragHide(true);
-      else gone();
-    };
-    document.addEventListener('pointerdown', down, true);
-    window.addEventListener('dragend', gone);
-    window.addEventListener('drop', gone);
-    window.addEventListener('seat-touchdrag', tdrag);
-    return () => {
-      document.removeEventListener('pointerdown', down, true);
-      window.removeEventListener('dragend', gone);
-      window.removeEventListener('drop', gone);
-      window.removeEventListener('seat-touchdrag', tdrag);
-    };
-  }, [addOpen]);
+  const { dropHint, presetOver, dropHandlers, onTouchDrop } = useHallDrop({
+    worldFromClient,
+    resolveDrop,
+    addSpecAt,
+    dropGuest,
+    dropMany,
+    idsOfGroup,
+    clearPeopleSel: () => setPeopleSel([]),
+  });
+  useTouchDrag(wrapRef, onTouchDrop, () => setMenu(null));
 
-  const touchDrop = useRef<(p: TouchPayload, x: number, y: number, over: boolean, final: boolean) => void>(() => {});
-  touchDrop.current = (p, x, y, over, final) => {
-    const w = worldFromClient(x, y);
-    if (p.kind === 'preset') {
-      setPresetOver(over && !final);
-      if (final && over) {
-        const sp = parseSpec(p.value);
-        if (sp) addSpecAt(sp, w.x, w.y);
-      }
-    } else {
-      const ids =
-        p.kind === 'group' ? idsOfGroup(p.value) : p.kind === 'guests' ? p.value.split(',').filter(Boolean) : [p.value];
-      if (final) {
-        setDropHint(null);
-        if (!over) return;
-        if (ids.length === 1) dropGuest(ids[0], w.x, w.y);
-        else {
-          dropMany(ids, w.x, w.y);
-          if (p.kind === 'guests') setPeopleSel([]);
-        }
-      } else {
-        const r = over ? resolveDrop(w.x, w.y) : null;
-        setDropHint((prev) => (prev?.tableId === r?.tableId && prev?.seat === r?.seat ? prev : r));
-      }
-    }
-  };
-  useEffect(() => {
-    let pending: { timer: number; x: number; y: number; el: HTMLElement } | null = null;
-    let active: { p: TouchPayload; ghost: HTMLElement; x: number; y: number } | null = null;
-    const cancelPending = () => {
-      if (pending) window.clearTimeout(pending.timer);
-      pending = null;
-    };
-    const overHall = (x: number, y: number) => {
-      const hit = document.elementFromPoint(x, y);
-      return !!(hit && wrapRef.current?.contains(hit));
-    };
-    const onTouchMove = (e: TouchEvent) => {
-      if (!active) return;
-      e.preventDefault();
-      const t0 = e.touches[0];
-      if (!t0) return;
-      active.x = t0.clientX;
-      active.y = t0.clientY;
-      active.ghost.style.transform = `translate(${t0.clientX}px, ${t0.clientY}px) translate(-50%, -130%)`;
-      touchDrop.current(active.p, t0.clientX, t0.clientY, overHall(t0.clientX, t0.clientY), false);
-    };
-    const end = (cancelled: boolean) => {
-      const a = active;
-      if (!a) return;
-      active = null;
-      document.removeEventListener('touchmove', onTouchMove, true);
-      document.removeEventListener('touchend', onEnd, true);
-      document.removeEventListener('touchcancel', onCancel, true);
-      a.ghost.remove();
-      window.dispatchEvent(new CustomEvent('seat-touchdrag', { detail: 'end' }));
-      touchDrop.current(a.p, a.x, a.y, !cancelled && overHall(a.x, a.y), true);
-      // The finger lifting would otherwise also "click" the tile and add a second copy.
-      const swallow = (ev: Event) => {
-        ev.stopPropagation();
-        ev.preventDefault();
-      };
-      document.addEventListener('click', swallow, { capture: true, once: true });
-      window.setTimeout(() => document.removeEventListener('click', swallow, true), 300);
-    };
-    const onEnd = () => end(false);
-    const onCancel = () => end(true);
-    const activate = (el: HTMLElement, x: number, y: number) => {
-      const p = readPayload(el);
-      if (!p) return;
-      const ghost = document.createElement('div');
-      ghost.className = 'touch-ghost';
-      ghost.textContent = p.label;
-      ghost.style.transform = `translate(${x}px, ${y}px) translate(-50%, -130%)`;
-      document.body.appendChild(ghost);
-      active = { p, ghost, x, y };
+  useEditorKeys({
+    enabled: inHallRef,
+    hasSelection: () => selectionRef.current.length > 0,
+    remove: removeSelected,
+    selectAll,
+    copy: copySelected,
+    paste: pasteClipboard,
+    undo,
+    redo,
+    escape: () => {
+      setPicker(null);
       setMenu(null);
-      window.dispatchEvent(new CustomEvent('seat-touchdrag', { detail: 'start' }));
-      navigator.vibrate?.(15);
-      document.addEventListener('touchmove', onTouchMove, { capture: true, passive: false });
-      document.addEventListener('touchend', onEnd, true);
-      document.addEventListener('touchcancel', onCancel, true);
-    };
-    const onDown = (e: PointerEvent) => {
-      if (e.pointerType !== 'touch') return;
-      const el = (e.target as HTMLElement | null)?.closest?.('[data-tdrag]') as HTMLElement | null;
-      if (!el) return;
-      cancelPending();
-      const x = e.clientX;
-      const y = e.clientY;
-      pending = {
-        x,
-        y,
-        el,
-        timer: window.setTimeout(() => {
-          pending = null;
-          activate(el, x, y);
-        }, 320),
-      };
-    };
-    const onMove = (e: PointerEvent) => {
-      if (pending && Math.hypot(e.clientX - pending.x, e.clientY - pending.y) > 8) cancelPending();
-    };
-    // Android shows its own hold menu (copy / select / "right click") when a finger rests on a person or chip for a moment;
-    // that would pop up over the drag. Block it after any touch, except inside text fields where select and paste are needed.
-    let lastTouch = 0;
-    const markTouch = (e: PointerEvent) => {
-      if (e.pointerType === 'touch') lastTouch = Date.now();
-    };
-    const noNativeMenu = (e: Event) => {
-      const t = e.target as HTMLElement | null;
-      if (t?.closest?.('input, textarea, select, [contenteditable=true]')) return;
-      if (active || pending || Date.now() - lastTouch < 3000) e.preventDefault();
-    };
-    document.addEventListener('pointerdown', markTouch, true);
-    document.addEventListener('contextmenu', noNativeMenu, true);
-    document.addEventListener('pointerdown', onDown, true);
-    document.addEventListener('pointermove', onMove, true);
-    document.addEventListener('pointerup', cancelPending, true);
-    document.addEventListener('pointercancel', cancelPending, true);
-    return () => {
-      cancelPending();
-      active?.ghost.remove();
-      document.removeEventListener('pointerdown', markTouch, true);
-      document.removeEventListener('contextmenu', noNativeMenu, true);
-      document.removeEventListener('pointerdown', onDown, true);
-      document.removeEventListener('pointermove', onMove, true);
-      document.removeEventListener('pointerup', cancelPending, true);
-      document.removeEventListener('pointercancel', cancelPending, true);
-      document.removeEventListener('touchmove', onTouchMove, true);
-    };
-  }, []);
-
-  const isGuestDrag = (e: React.DragEvent) =>
-    Array.from(e.dataTransfer.types).some(
-      (t) => t === 'text/guest-id' || t === 'text/guest-ids' || t === 'text/guest-group',
-    );
-  const isPresetDrag = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes('text/element-preset');
-
-  const copyHandlerRef = useRef({ copy: () => {}, paste: () => {} });
-  copyHandlerRef.current = { copy: copySelected, paste: pasteClipboard };
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!inHallRef.current) return;
-      const tag = (e.target as HTMLElement | null)?.tagName;
-      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
-      const mod = e.ctrlKey || e.metaKey;
-      const k = e.key.toLowerCase();
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectionRef.current.length > 0) {
-        e.preventDefault();
-        removeSelected();
-      } else if (mod && k === 'a') {
-        e.preventDefault();
-        selectAll();
-      } else if (mod && k === 'c' && selectionRef.current.length > 0) {
-        e.preventDefault();
-        copyHandlerRef.current.copy();
-      } else if (mod && k === 'v') {
-        e.preventDefault();
-        copyHandlerRef.current.paste();
-      } else if (mod && k === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        undo();
-      } else if (mod && (k === 'y' || (k === 'z' && e.shiftKey))) {
-        e.preventDefault();
-        redo();
-      } else if (e.key === 'Escape') {
-        setPicker(null);
-        setMenu(null);
-        setMarquee(null);
-        setSelectedId(null);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [removeSelected, undo, redo]);
-
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => e.key === 'Shift' && setShiftHeld(true);
-    const up = (e: KeyboardEvent) => e.key === 'Shift' && setShiftHeld(false);
-    const blur = () => setShiftHeld(false);
-    window.addEventListener('keydown', down);
-    window.addEventListener('keyup', up);
-    window.addEventListener('blur', blur);
-    return () => {
-      window.removeEventListener('keydown', down);
-      window.removeEventListener('keyup', up);
-      window.removeEventListener('blur', blur);
-    };
-  }, []);
+      setMarquee(null);
+      setSelectedId(null);
+    },
+  });
 
   // a box drawn on the canvas ends even if the button is released outside it
   useEffect(() => {
@@ -1315,30 +769,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
 
   const canResize = !!selected && !layoutLocked && !peopleTool && selection.length <= 1;
 
-  const palette: { key: string; label: string; glyph: string; spec: () => Spec }[] = [
-    {
-      key: 'tr',
-      label: t('roundTable'),
-      glyph: 'round',
-      spec: () => ({ kind: 'table', shape: 'round', seats: seatsToAdd }),
-    },
-    {
-      key: 'tc',
-      label: t('rectTable'),
-      glyph: 'rect',
-      spec: () => ({ kind: 'table', shape: 'rect', seats: seatsToAdd }),
-    },
-    { key: 'cc', label: t('roundColumn'), glyph: 'col-round', spec: () => ({ kind: 'column', shape: 'circle' }) },
-    { key: 'cs', label: t('squareColumn'), glyph: 'col-square', spec: () => ({ kind: 'column', shape: 'square' }) },
-    { key: 'zn', label: t('raisedArea'), glyph: 'zone', spec: () => ({ kind: 'zone' }) },
-    ...MARKER_KINDS.map((k) => ({
-      key: `m-${k}`,
-      label: markerLabel(k),
-      glyph: `mk mk-${k}`,
-      spec: (): Spec => ({ kind: 'marker', marker: k }),
-    })),
-  ];
-
   return (
     <div className="app" dir={dirOf(lang)} lang={lang}>
       {tip && (
@@ -1346,52 +776,21 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
           {tip.text}
         </div>
       )}
-      <header className="bar">
-        {leading ?? <h1>{t('appTitle')}</h1>}
-        <nav className="views" role="tablist">
-          {(
-            [
-              ['hall', t('tabHall')],
-              ['guests', t('tabGuests')],
-              ['tables', t('tabTables')],
-            ] as const
-          ).map(([k, label]) => (
-            <button
-              key={k}
-              role="tab"
-              aria-selected={view_ === k}
-              className={view_ === k ? 'on' : ''}
-              onClick={() => setViewTab(k)}
-            >
-              {label}
-              {k === 'guests' && <span className="badge">{layout.guests.length}</span>}
-              {k === 'tables' && <span className="badge">{tables.length}</span>}
-            </button>
-          ))}
-        </nav>
-        <div className="bar-actions">
-          <IconButton icon="undo" label={`${t('undo')} (Ctrl+Z)`} onClick={undo} disabled={past.current.length === 0} />
-          <IconButton
-            icon="redo"
-            label={`${t('redo')} (Ctrl+Y)`}
-            onClick={redo}
-            disabled={future.current.length === 0}
-          />
-          <span className="sep" aria-hidden />
-          <IconButton icon="settings" label={t('appSettings')} onClick={() => setSettingsOpen(true)} />
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json,.json"
-            hidden
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void importFile(f);
-              e.target.value = '';
-            }}
-          />
-        </div>
-      </header>
+      <EditorHeader
+        t={t}
+        leading={leading}
+        view={view_}
+        onView={setViewTab}
+        guestCount={layout.guests.length}
+        tableCount={tables.length}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
+        onSettings={() => setSettingsOpen(true)}
+        fileRef={fileRef}
+        onImportFile={(f) => void importFile(f)}
+      />
 
       {inHall && (
         <QuickTablesBar
@@ -1417,47 +816,17 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       )}
 
       {addOpen && addPos && (
-        <div
-          ref={addRef}
-          className={`addpop${dragHide ? ' drag-hide' : ''}`}
-          role="dialog"
-          aria-label={t('addNew')}
-          style={{ top: addPos.y, [dirOf(lang) === 'rtl' ? 'right' : 'left']: addPos.x }}
-          onKeyDown={(e) => e.key === 'Escape' && setAddOpen(false)}
-        >
-          <NumField
-            label={t('chairs')}
-            value={seatsToAdd}
-            min={LIMITS.seatsMin}
-            max={LIMITS.seatsMax}
-            step={1}
-            int
-            onChange={setSeatsToAdd}
-          />
-          <p className="muted">{t('paletteHint')}</p>
-          <div className="palette">
-            {palette.map((p) => (
-              <button
-                key={p.key}
-                className="tile"
-                draggable={!coarsePointer()}
-                data-tdrag={`preset:${specToString(p.spec())}`}
-                title={`${p.label} — ${t('paletteHint')}`}
-                onDragStart={(e) => {
-                  e.dataTransfer.setData('text/element-preset', specToString(p.spec()));
-                  e.dataTransfer.effectAllowed = 'copy';
-                }}
-                onClick={() => {
-                  addPreset(p.spec());
-                  setAddOpen(false);
-                }}
-              >
-                <span className={`pg ${p.glyph}`} aria-hidden />
-                <span className="tile-label">{p.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        <AddPopover
+          t={t}
+          lang={lang}
+          pos={addPos}
+          seats={seatsToAdd}
+          onSeats={setSeatsToAdd}
+          markerLabel={markerLabel}
+          anchorRef={addBtnRef}
+          onAdd={addPreset}
+          onClose={() => setAddOpen(false)}
+        />
       )}
 
       {toast && (
@@ -1485,50 +854,28 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
         />
       )}
       {pendingDelete && (
-        <>
-          <div className="picker-backdrop" onMouseDown={() => setPendingDelete(null)} />
-          <div
-            className="import-dialog confirm"
-            role="alertdialog"
-            aria-label={t('remove')}
-            onKeyDown={(e) => e.key === 'Escape' && setPendingDelete(null)}
-          >
-            <p>{pendingDelete.text}</p>
-            <div className="row">
-              <button
-                className="primary danger-fill"
-                onClick={() => {
-                  const r = pendingDelete.run;
-                  setPendingDelete(null);
-                  r();
-                }}
-                autoFocus
-              >
-                {t('remove')}
-              </button>
-              <button onClick={() => setPendingDelete(null)}>{t('importCancel')}</button>
-            </div>
-          </div>
-        </>
+        <ConfirmDialog
+          label={t('remove')}
+          text={pendingDelete.text}
+          confirmLabel={t('remove')}
+          cancelLabel={t('importCancel')}
+          onConfirm={() => {
+            const run = pendingDelete.run;
+            setPendingDelete(null);
+            run();
+          }}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
       {askClear && (
-        <>
-          <div className="picker-backdrop" onMouseDown={() => setAskClear(false)} />
-          <div
-            className="import-dialog confirm"
-            role="alertdialog"
-            aria-label={t('clearAll')}
-            onKeyDown={(e) => e.key === 'Escape' && setAskClear(false)}
-          >
-            <p>{t('confirmClear')}</p>
-            <div className="row">
-              <button className="primary danger-fill" onClick={doClear} autoFocus>
-                {t('clearAll')}
-              </button>
-              <button onClick={() => setAskClear(false)}>{t('importCancel')}</button>
-            </div>
-          </div>
-        </>
+        <ConfirmDialog
+          label={t('clearAll')}
+          text={t('confirmClear')}
+          confirmLabel={t('clearAll')}
+          cancelLabel={t('importCancel')}
+          onConfirm={doClear}
+          onCancel={() => setAskClear(false)}
+        />
       )}
 
       {guestEdit &&
@@ -1575,80 +922,8 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
         <div
           className={`canvas${dropHint || presetOver ? ' drop-ok' : ''}${marqueeMode ? ' select-mode' : ''}`}
           ref={wrapRef}
-          onPointerDown={(e) => {
-            if (e.pointerType !== 'touch') return;
-            lastTouchAt.current = Date.now();
-            cancelLongPress();
-            const { clientX: x, clientY: y } = e;
-            longPress.current = {
-              x,
-              y,
-              timer: window.setTimeout(() => {
-                // Held long enough: the menu opens when the finger lifts, so hold-then-drag never opens it.
-                if (longPress.current) longPress.current.ready = true;
-              }, 550),
-            };
-          }}
-          onPointerMove={(e) => {
-            const lp = longPress.current;
-            if (lp && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > 10) cancelLongPress();
-          }}
-          onPointerUp={(e) => {
-            const lp = longPress.current;
-            cancelLongPress();
-            if (lp?.ready && e.pointerType === 'touch') {
-              const r = wrapRef.current?.getBoundingClientRect();
-              const node = r
-                ? (stageRef.current?.getIntersection({ x: lp.x - r.left, y: lp.y - r.top }) ?? null)
-                : null;
-              openMenu(node, e.clientX, e.clientY);
-            }
-          }}
-          onPointerCancel={cancelLongPress}
-          onDragOver={(e) => {
-            if (isPresetDrag(e)) {
-              e.preventDefault();
-              e.dataTransfer.dropEffect = 'copy';
-              setPresetOver(true);
-              return;
-            }
-            if (!isGuestDrag(e)) return;
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            const w = worldFromClient(e.clientX, e.clientY);
-            const r = resolveDrop(w.x, w.y);
-            setDropHint((prev) => (prev?.tableId === r?.tableId && prev?.seat === r?.seat ? prev : r));
-          }}
-          onDragLeave={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-              setDropHint(null);
-              setPresetOver(false);
-            }
-          }}
-          onDrop={(e) => {
-            if (isPresetDrag(e)) {
-              e.preventDefault();
-              setPresetOver(false);
-              const sp = parseSpec(e.dataTransfer.getData('text/element-preset'));
-              if (sp) {
-                const w = worldFromClient(e.clientX, e.clientY);
-                addSpecAt(sp, w.x, w.y);
-              }
-              return;
-            }
-            if (!isGuestDrag(e)) return;
-            e.preventDefault();
-            const w = worldFromClient(e.clientX, e.clientY);
-            setDropHint(null);
-            const many = e.dataTransfer.getData('text/guest-ids');
-            const group = e.dataTransfer.getData('text/guest-group');
-            if (many) dropMany(many.split(',').filter(Boolean), w.x, w.y);
-            else if (group) dropMany(idsOfGroup(group), w.x, w.y);
-            else {
-              const id = e.dataTransfer.getData('text/guest-id');
-              if (id) dropGuest(id, w.x, w.y);
-            }
-          }}
+          {...pressHandlers}
+          {...dropHandlers}
         >
           <Stage
             ref={stageRef}
@@ -1708,29 +983,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
               setView({ scale: next, x: p.x - mx * next, y: p.y - my * next });
             }}
           >
-            <Layer listening={false}>
-              {gridLines.map((l) => (
-                <Line
-                  key={l.key}
-                  points={l.points}
-                  stroke={theme === 'dark' ? (l.major ? '#3f424a' : '#2b2d33') : l.major ? '#cfc8b8' : '#e6e1d4'}
-                  strokeWidth={l.major ? 1.25 : 1}
-                  strokeScaleEnabled={false}
-                />
-              ))}
-              <Line
-                points={[0, -0.25, 0, 0.25]}
-                stroke={theme === 'dark' ? '#7d796f' : '#9a9283'}
-                strokeWidth={1}
-                strokeScaleEnabled={false}
-              />
-              <Line
-                points={[-0.25, 0, 0.25, 0]}
-                stroke={theme === 'dark' ? '#7d796f' : '#9a9283'}
-                strokeWidth={1}
-                strokeScaleEnabled={false}
-              />
-            </Layer>
+            <GridLayer lines={gridLines} dark={theme === 'dark'} />
             <Layer key={`${fontTick}-${theme}`}>
               {[...layout.elements]
                 .sort((a, b) => ORDER[a.kind] - ORDER[b.kind])
@@ -1803,103 +1056,49 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
                     setToast(lockMsgRef.current);
                     return;
                   }
-                  const clampSize = (v: number) => Math.min(LIMITS.sizeMax, Math.max(LIMITS.sizeMin, round2(v)));
-                  const l = layoutRef.current;
+                  const patch = resizePatch(el, { sx, sy, x: nx, y: ny, rotation: r }, snapGrid);
                   if (el.kind === 'table') {
-                    const seats = Math.min(LIMITS.seatsMax, Math.max(LIMITS.seatsMin, Math.round(el.seats * sx)));
-                    const elements = l.elements.map((x) =>
-                      x.id === id ? ({ ...x, seats, x: round2(nx), y: round2(ny), rotation: r } as Element) : x,
-                    );
+                    const l = layoutRef.current;
+                    const elements = l.elements.map((x) => (x.id === id ? ({ ...x, ...patch } as Element) : x));
                     commit({ ...l, elements, guests: normalizeSeats(elements, l.guests) });
-                  } else if (el.kind === 'column') {
-                    patchEl(id, { size: clampSize(el.size * sx), x: round2(nx), y: round2(ny), rotation: r });
-                  } else {
-                    let w = clampSize(el.w * sx);
-                    let h = clampSize(el.h * sy);
-                    let x = nx;
-                    let y = ny;
-                    if (snapGrid && r % 90 === 0) {
-                      // put the dragged edges on the grid lines
-                      const swap = Math.abs(r) % 180 === 90;
-                      const bw = swap ? h : w;
-                      const bh = swap ? w : h;
-                      const left = snap(nx - bw / 2, 1);
-                      const right = Math.max(left + 1, snap(nx + bw / 2, 1));
-                      const top = snap(ny - bh / 2, 1);
-                      const bottom = Math.max(top + 1, snap(ny + bh / 2, 1));
-                      x = (left + right) / 2;
-                      y = (top + bottom) / 2;
-                      if (swap) {
-                        h = right - left;
-                        w = bottom - top;
-                      } else {
-                        w = right - left;
-                        h = bottom - top;
-                      }
-                    }
-                    patchEl(id, { w: clampSize(w), h: clampSize(h), x: round2(x), y: round2(y), rotation: r });
-                  }
+                  } else patchEl(id, patch);
                 }}
               />
             </Layer>
           </Stage>
-          {peopleSel.length > 0 && (
-            <div className="pickbar" role="status">
-              <b>{peopleSel.length}</b> {t('peopleSelected')}
-              <button
-                onClick={() => {
-                  const l = layoutRef.current;
-                  commit({
-                    ...l,
-                    guests: l.guests.map((g) => (peopleSel.includes(g.id) ? { ...g, tableId: null, seat: null } : g)),
-                  });
-                  setPeopleSel([]);
-                }}
-              >
-                {t('unseatSelected')}
-              </button>
-              <button onClick={() => setPeopleSel([])}>{t('clearSelection')}</button>
-            </div>
-          )}
-          <div className="scalebar" dir="ltr" aria-hidden>
-            <div style={{ width: view.scale }} />
-            <span>1 m</span>
-          </div>
-          <div className="hint">{t('hint')}</div>
-          {marquee && (
-            <div
-              className="marquee"
-              style={{
-                left: Math.min(marquee.x0, marquee.x1),
-                top: Math.min(marquee.y0, marquee.y1),
-                width: Math.abs(marquee.x1 - marquee.x0),
-                height: Math.abs(marquee.y1 - marquee.y0),
-              }}
-            />
-          )}
-          <div className="fit">
-            <IconButton icon="fit" label={t('fit')} onClick={fit} />
-            <IconButton icon="grid" label={t('snapGrid')} pressed={snapGrid} onClick={toggleSnap} />
-            <IconButton icon="lock" label={t('lockLayout')} pressed={layoutLocked} onClick={toggleLock} />
-            <IconButton
-              icon="select"
-              label={t('selectTool')}
-              pressed={selectTool}
-              onClick={() => {
-                setSelectTool(!selectTool);
-                setPeopleTool(false);
-              }}
-            />
-            <IconButton
-              icon="users"
-              label={t('peopleTool')}
-              pressed={peopleTool}
-              onClick={() => {
-                setPeopleTool(!peopleTool);
-                setSelectTool(false);
-              }}
-            />
-          </div>
+          <PickBar
+            t={t}
+            count={peopleSel.length}
+            onUnseat={() => {
+              const l = layoutRef.current;
+              commit({
+                ...l,
+                guests: l.guests.map((g) => (peopleSel.includes(g.id) ? { ...g, tableId: null, seat: null } : g)),
+              });
+              setPeopleSel([]);
+            }}
+            onClear={() => setPeopleSel([])}
+          />
+          <ScaleBar t={t} scale={view.scale} />
+          <MarqueeBox box={marquee} />
+          <CanvasTools
+            t={t}
+            snapGrid={snapGrid}
+            locked={layoutLocked}
+            selectTool={selectTool}
+            peopleTool={peopleTool}
+            onFit={fit}
+            onSnap={toggleSnap}
+            onLock={toggleLock}
+            onSelectTool={() => {
+              setSelectTool(!selectTool);
+              setPeopleTool(false);
+            }}
+            onPeopleTool={() => {
+              setPeopleTool(!peopleTool);
+              setSelectTool(false);
+            }}
+          />
         </div>
 
         {inHall && (
