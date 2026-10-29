@@ -83,7 +83,7 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
 }
 
 /** `score` is the exact walking distance on the grid (used to compare chairs); `route` is the tidied line for drawing. */
-type Walk = { route: Pt[]; start: Pt; score: number } | null;
+export type Walk = { route: Pt[]; start: Pt; score: number } | null;
 
 /** Routes to several chairs at once: the hall grid is built a single time and every search reuses it. */
 export function findRoutes(layout: Layout, chairs: Pt[]): Walk[] {
@@ -417,6 +417,41 @@ function dropJogs(route: Pt[]): Pt[] {
 /** Chairs whose walks differ by less than this many meters count as equally far. */
 const TIE = 0.5;
 
+const before = (a: Pt, b: Pt) => a.x < b.x - 1e-9 || (Math.abs(a.x - b.x) <= 1e-9 && a.y < b.y - 1e-9);
+
+/**
+ * Which of a group's chairs the line should lead to (an index into `chairs`, or -1 if none has a route).
+ * The shortest walk wins; chairs within `TIE` meters of it count as equally far, and among those the one nearest where
+ * the line makes its last bend wins, i.e. the first chair you reach. Equal cases are settled by position, never by
+ * the order the guests happen to be listed in.
+ */
+export function pickChair(chairs: Pt[], routes: Walk[]): number {
+  let best = -1;
+  chairs.forEach((c, n) => {
+    const r = routes[n];
+    if (!r) return;
+    const cur = best >= 0 ? routes[best]! : null;
+    if (!cur || r.score < cur.score - 1e-9 || (Math.abs(r.score - cur.score) <= 1e-9 && before(c, chairs[best])))
+      best = n;
+  });
+  if (best < 0) return -1;
+  const limit = routes[best]!.score + TIE;
+  const line = routes[best]!.route;
+  const bend = line[Math.max(0, line.length - 3)];
+  let pick = best,
+    near = Infinity;
+  chairs.forEach((c, n) => {
+    const r = routes[n];
+    if (!r || r.score > limit) return;
+    const d = Math.hypot(c.x - bend.x, c.y - bend.y);
+    if (d < near - 1e-9 || (Math.abs(d - near) <= 1e-9 && before(c, chairs[pick]))) {
+      near = d;
+      pick = n;
+    }
+  });
+  return pick;
+}
+
 /** What the "where do I sit" map should highlight for the people on one invite. */
 export function buildFocus(layout: Layout, guestIds: string[]): Focus | null {
   const byId = new Map(layout.guests.map((g) => [g.id, g]));
@@ -435,7 +470,6 @@ export function buildFocus(layout: Layout, guestIds: string[]): Focus | null {
   options.sort((a, b) => nearEntrance(a.chair) - nearEntrance(b.chair));
   let pick: { g: typeof head; chair: Pt | null } = options[0] ?? { g: head, chair: null };
   let found: ReturnType<typeof findRoute> = null;
-  let bestLen = Infinity;
   const tried = options.slice(0, 12);
   let routes: ReturnType<typeof findRoutes> = [];
   try {
@@ -446,30 +480,10 @@ export function buildFocus(layout: Layout, guestIds: string[]): Focus | null {
   } catch {
     /* a drawing problem must never break the page */
   }
-  let cur = -1;
-  tried.forEach((_, n) => {
-    const r = routes[n];
-    if (r && r.score < bestLen) {
-      bestLen = r.score;
-      cur = n;
-    }
-  });
-  // Chairs a stride apart are a tie on walking distance. Then the one nearest where the line makes its last bend
-  // wins, i.e. the first chair you reach, instead of one further along the table.
-  if (cur >= 0) {
-    const line = routes[cur]!.route;
-    const bend = line[Math.max(0, line.length - 3)];
-    let near = Infinity;
-    tried.forEach((o, n) => {
-      const r = routes[n];
-      if (!r || r.score > bestLen + TIE) return;
-      const d = Math.hypot(o.chair.x - bend.x, o.chair.y - bend.y);
-      if (d < near) {
-        near = d;
-        cur = n;
-      }
-    });
-  }
+  const cur = pickChair(
+    tried.map((o) => o.chair),
+    routes,
+  );
   if (cur >= 0) {
     found = routes[cur];
     pick = tried[cur];
