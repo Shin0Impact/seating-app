@@ -7,7 +7,7 @@ type View = { k: number; x: number; y: number };
 const MAX = 10;
 
 /** The full-screen surface: pinch follows the fingers exactly, drag moves, wheel zooms toward the pointer. */
-function Surface({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+function Surface({ children, label, onClose }: { children: React.ReactNode; label: string; onClose: () => void }) {
   const s = useS();
   const box = useRef<HTMLDivElement>(null);
   const [v, setV] = useState<View>({ k: 1, x: 0, y: 0 });
@@ -79,7 +79,7 @@ function Surface({ children, onClose }: { children: React.ReactNode; onClose: ()
   };
 
   return (
-    <div className="zp-full" role="dialog" aria-modal="true" aria-label={s('zoomIn')}>
+    <div className="zp-full" role="dialog" aria-modal="true" aria-label={label}>
       <div
         className="zp-surface"
         ref={box}
@@ -107,6 +107,7 @@ function Surface({ children, onClose }: { children: React.ReactNode; onClose: ()
       >
         <div className="zp-inner" style={{ transform: `translate(${v.x}px, ${v.y}px) scale(${v.k})` }}>{children}</div>
       </div>
+      <div className="zp-title">{label}</div>
       <div className="zp-btns">
         <button type="button" aria-label={s('closeMap')} onClick={onClose}>✕</button>
         <button type="button" aria-label={s('zoomIn')} onClick={() => buttonZoom(1.6)}>+</button>
@@ -116,20 +117,20 @@ function Surface({ children, onClose }: { children: React.ReactNode; onClose: ()
   );
 }
 
-/** A small map you can tap: it opens full screen where you can pinch, drag and scroll-zoom. */
-export default function ZoomPan({ children }: { children: React.ReactNode }) {
-  const s = useS();
+/** A button showing where your table is; it opens the hall full screen to pinch, drag and scroll-zoom. */
+export default function ZoomPan({ children, label }: { children: React.ReactNode; label: string }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const close = useCallback(() => setOpen(false), []);
   return (
     <>
-      <div className="zoompan" role="button" tabIndex={0} aria-label={s('openMapFull')} onClick={() => setOpen(true)} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setOpen(true)}>
-        {children}
-        <span className="zp-hint" aria-hidden>⤢ {s('openMapFull')}</span>
-      </div>
-      {open && mounted && createPortal(<Surface onClose={close}>{children}</Surface>, document.body)}
+      <button type="button" className="btn zp-open" onClick={() => setOpen(true)}>
+        <svg viewBox="0 0 24 24" aria-hidden><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+        <span>{label}</span>
+        <span aria-hidden>⤢</span>
+      </button>
+      {open && mounted && createPortal(<Surface label={label} onClose={close}>{children}</Surface>, document.body)}
     </>
   );
 }
