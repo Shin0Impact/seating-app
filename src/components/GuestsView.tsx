@@ -242,6 +242,7 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
                   </div>
                   <div className="guest-bottom">
                     <input
+                      className="g-group"
                       type="text"
                       list="group-list"
                       maxLength={LIMITS.groupMax}
@@ -251,6 +252,7 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
                       onChange={(e) => update(g.id, { group: e.target.value }, 'group')}
                     />
                     <select
+                      className="g-table"
                       value={g.tableId ?? ''}
                       aria-label={t('table')}
                       onChange={(e) => {
@@ -264,6 +266,7 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
                     </select>
                     {tb ? (
                       <select
+                        className="g-chair"
                         value={g.seat ?? ''}
                         aria-label={t('chair')}
                         title={t('chair')}
@@ -281,12 +284,14 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
                         })}
                       </select>
                     ) : (
-                      <span />
+                      <span className="g-chair" />
                     )}
                   </div>
-                  {onLocate && (g.tableId ? <IconButton icon="pin" label={t('showOnMap')} onClick={() => onLocate(g)} /> : <span />)}
-                  <IconButton icon="access" label={t('stepFree')} pressed={g.stepFree} onClick={() => update(g.id, { stepFree: !g.stepFree }, 'step')} />
-                  <IconButton icon="trash" label={t('removeGuest')} danger onClick={() => (onAskRemove ? onAskRemove(g.id) : remove(g.id))} />
+                  <div className="guest-acts">
+                    {onLocate && (g.tableId ? <IconButton icon="pin" label={t('showOnMap')} onClick={() => onLocate(g)} /> : <span className="acts-gap" />)}
+                    <IconButton icon="access" label={t('stepFree')} pressed={g.stepFree} onClick={() => update(g.id, { stepFree: !g.stepFree }, 'step')} />
+                    <IconButton icon="trash" label={t('removeGuest')} danger onClick={() => (onAskRemove ? onAskRemove(g.id) : remove(g.id))} />
+                  </div>
                 </li>
               );
             })}
