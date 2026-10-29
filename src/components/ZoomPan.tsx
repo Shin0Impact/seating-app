@@ -25,7 +25,7 @@ function Surface({
 }) {
   const s = useS();
   const box = useRef<HTMLDivElement>(null);
-  const m = useMemo(() => (typeof map === 'function' ? map() : map), [map]);
+  const m = useMemo(() => (typeof map === 'function' ? map() : map), []); // eslint-disable-line react-hooks/exhaustive-deps -- worked out once, when the map opens
   const inner = useRef<HTMLDivElement>(null);
   const canvas = useRef<HallCanvasApi>(null);
   const [perf] = useState(() => new URLSearchParams(window.location.search).has('perf'));
