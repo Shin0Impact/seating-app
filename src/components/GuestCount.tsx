@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useS } from './LangProvider';
+import SubmitButton from './SubmitButton';
 
 /**
  * "Registered guests: N" with a Change button next to it. In the first answer it only sets the number sent with the
@@ -48,7 +49,7 @@ export default function GuestCount({ count, pending, token, action, waitingExtra
         <form action={action} className="gc-edit">
           <input type="hidden" name="token" value={token} />
           {field}
-          <button className="btn primary small">{s('save')}</button>
+          <SubmitButton className="btn primary small">{s('save')}</SubmitButton>
           <button type="button" className="btn small" onClick={() => { setOpen(false); setValue(count); }}>{s('cancel')}</button>
         </form>
       )}

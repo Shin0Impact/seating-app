@@ -8,6 +8,7 @@ import SiteSettings from '@/components/SiteSettings';
 import { getS } from '@/lib/lang-server';
 import { localeOf } from '@/lib/site-i18n';
 import { Logo } from '@/components/Site';
+import SubmitButton from '@/components/SubmitButton';
 import GuestCount from '@/components/GuestCount';
 import ZoomPan from '@/components/ZoomPan';
 import ChangeRequestButton from '@/components/ChangeRequestButton';
@@ -30,7 +31,8 @@ async function answer(form: FormData) {
   const n = Number.isFinite(count) ? Math.min(Math.max(count, 1), 70) : 1;
   await supabase.rpc('rsvp_set', { p_token: token, p_status: status, p_count: n });
   // more people than the invitation: the extras wait for the host's approval (the function ignores a count that matches)
-  if (status === 'confirmed') await supabase.rpc('rsvp_change_count', { p_token: token, p_count: n });
+  const party = Number.parseInt(String(form.get('party') ?? '0'), 10);
+  if (status === 'confirmed' && n > (Number.isFinite(party) ? party : 0)) await supabase.rpc('rsvp_change_count', { p_token: token, p_count: n });
   redirect(`/r/${token}`);
 }
 
@@ -146,10 +148,11 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
           <form action={answer} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <input type="hidden" name="token" value={token} />
             <p style={{ margin: 0 }}>{s('willYouCome', { event: inv.event_name })}</p>
+            <input type="hidden" name="party" value={inv.party_size} />
             <GuestCount count={inv.party_size} pending token={token} />
             <div className="row">
-              <button name="status" value="confirmed" className="btn primary">{s('yesWeCome')}</button>
-              <button name="status" value="declined" className="btn">{s('noWeDecline')}</button>
+              <SubmitButton name="status" value="confirmed" className="btn primary">{s('yesWeCome')}</SubmitButton>
+              <SubmitButton name="status" value="declined" className="btn">{s('noWeDecline')}</SubmitButton>
             </div>
           </form>
         )}
