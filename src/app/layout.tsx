@@ -20,7 +20,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
       </head>
-      <body><LangProvider initial={lang}>{children}</LangProvider></body>
+      <body>
+        <LangProvider initial={lang}>{children}</LangProvider>
+      </body>
     </html>
   );
 }

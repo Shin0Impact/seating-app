@@ -12,7 +12,17 @@ export function Logo({ size = 34 }: { size?: number }) {
     <svg viewBox="0 0 48 48" width={size} height={size} aria-hidden>
       {chairs.map((a, i) => {
         const r = (a - 90) * (Math.PI / 180);
-        return <circle key={a} cx={24 + 17.5 * Math.cos(r)} cy={24 + 17.5 * Math.sin(r)} r="4.6" fill={i === 0 ? '#e0a53a' : 'var(--accent-soft)'} stroke={i === 0 ? '#e0a53a' : 'var(--accent)'} strokeWidth="1.6" />;
+        return (
+          <circle
+            key={a}
+            cx={24 + 17.5 * Math.cos(r)}
+            cy={24 + 17.5 * Math.sin(r)}
+            r="4.6"
+            fill={i === 0 ? '#e0a53a' : 'var(--accent-soft)'}
+            stroke={i === 0 ? '#e0a53a' : 'var(--accent)'}
+            strokeWidth="1.6"
+          />
+        );
       })}
       <circle cx="24" cy="24" r="10.5" fill="var(--accent)" />
     </svg>
@@ -41,7 +51,9 @@ export async function SiteHeader({ crumb, children }: { crumb?: { id: string; na
         {children}
         {crumb && (
           <Link className="btn small bar-btn" href="/events" aria-label={s('allEvents')} title={s('allEvents')}>
-            <span className="ico"><Icon name="list" size={18} /></span>
+            <span className="ico">
+              <Icon name="list" size={18} />
+            </span>
             <span className="lbl">{s('allEvents')}</span>
           </Link>
         )}
@@ -66,7 +78,12 @@ export async function StepBar({ id, active }: { id: string; active: StepKey }) {
   return (
     <nav className="eventnav" aria-label={s('steps')}>
       {items.map((it) => (
-        <Link key={it.key} href={`/events/${id}${it.path}`} className={`en-item${it.key === active ? ' on' : ''}`} aria-current={it.key === active ? 'page' : undefined}>
+        <Link
+          key={it.key}
+          href={`/events/${id}${it.path}`}
+          className={`en-item${it.key === active ? ' on' : ''}`}
+          aria-current={it.key === active ? 'page' : undefined}
+        >
           <Icon name={it.icon} size={20} />
           <span>{it.label}</span>
         </Link>

@@ -1,5 +1,14 @@
 // Walking route from the entrance to a guest's chair, for the "where do I sit" map.
-import { chairWorld, columnShape, intersects, tableFootprint, type Layout, type MarkerEl, type Shape, type TableEl } from './layout';
+import {
+  chairWorld,
+  columnShape,
+  intersects,
+  tableFootprint,
+  type Layout,
+  type MarkerEl,
+  type Shape,
+  type TableEl,
+} from './layout';
 
 export type Pt = { x: number; y: number };
 export type Focus = {
@@ -21,7 +30,9 @@ const BLOCKING_MARKERS = new Set(['stage', 'buffet', 'other']);
 
 class Heap {
   private a: [number, number][] = [];
-  get size() { return this.a.length; }
+  get size() {
+    return this.a.length;
+  }
   push(f: number, id: number) {
     const a = this.a;
     a.push([f, id]);
@@ -41,7 +52,8 @@ class Heap {
       a[0] = last;
       let i = 0;
       for (;;) {
-        const l = 2 * i + 1, r = l + 1;
+        const l = 2 * i + 1,
+          r = l + 1;
         let m = i;
         if (l < a.length && a[l][0] < a[m][0]) m = l;
         if (r < a.length && a[r][0] < a[m][0]) m = r;
@@ -81,34 +93,58 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     }
   }
 
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  const grow = (b: [number, number, number, number]) => { x0 = Math.min(x0, b[0]); y0 = Math.min(y0, b[1]); x1 = Math.max(x1, b[2]); y1 = Math.max(y1, b[3]); };
+  let x0 = Infinity,
+    y0 = Infinity,
+    x1 = -Infinity,
+    y1 = -Infinity;
+  const grow = (b: [number, number, number, number]) => {
+    x0 = Math.min(x0, b[0]);
+    y0 = Math.min(y0, b[1]);
+    x1 = Math.max(x1, b[2]);
+    y1 = Math.max(y1, b[3]);
+  };
   for (const s of [...solids, ...floors, ...walkways]) grow(box(s));
   for (const en of entrances) grow([en.x - en.w / 2, en.y - en.h / 2, en.x + en.w / 2, en.y + en.h / 2]);
   grow([chair.x, chair.y, chair.x, chair.y]);
   const pad = 2;
-  x0 -= pad; y0 -= pad; x1 += pad; y1 += pad;
+  x0 -= pad;
+  y0 -= pad;
+  x1 += pad;
+  y1 += pad;
   let cell = 0.25;
   if (![x0, y0, x1, y1].every(Number.isFinite)) return null;
   for (let g = 0; g < 200 && ((x1 - x0) / cell) * ((y1 - y0) / cell) > 160000; g++) cell *= 1.4;
-  const cols = Math.ceil((x1 - x0) / cell), rows = Math.ceil((y1 - y0) / cell);
+  const cols = Math.ceil((x1 - x0) / cell),
+    rows = Math.ceil((y1 - y0) / cell);
 
   const blocked = new Uint8Array(cols * rows);
   const cost = new Float32Array(cols * rows).fill(1);
   const centre = (i: number, j: number): Pt => ({ x: x0 + (i + 0.5) * cell, y: y0 + (j + 0.5) * cell });
   const paint = (sh: Shape, apply: (idx: number) => void) => {
     const [bx0, by0, bx1, by1] = box(sh);
-    const i0 = Math.max(0, Math.floor((bx0 - x0) / cell)), i1 = Math.min(cols - 1, Math.floor((bx1 - x0) / cell));
-    const j0 = Math.max(0, Math.floor((by0 - y0) / cell)), j1 = Math.min(rows - 1, Math.floor((by1 - y0) / cell));
-    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-      const c = centre(i, j);
-      if (intersects({ type: 'circle', cx: c.x, cy: c.y, r: cell * 0.5 }, sh)) apply(j * cols + i);
-    }
+    const i0 = Math.max(0, Math.floor((bx0 - x0) / cell)),
+      i1 = Math.min(cols - 1, Math.floor((bx1 - x0) / cell));
+    const j0 = Math.max(0, Math.floor((by0 - y0) / cell)),
+      j1 = Math.min(rows - 1, Math.floor((by1 - y0) / cell));
+    for (let j = j0; j <= j1; j++)
+      for (let i = i0; i <= i1; i++) {
+        const c = centre(i, j);
+        if (intersects({ type: 'circle', cx: c.x, cy: c.y, r: cell * 0.5 }, sh)) apply(j * cols + i);
+      }
   };
-  for (const f of floors) paint(f, (idx) => { cost[idx] = 0.55; });
+  for (const f of floors)
+    paint(f, (idx) => {
+      cost[idx] = 0.55;
+    });
   // drawn safe routes: the guests' usual foot traffic, so the line strongly prefers them (never blocked, just cheaper)
-  for (const w of walkways) paint(w, (idx) => { cost[idx] = WALK_COST; });
-  for (const s of solids) paint(s, (idx) => { blocked[idx] = 1; });
+  for (const w of walkways)
+    paint(w, (idx) => {
+      cost[idx] = WALK_COST;
+    });
+  for (const s of solids)
+    paint(s, (idx) => {
+      blocked[idx] = 1;
+    });
 
   const cellOf = (p: Pt): [number, number] => [
     Math.min(cols - 1, Math.max(0, Math.floor((p.x - x0) / cell))),
@@ -117,14 +153,19 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
   const nearestFree = (p: Pt): number | null => {
     const [ci, cj] = cellOf(p);
     for (let r = 0; r < 80; r++) {
-      let best = -1, bestD = Infinity;
-      for (let j = cj - r; j <= cj + r; j++) for (let i = ci - r; i <= ci + r; i++) {
-        if (i < 0 || j < 0 || i >= cols || j >= rows) continue;
-        if (Math.max(Math.abs(i - ci), Math.abs(j - cj)) !== r) continue;
-        if (blocked[j * cols + i]) continue;
-        const d = (i - ci) ** 2 + (j - cj) ** 2;
-        if (d < bestD) { bestD = d; best = j * cols + i; }
-      }
+      let best = -1,
+        bestD = Infinity;
+      for (let j = cj - r; j <= cj + r; j++)
+        for (let i = ci - r; i <= ci + r; i++) {
+          if (i < 0 || j < 0 || i >= cols || j >= rows) continue;
+          if (Math.max(Math.abs(i - ci), Math.abs(j - cj)) !== r) continue;
+          if (blocked[j * cols + i]) continue;
+          const d = (i - ci) ** 2 + (j - cj) ** 2;
+          if (d < bestD) {
+            bestD = d;
+            best = j * cols + i;
+          }
+        }
       if (best >= 0) return best;
     }
     return null;
@@ -132,7 +173,8 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
 
   const goal = nearestFree(chair);
   if (goal === null) return null;
-  const gi = goal % cols, gj = Math.floor(goal / cols);
+  const gi = goal % cols,
+    gj = Math.floor(goal / cols);
 
   const astar = (start: number): number[] | null => {
     // Float64: with Float32 rounding a cell could look improvable forever and the search never ended (ran out of memory)
@@ -142,7 +184,8 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     const prev = new Int32Array(cols * rows).fill(-1);
     const heap = new Heap();
     const h = (i: number, j: number) => {
-      const dx = Math.abs(i - gi), dy = Math.abs(j - gj);
+      const dx = Math.abs(i - gi),
+        dy = Math.abs(j - gj);
       return (dx + dy + (Math.SQRT2 - 2) * Math.min(dx, dy)) * (walkways.length ? WALK_COST : 0.55);
     };
     dist[start] = 0;
@@ -153,18 +196,25 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
       if (closed[cur]) continue;
       closed[cur] = 1;
       if (cur === goal) break;
-      const ci = cur % cols, cj = Math.floor(cur / cols);
-      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
-        if (!di && !dj) continue;
-        const ni = ci + di, nj = cj + dj;
-        if (ni < 0 || nj < 0 || ni >= cols || nj >= rows) continue;
-        const n = nj * cols + ni;
-        if (blocked[n]) continue;
-        if (di && dj && (blocked[cj * cols + ni] || blocked[nj * cols + ci])) continue; // no cutting corners
-        const step = (di && dj ? Math.SQRT2 : 1) * (cost[cur] + cost[n]) / 2;
-        const nd = dist[cur] + step;
-        if (nd < dist[n]) { dist[n] = nd; prev[n] = cur; heap.push(nd + h(ni, nj), n); }
-      }
+      const ci = cur % cols,
+        cj = Math.floor(cur / cols);
+      for (let dj = -1; dj <= 1; dj++)
+        for (let di = -1; di <= 1; di++) {
+          if (!di && !dj) continue;
+          const ni = ci + di,
+            nj = cj + dj;
+          if (ni < 0 || nj < 0 || ni >= cols || nj >= rows) continue;
+          const n = nj * cols + ni;
+          if (blocked[n]) continue;
+          if (di && dj && (blocked[cj * cols + ni] || blocked[nj * cols + ci])) continue; // no cutting corners
+          const step = ((di && dj ? Math.SQRT2 : 1) * (cost[cur] + cost[n])) / 2;
+          const nd = dist[cur] + step;
+          if (nd < dist[n]) {
+            dist[n] = nd;
+            prev[n] = cur;
+            heap.push(nd + h(ni, nj), n);
+          }
+        }
     }
     if (!isFinite(dist[goal])) return null;
     const out: number[] = [];
@@ -193,7 +243,13 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     let at = 0;
     while (walkways.length && at < raw.length - 1) {
       let to = at + 1;
-      while (to < raw.length - 1 && Math.abs((raw[to].x - raw[at].x) * (raw[to + 1].y - raw[at].y) - (raw[to].y - raw[at].y) * (raw[to + 1].x - raw[at].x)) < 1e-9) to++;
+      while (
+        to < raw.length - 1 &&
+        Math.abs(
+          (raw[to].x - raw[at].x) * (raw[to + 1].y - raw[at].y) - (raw[to].y - raw[at].y) * (raw[to + 1].x - raw[at].x),
+        ) < 1e-9
+      )
+        to++;
       pts.push(raw[to]);
       at = to;
     }
@@ -223,7 +279,11 @@ export function buildFocus(layout: Layout, guestIds: string[]): Focus | null {
   const chair = chairWorld(layout.elements, layout.settings, head);
   const target = chair ?? { x: table.x, y: table.y };
   let found: ReturnType<typeof findRoute> = null;
-  try { found = findRoute(layout, target); } catch { /* a drawing problem must never break the page */ }
+  try {
+    found = findRoute(layout, target);
+  } catch {
+    /* a drawing problem must never break the page */
+  }
   return {
     tableIds: [...new Set(seated.map((g) => g.tableId as string))],
     chair,

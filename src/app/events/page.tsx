@@ -9,10 +9,11 @@ import { supabaseConfigured } from '@/lib/supabase/env';
 
 export const dynamic = 'force-dynamic';
 
-
 async function create(form: FormData) {
   'use server';
-  const name = String(form.get('name') ?? '').trim().slice(0, 120);
+  const name = String(form.get('name') ?? '')
+    .trim()
+    .slice(0, 120);
   const date = String(form.get('date') ?? '');
   if (!name) redirect('/events?error=1&new=1');
   const supabase = await serverClient();
@@ -25,13 +26,16 @@ async function create(form: FormData) {
   redirect(`/events/${data.id}`);
 }
 
-
 export async function generateMetadata() {
   const { s } = await getS();
   return { title: `${s('titleEvents')} · ${s('brand')}` };
 }
 
-export default async function Events({ searchParams }: { searchParams: Promise<{ error?: string; deleted?: string; new?: string }> }) {
+export default async function Events({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; deleted?: string; new?: string }>;
+}) {
   if (!supabaseConfigured) redirect('/');
   const q = await searchParams;
   const { lang, s } = await getS();
@@ -48,27 +52,52 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
     if (r.status === 'confirmed') st.yes++;
     stat.set(r.event_id, st);
   }
-  const fmtDate = (d: string | null) => (d ? new Date(d + 'T00:00:00').toLocaleDateString(localeOf(lang), { day: 'numeric', month: 'long', year: 'numeric' }) : s('noDate'));
+  const fmtDate = (d: string | null) =>
+    d
+      ? new Date(d + 'T00:00:00').toLocaleDateString(localeOf(lang), { day: 'numeric', month: 'long', year: 'numeric' })
+      : s('noDate');
   const list = events ?? [];
   const showForm = !!q.new;
   const plus = <span aria-hidden>+</span>;
   return (
     <div className="site">
       <SiteHeader>
-        {list.length > 0 && !showForm && <Link className="btn small" href="/events?new=1">{plus} {s('newEvent')}</Link>}
+        {list.length > 0 && !showForm && (
+          <Link className="btn small" href="/events?new=1">
+            {plus} {s('newEvent')}
+          </Link>
+        )}
       </SiteHeader>
       <main className="container">
-        <div className="page-title"><h1>{s('myEvents')}</h1></div>
-        {q.deleted && <p className="notice ok" role="status">{s('eventDeleted')}</p>}
-        {q.error && <p className="notice err" role="alert">{s('createFailed')}</p>}
+        <div className="page-title">
+          <h1>{s('myEvents')}</h1>
+        </div>
+        {q.deleted && (
+          <p className="notice ok" role="status">
+            {s('eventDeleted')}
+          </p>
+        )}
+        {q.error && (
+          <p className="notice err" role="alert">
+            {s('createFailed')}
+          </p>
+        )}
         {showForm && (
           <form action={create} className="card-box">
             <h2>{s('newEvent')}</h2>
-            <label className="field-col">{s('name')}<input name="name" required maxLength={120} placeholder={s('namePlaceholder')} autoFocus /></label>
-            <label className="field-col">{s('dateOptional')}<input name="date" type="date" /></label>
+            <label className="field-col">
+              {s('name')}
+              <input name="name" required maxLength={120} placeholder={s('namePlaceholder')} autoFocus />
+            </label>
+            <label className="field-col">
+              {s('dateOptional')}
+              <input name="date" type="date" />
+            </label>
             <div className="row" style={{ display: 'flex', gap: 10 }}>
               <button className="btn">{s('createContinue')}</button>
-              <Link className="btn" href="/events">{s('cancel')}</Link>
+              <Link className="btn" href="/events">
+                {s('cancel')}
+              </Link>
             </div>
           </form>
         )}
@@ -80,19 +109,29 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
                 <h3>{e.name}</h3>
                 <div className="event-meta">
                   <span>{fmtDate(e.event_date)}</span>
-                  {st ? <span>{s('familiesLine', { n: st.families, sent: st.sent, yes: st.yes })}</span> : <span>{s('noInvitesYet')}</span>}
+                  {st ? (
+                    <span>{s('familiesLine', { n: st.families, sent: st.sent, yes: st.yes })}</span>
+                  ) : (
+                    <span>{s('noInvitesYet')}</span>
+                  )}
                 </div>
               </Link>
             );
           })}
           {list.length === 0 && !showForm && (
             <Link href="/events?new=1" className="event-card new-card" aria-label={s('newEvent')}>
-              <span className="plus" aria-hidden>+</span>
+              <span className="plus" aria-hidden>
+                +
+              </span>
               <span>{s('newEvent')}</span>
             </Link>
           )}
         </div>
-        <p style={{ margin: 0 }}><Link href="/events/backups" className="muted">{s('backups')}</Link></p>
+        <p style={{ margin: 0 }}>
+          <Link href="/events/backups" className="muted">
+            {s('backups')}
+          </Link>
+        </p>
       </main>
     </div>
   );

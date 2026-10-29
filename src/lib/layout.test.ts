@@ -71,7 +71,16 @@ describe('issue detection', () => {
   });
 
   it('flags a column inside a table footprint', () => {
-    const col: ColumnEl = { id: 'c', kind: 'column', x: 1.5, y: 0, rotation: 0, label: 'Column', shape: 'circle', size: 0.5 };
+    const col: ColumnEl = {
+      id: 'c',
+      kind: 'column',
+      x: 1.5,
+      y: 0,
+      rotation: 0,
+      label: 'Column',
+      shape: 'circle',
+      size: 0.5,
+    };
     const issues = findIssues([table({ id: 'a', x: 0 }), col], S);
     expect(issues.some((i) => i.type === 'overlap' && i.b === 'c')).toBe(true);
   });

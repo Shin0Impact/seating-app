@@ -4,7 +4,17 @@ import type Konva from 'konva';
 import { useMemo } from 'react';
 import { Circle, Group, Line, Rect, Text } from 'react-konva';
 import { canvasMeasure, fitChairLabel } from '@/lib/chairlabel';
-import { ChairSlot, Element, Guest, Settings, TableEl, chairSlots, snap, tableDims, tableFootprint } from '@/lib/layout';
+import {
+  ChairSlot,
+  Element,
+  Guest,
+  Settings,
+  TableEl,
+  chairSlots,
+  snap,
+  tableDims,
+  tableFootprint,
+} from '@/lib/layout';
 
 export type IssueState = 'overlap' | 'tight' | undefined;
 export type ChairTip = { text: string; x: number; y: number };
@@ -57,7 +67,6 @@ export function chairText(name: string, scale: number): { text: string; full: bo
   if (f.length <= max) return { text: f.join(''), full: false }; // first name only
   return { text: f.slice(0, max - 1).join('') + '…', full: false };
 }
-
 
 export const FONT = "'Noto Sans Arabic Variable', system-ui, sans-serif";
 
@@ -147,7 +156,22 @@ type ChairProps = {
   name: string;
 };
 
-function Chair({ name, slot, w, d, fill, guest, tableRotation, highlight, picked, onPick, onDrop, onTip, onOpen, scale }: ChairProps) {
+function Chair({
+  name,
+  slot,
+  w,
+  d,
+  fill,
+  guest,
+  tableRotation,
+  highlight,
+  picked,
+  onPick,
+  onDrop,
+  onTip,
+  onOpen,
+  scale,
+}: ChairProps) {
   const shown = guest ? chairText(guest.name, scale) : null;
   const big = !!shown && scale >= 55;
   // Visible size of the chair on screen (the table body is drawn over anything that spills toward it).
@@ -200,14 +224,34 @@ function Chair({ name, slot, w, d, fill, guest, tableRotation, highlight, picked
         e.cancelBubble = true;
         const node = e.target;
         const layer = node.getLayer();
-        const p = layer ? layer.getAbsoluteTransform().copy().invert().point(node.getAbsolutePosition()) : { x: 0, y: 0 };
+        const p = layer
+          ? layer.getAbsoluteTransform().copy().invert().point(node.getAbsolutePosition())
+          : { x: 0, y: 0 };
         node.position({ x: slot.x, y: slot.y }); // snap back; the seating change redraws it
         setCursor(e, '');
         if (guest) onDrop?.(guest.id, p.x, p.y);
       }}
     >
-      {picked && <Circle radius={0.42} fill="rgba(217, 72, 15, 0.16)" stroke="#d9480f" strokeWidth={3} strokeScaleEnabled={false} listening={false} />}
-      {highlight && <Circle radius={0.4} fill="rgba(47, 95, 196, 0.18)" stroke="#2f5fc4" strokeWidth={2} strokeScaleEnabled={false} listening={false} />}
+      {picked && (
+        <Circle
+          radius={0.42}
+          fill="rgba(217, 72, 15, 0.16)"
+          stroke="#d9480f"
+          strokeWidth={3}
+          strokeScaleEnabled={false}
+          listening={false}
+        />
+      )}
+      {highlight && (
+        <Circle
+          radius={0.4}
+          fill="rgba(47, 95, 196, 0.18)"
+          stroke="#2f5fc4"
+          strokeWidth={2}
+          strokeScaleEnabled={false}
+          listening={false}
+        />
+      )}
       <Rect
         width={w}
         height={d}
@@ -304,7 +348,19 @@ function Chairs(props: {
   onChairPick?: (guestId: string) => void;
   scale: number;
 }) {
-  const { el, settings, fill, seatGuests, highlightSeat, onChairDrop, onChairTip, onChairOpen, pickedIds, onChairPick, scale } = props;
+  const {
+    el,
+    settings,
+    fill,
+    seatGuests,
+    highlightSeat,
+    onChairDrop,
+    onChairTip,
+    onChairOpen,
+    pickedIds,
+    onChairPick,
+    scale,
+  } = props;
   const cw = settings.seatWidth * 0.75;
   const cd = settings.chairDepth * 0.8;
   return (
@@ -333,7 +389,19 @@ function Chairs(props: {
 }
 
 /** Text that stays upright however the element is rotated. */
-function Label({ text, rotation, w, h, size = 0.36 }: { text: string; rotation: number; w: number; h: number; size?: number }) {
+function Label({
+  text,
+  rotation,
+  w,
+  h,
+  size = 0.36,
+}: {
+  text: string;
+  rotation: number;
+  w: number;
+  h: number;
+  size?: number;
+}) {
   return (
     <Text
       text={text}
@@ -353,7 +421,29 @@ function Label({ text, rotation, w, h, size = 0.36 }: { text: string; rotation: 
   );
 }
 
-export function ElementNode({ el, settings, issue, seated, seatGuests, highlightSeat, register, onSelect, onMove, snapPos, onChairDrop, onChairTip, onChairOpen, scale = 40, multi, onDragStartEl, onDragMoveEl, onOpenEl, pickedIds, onChairPick, locked }: Props) {
+export function ElementNode({
+  el,
+  settings,
+  issue,
+  seated,
+  seatGuests,
+  highlightSeat,
+  register,
+  onSelect,
+  onMove,
+  snapPos,
+  onChairDrop,
+  onChairTip,
+  onChairOpen,
+  scale = 40,
+  multi,
+  onDragStartEl,
+  onDragMoveEl,
+  onOpenEl,
+  pickedIds,
+  onChairPick,
+  locked,
+}: Props) {
   const stroke = issue === 'overlap' ? COLORS.overlap : issue === 'tight' ? COLORS.tight : COLORS.line;
   const chairFill = issue === 'overlap' ? COLORS.chairOverlap : issue === 'tight' ? COLORS.chairTight : COLORS.chair;
 
@@ -364,14 +454,60 @@ export function ElementNode({ el, settings, issue, seated, seatGuests, highlight
     body =
       d.shape === 'round' ? (
         <>
-          <Chairs el={el} settings={settings} fill={chairFill} seatGuests={seatGuests} highlightSeat={highlightSeat} pickedIds={pickedIds} onChairPick={onChairPick} onChairDrop={onChairDrop} onChairTip={onChairTip} onChairOpen={onChairOpen} scale={scale} />
-          <Circle radius={d.diameter / 2} fill={COLORS.table} stroke={stroke} strokeWidth={issue ? 2 : 1.25} strokeScaleEnabled={false} />
-          <Label text={text} rotation={el.rotation} w={d.diameter * 0.9} h={d.diameter * 0.6} size={Math.min(0.36, Math.max(0.22, d.diameter * 0.24))} />
+          <Chairs
+            el={el}
+            settings={settings}
+            fill={chairFill}
+            seatGuests={seatGuests}
+            highlightSeat={highlightSeat}
+            pickedIds={pickedIds}
+            onChairPick={onChairPick}
+            onChairDrop={onChairDrop}
+            onChairTip={onChairTip}
+            onChairOpen={onChairOpen}
+            scale={scale}
+          />
+          <Circle
+            radius={d.diameter / 2}
+            fill={COLORS.table}
+            stroke={stroke}
+            strokeWidth={issue ? 2 : 1.25}
+            strokeScaleEnabled={false}
+          />
+          <Label
+            text={text}
+            rotation={el.rotation}
+            w={d.diameter * 0.9}
+            h={d.diameter * 0.6}
+            size={Math.min(0.36, Math.max(0.22, d.diameter * 0.24))}
+          />
         </>
       ) : (
         <>
-          <Chairs el={el} settings={settings} fill={chairFill} seatGuests={seatGuests} highlightSeat={highlightSeat} pickedIds={pickedIds} onChairPick={onChairPick} onChairDrop={onChairDrop} onChairTip={onChairTip} onChairOpen={onChairOpen} scale={scale} />
-          <Rect x={-d.length / 2} y={-d.width / 2} width={d.length} height={d.width} cornerRadius={0.05} fill={COLORS.table} stroke={stroke} strokeWidth={issue ? 2 : 1.25} strokeScaleEnabled={false} />
+          <Chairs
+            el={el}
+            settings={settings}
+            fill={chairFill}
+            seatGuests={seatGuests}
+            highlightSeat={highlightSeat}
+            pickedIds={pickedIds}
+            onChairPick={onChairPick}
+            onChairDrop={onChairDrop}
+            onChairTip={onChairTip}
+            onChairOpen={onChairOpen}
+            scale={scale}
+          />
+          <Rect
+            x={-d.length / 2}
+            y={-d.width / 2}
+            width={d.length}
+            height={d.width}
+            cornerRadius={0.05}
+            fill={COLORS.table}
+            stroke={stroke}
+            strokeWidth={issue ? 2 : 1.25}
+            strokeScaleEnabled={false}
+          />
           <Label text={text} rotation={el.rotation} w={Math.min(d.length, 2.2)} h={d.width} />
         </>
       );
@@ -386,9 +522,26 @@ export function ElementNode({ el, settings, issue, seated, seatGuests, highlight
     const steps = Math.min(el.steps, 10);
     body = (
       <>
-        <Rect x={-el.w / 2} y={-el.h / 2} width={el.w} height={el.h} fill={COLORS.zoneFill} stroke={COLORS.zoneLine} strokeWidth={1.25} dash={[6, 4]} strokeScaleEnabled={false} />
+        <Rect
+          x={-el.w / 2}
+          y={-el.h / 2}
+          width={el.w}
+          height={el.h}
+          fill={COLORS.zoneFill}
+          stroke={COLORS.zoneLine}
+          strokeWidth={1.25}
+          dash={[6, 4]}
+          strokeScaleEnabled={false}
+        />
         {Array.from({ length: steps }, (_, i) => (
-          <Line key={i} points={[-el.w / 2, el.h / 2 + 0.28 * (i + 1), el.w / 2, el.h / 2 + 0.28 * (i + 1)]} stroke={COLORS.zoneLine} strokeWidth={1} strokeScaleEnabled={false} listening={false} />
+          <Line
+            key={i}
+            points={[-el.w / 2, el.h / 2 + 0.28 * (i + 1), el.w / 2, el.h / 2 + 0.28 * (i + 1)]}
+            stroke={COLORS.zoneLine}
+            strokeWidth={1}
+            strokeScaleEnabled={false}
+            listening={false}
+          />
         ))}
         <Label text={el.steps > 0 ? `${el.label} ↑${el.steps}` : el.label} rotation={el.rotation} w={el.w} h={el.h} />
       </>
@@ -396,7 +549,17 @@ export function ElementNode({ el, settings, issue, seated, seatGuests, highlight
   } else {
     body = (
       <>
-        <Rect x={-el.w / 2} y={-el.h / 2} width={el.w} height={el.h} fill={MARKER_FILL[el.marker]} stroke={COLORS.line} strokeWidth={1} strokeScaleEnabled={false} cornerRadius={0.08} />
+        <Rect
+          x={-el.w / 2}
+          y={-el.h / 2}
+          width={el.w}
+          height={el.h}
+          fill={MARKER_FILL[el.marker]}
+          stroke={COLORS.line}
+          strokeWidth={1}
+          strokeScaleEnabled={false}
+          cornerRadius={0.08}
+        />
         <Label text={el.label} rotation={el.rotation} w={el.w} h={el.h} />
       </>
     );
@@ -404,12 +567,26 @@ export function ElementNode({ el, settings, issue, seated, seatGuests, highlight
 
   let box: React.ReactNode = null;
   if (multi) {
-    const props = { fill: 'rgba(59,111,212,0.08)', stroke: '#3b6fd4', strokeWidth: 1.5, dash: [6, 4], strokeScaleEnabled: false, listening: false };
+    const props = {
+      fill: 'rgba(59,111,212,0.08)',
+      stroke: '#3b6fd4',
+      strokeWidth: 1.5,
+      dash: [6, 4],
+      strokeScaleEnabled: false,
+      listening: false,
+    };
     if (el.kind === 'table') {
       const f = tableFootprint(el, settings);
-      box = f.type === 'circle' ? <Circle radius={f.r} {...props} /> : <Rect x={-f.w / 2} y={-f.h / 2} width={f.w} height={f.h} {...props} />;
+      box =
+        f.type === 'circle' ? (
+          <Circle radius={f.r} {...props} />
+        ) : (
+          <Rect x={-f.w / 2} y={-f.h / 2} width={f.w} height={f.h} {...props} />
+        );
     } else if (el.kind === 'column') {
-      box = <Rect x={-el.size / 2 - 0.1} y={-el.size / 2 - 0.1} width={el.size + 0.2} height={el.size + 0.2} {...props} />;
+      box = (
+        <Rect x={-el.size / 2 - 0.1} y={-el.size / 2 - 0.1} width={el.size + 0.2} height={el.size + 0.2} {...props} />
+      );
     } else {
       box = <Rect x={-el.w / 2 - 0.1} y={-el.h / 2 - 0.1} width={el.w + 0.2} height={el.h + 0.2} {...props} />;
     }
@@ -425,7 +602,10 @@ export function ElementNode({ el, settings, issue, seated, seatGuests, highlight
       draggable={!locked}
       onMouseDown={(e) => {
         if ((e.evt as MouseEvent).button === 2) return; // right-click opens the menu
-        onSelect(el.id, (e.evt as MouseEvent).shiftKey || (e.evt as MouseEvent).ctrlKey || (e.evt as MouseEvent).metaKey);
+        onSelect(
+          el.id,
+          (e.evt as MouseEvent).shiftKey || (e.evt as MouseEvent).ctrlKey || (e.evt as MouseEvent).metaKey,
+        );
       }}
       onTouchStart={() => onSelect(el.id, false)}
       onDblClick={() => onOpenEl?.(el.id)}
@@ -441,7 +621,9 @@ export function ElementNode({ el, settings, issue, seated, seatGuests, highlight
       onDragEnd={(e) => {
         if (e.target !== e.currentTarget) return; // a chair was dragged, not the table
         const node = e.target;
-        const { x, y } = snapPos ? snapPos(node.x(), node.y(), node) : { x: snap(node.x(), 0.1), y: snap(node.y(), 0.1) };
+        const { x, y } = snapPos
+          ? snapPos(node.x(), node.y(), node)
+          : { x: snap(node.x(), 0.1), y: snap(node.y(), 0.1) };
         node.position({ x, y });
         onMove(el.id, x, y);
       }}

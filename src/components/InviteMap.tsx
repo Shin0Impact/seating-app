@@ -18,7 +18,13 @@ function Body({ layout, ids, label }: { layout: Layout; ids: string[]; label: st
 export default function InviteMap({ layout, ids }: { layout: Layout; ids: string[] }) {
   const s = useS();
   const text = useMemo(
-    () => seatsSummary(layout, ids, (table, n, chairs) => s('tableChairs', { table, word: n === 1 ? s('chairOne') : s('chairMany'), chairs }), s('andWord')),
+    () =>
+      seatsSummary(
+        layout,
+        ids,
+        (table, n, chairs) => s('tableChairs', { table, word: n === 1 ? s('chairOne') : s('chairMany'), chairs }),
+        s('andWord'),
+      ),
     [layout, ids, s],
   );
   if (!text) return null;

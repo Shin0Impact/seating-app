@@ -25,7 +25,11 @@ function Surface({ children, label, onClose }: { children: React.ReactNode; labe
     const ps = [...pts.current.values()].map((p) => local(p.x, p.y));
     if (ps.length === 0) return (g.current = null);
     const mid = ps.length === 1 ? ps[0] : { x: (ps[0].x + ps[1].x) / 2, y: (ps[0].y + ps[1].y) / 2 };
-    g.current = { v0: vRef.current, mid0: mid, d0: ps.length === 2 ? Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y) : 0 };
+    g.current = {
+      v0: vRef.current,
+      mid0: mid,
+      d0: ps.length === 2 ? Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y) : 0,
+    };
   };
   const apply = () => {
     const cur = g.current;
@@ -94,8 +98,14 @@ function Surface({ children, label, onClose }: { children: React.ReactNode; labe
           pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
           apply();
         }}
-        onPointerUp={(e) => { pts.current.delete(e.pointerId); begin(); }}
-        onPointerCancel={(e) => { pts.current.delete(e.pointerId); begin(); }}
+        onPointerUp={(e) => {
+          pts.current.delete(e.pointerId);
+          begin();
+        }}
+        onPointerCancel={(e) => {
+          pts.current.delete(e.pointerId);
+          begin();
+        }}
         onDoubleClick={(e) => {
           const p = local(e.clientX, e.clientY);
           setV((c) => {
@@ -105,32 +115,65 @@ function Surface({ children, label, onClose }: { children: React.ReactNode; labe
           });
         }}
       >
-        <div className="zp-inner" style={{ width: `${v.k * 100}%`, height: `${v.k * 100}%`, transform: `translate(${v.x}px, ${v.y}px)` }}>{children}</div>
+        <div
+          className="zp-inner"
+          style={{ width: `${v.k * 100}%`, height: `${v.k * 100}%`, transform: `translate(${v.x}px, ${v.y}px)` }}
+        >
+          {children}
+        </div>
       </div>
       <div className="zp-title">{label}</div>
       <div className="zp-btns">
-        <button type="button" aria-label={s('closeMap')} onClick={onClose}>✕</button>
-        <button type="button" aria-label={s('zoomIn')} onClick={() => buttonZoom(1.6)}>+</button>
-        <button type="button" aria-label={s('zoomOut')} onClick={() => buttonZoom(1 / 1.6)}>−</button>
+        <button type="button" aria-label={s('closeMap')} onClick={onClose}>
+          ✕
+        </button>
+        <button type="button" aria-label={s('zoomIn')} onClick={() => buttonZoom(1.6)}>
+          +
+        </button>
+        <button type="button" aria-label={s('zoomOut')} onClick={() => buttonZoom(1 / 1.6)}>
+          −
+        </button>
       </div>
     </div>
   );
 }
 
 /** A button showing where your table is; it opens the hall full screen to pinch, drag and scroll-zoom. */
-export default function ZoomPan({ children, label, small }: { children: React.ReactNode; label: string; small?: boolean }) {
+export default function ZoomPan({
+  children,
+  label,
+  small,
+}: {
+  children: React.ReactNode;
+  label: string;
+  small?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const close = useCallback(() => setOpen(false), []);
   return (
     <>
-      <button type="button" className={small ? 'btn small zp-open zp-small' : 'btn zp-open'} onClick={() => setOpen(true)}>
-        <svg viewBox="0 0 24 24" aria-hidden><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+      <button
+        type="button"
+        className={small ? 'btn small zp-open zp-small' : 'btn zp-open'}
+        onClick={() => setOpen(true)}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden>
+          <path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z" />
+          <circle cx="12" cy="9.5" r="2.5" />
+        </svg>
         <span>{label}</span>
         {!small && <span aria-hidden>⤢</span>}
       </button>
-      {open && mounted && createPortal(<Surface label={label} onClose={close}>{children}</Surface>, document.body)}
+      {open &&
+        mounted &&
+        createPortal(
+          <Surface label={label} onClose={close}>
+            {children}
+          </Surface>,
+          document.body,
+        )}
     </>
   );
 }

@@ -60,7 +60,13 @@ import { coarsePointer, readPayload, TouchPayload } from '@/lib/touchdrag';
 const STORAGE_KEY = 'seating-layout-v1';
 const ORDER: Record<Element['kind'], number> = { zone: 0, marker: 1, table: 2, column: 3 };
 
-type MenuState = { x: number; y: number; wx: number; wy: number; target: { kind: 'blank' } | { kind: 'element'; id: string } | { kind: 'chair'; tableId: string; seat: number } };
+type MenuState = {
+  x: number;
+  y: number;
+  wx: number;
+  wy: number;
+  target: { kind: 'blank' } | { kind: 'element'; id: string } | { kind: 'chair'; tableId: string; seat: number };
+};
 
 type View = { scale: number; x: number; y: number };
 
@@ -104,7 +110,9 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   const selectedId = selection.length === 1 ? selection[0] : null;
   const setSelectedId = useCallback((id: string | null) => setSelection(id ? [id] : []), []);
   // phones start with the panel folded so the hall gets the screen (the editor only runs in the browser)
-  const [sheetOpen, setSheetOpen] = useState(() => typeof window === 'undefined' || !window.matchMedia('(max-width: 760px)').matches);
+  const [sheetOpen, setSheetOpen] = useState(
+    () => typeof window === 'undefined' || !window.matchMedia('(max-width: 760px)').matches,
+  );
   const [measured, setMeasured] = useState(false);
   const pinch = useRef<{ dist: number } | null>(null);
   const inHallRef = useRef(true);
@@ -121,12 +129,21 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     const id = window.setTimeout(() => setToast(''), 3200);
     return () => window.clearTimeout(id);
   }, [toast]);
-  const togglePerson = (id: string) => setPeopleSel((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  const togglePerson = (id: string) =>
+    setPeopleSel((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
   const [snapGrid, setSnapGrid] = useState(() => {
-    try { return localStorage.getItem('seating-snap-grid') === '1'; } catch { return false; }
+    try {
+      return localStorage.getItem('seating-snap-grid') === '1';
+    } catch {
+      return false;
+    }
   });
   const [layoutLocked, setLayoutLocked] = useState(() => {
-    try { return localStorage.getItem('seating-layout-locked') === '1'; } catch { return false; }
+    try {
+      return localStorage.getItem('seating-layout-locked') === '1';
+    } catch {
+      return false;
+    }
   });
   const lockedRef = useRef(layoutLocked);
   lockedRef.current = layoutLocked;
@@ -135,7 +152,9 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   const toggleLock = () => {
     const n = !layoutLocked;
     setLayoutLocked(n);
-    try { localStorage.setItem('seating-layout-locked', n ? '1' : '0'); } catch {}
+    try {
+      localStorage.setItem('seating-layout-locked', n ? '1' : '0');
+    } catch {}
   };
   const [addOpen, setAddOpen] = useState(false);
   const [addPos, setAddPos] = useState<{ x: number; y: number } | null>(null);
@@ -157,7 +176,9 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   const toggleSnap = () => {
     const n = !snapGrid;
     setSnapGrid(n);
-    try { localStorage.setItem('seating-snap-grid', n ? '1' : '0'); } catch {}
+    try {
+      localStorage.setItem('seating-snap-grid', n ? '1' : '0');
+    } catch {}
   };
   const [shiftHeld, setShiftHeld] = useState(false);
   const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
@@ -192,7 +213,9 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
         const u = JSON.parse(localStorage.getItem(USAGE_KEY) ?? '{}');
         if (u && typeof u === 'object') {
           const clean: Record<string, number> = {};
-          for (const [k, v] of Object.entries(u)) if (/^(round|rect):\d{1,2}$/.test(k) && typeof v === 'number' && Number.isFinite(v)) clean[k] = Math.min(v, 100000);
+          for (const [k, v] of Object.entries(u))
+            if (/^(round|rect):\d{1,2}$/.test(k) && typeof v === 'number' && Number.isFinite(v))
+              clean[k] = Math.min(v, 100000);
           setUsage(clean);
         }
       } catch {
@@ -248,7 +271,10 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   // canvas text uses the bundled Arabic font; redraw once it is ready
   useEffect(() => {
     if (typeof document === 'undefined' || !document.fonts) return;
-    document.fonts.load(`16px ${FONT.split(',')[0]}`).then(() => setFontTick((n) => n + 1)).catch(() => {});
+    document.fonts
+      .load(`16px ${FONT.split(',')[0]}`)
+      .then(() => setFontTick((n) => n + 1))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -318,7 +344,10 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
         setToast(lockMsgRef.current);
         return;
       }
-      commit({ ...l, elements: l.elements.map((e) => (e.id === id ? ({ ...e, ...patch } as Element) : e)) }, key ? `${id}:${key}` : '');
+      commit(
+        { ...l, elements: l.elements.map((e) => (e.id === id ? ({ ...e, ...patch } as Element) : e)) },
+        key ? `${id}:${key}` : '',
+      );
     },
     [commit],
   );
@@ -328,10 +357,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     commit({ ...l, settings: { ...l.settings, ...patch } }, `settings:${key}`);
   };
 
-  const setGuests = useCallback(
-    (guests: Guest[], key = '') => commit({ ...layoutRef.current, guests }, key),
-    [commit],
-  );
+  const setGuests = useCallback((guests: Guest[], key = '') => commit({ ...layoutRef.current, guests }, key), [commit]);
 
   const viewCenter = () => ({
     x: snapV((size.w / 2 - view.x) / view.scale),
@@ -342,7 +368,10 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     const l = layoutRef.current;
     if (sp.kind === 'table') {
       const n = l.elements.filter((e) => e.kind === 'table').length + 1;
-      return { ...newTable(x, y, sp.shape, clamp(Math.round(sp.seats), LIMITS.seatsMin, LIMITS.seatsMax), n), label: `${t('table')} ${n}` };
+      return {
+        ...newTable(x, y, sp.shape, clamp(Math.round(sp.seats), LIMITS.seatsMin, LIMITS.seatsMax), n),
+        label: `${t('table')} ${n}`,
+      };
     }
     if (sp.kind === 'column') return { ...newColumn(x, y, sp.shape), label: t('column') };
     if (sp.kind === 'zone') return { ...newZone(x, y), label: t('raisedArea') };
@@ -358,7 +387,8 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     if (el.kind === 'table') bumpUsage(el.shape, el.seats);
     setSelectedId(el.id);
   };
-  const addTableAt = (shape: 'round' | 'rect', seats: number, x: number, y: number) => addSpecAt({ kind: 'table', shape, seats }, x, y);
+  const addTableAt = (shape: 'round' | 'rect', seats: number, x: number, y: number) =>
+    addSpecAt({ kind: 'table', shape, seats }, x, y);
 
   const markerLabel = (k: MarkerKind) => (k === 'walkway' ? t('safeRoute') : k === 'exit' ? t('emergencyExit') : t(k));
 
@@ -410,7 +440,12 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     const tableIds = l.elements.filter((e) => e.kind === 'table' && ids.has(e.id)).map((e) => e.id);
     if (tableIds.length === 0) return run(); // plain shapes: Undo is enough
     const seated = l.guests.filter((g) => g.tableId && tableIds.includes(g.tableId)).length;
-    setPendingDelete({ text: STRINGS[langRef.current].confirmRemoveTables.replace('{n}', String(tableIds.length)).replace('{k}', String(seated)), run });
+    setPendingDelete({
+      text: STRINGS[langRef.current].confirmRemoveTables
+        .replace('{n}', String(tableIds.length))
+        .replace('{k}', String(seated)),
+      run,
+    });
   }, [commit]);
 
   /** Adds copies of the given elements, shifted; tables get the next table numbers and no guests. */
@@ -475,7 +510,11 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       elements: l.elements.map((e) =>
         !ids.has(e.id)
           ? e
-          : ({ ...e, rotation: turn(e.rotation), ...(picked.length > 1 ? { x: round2(cx - (e.y - cy)), y: round2(cy + (e.x - cx)) } : {}) } as Element),
+          : ({
+              ...e,
+              rotation: turn(e.rotation),
+              ...(picked.length > 1 ? { x: round2(cx - (e.y - cy)), y: round2(cy + (e.x - cx)) } : {}),
+            } as Element),
       ),
     });
   };
@@ -510,7 +549,8 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     if (!g || g.id !== id) return;
     const s0 = g.starts.get(id);
     if (!s0) return;
-    for (const [oid, p] of g.starts) if (oid !== id) nodeRefs.current.get(oid)?.position({ x: p.x + x - s0.x, y: p.y + y - s0.y });
+    for (const [oid, p] of g.starts)
+      if (oid !== id) nodeRefs.current.get(oid)?.position({ x: p.x + x - s0.x, y: p.y + y - s0.y });
     nodeRefs.current.get(id)?.getLayer()?.batchDraw();
   };
   const onMoveEl = (id: string, x: number, y: number) => {
@@ -595,7 +635,9 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       setPeopleSel((cur) => [...new Set([...cur, ...hit])]);
       return;
     }
-    const inside = layoutRef.current.elements.filter((e) => e.x >= x0 && e.x <= x1 && e.y >= y0 && e.y <= y1).map((e) => e.id);
+    const inside = layoutRef.current.elements
+      .filter((e) => e.x >= x0 && e.x <= x1 && e.y >= y0 && e.y <= y1)
+      .map((e) => e.id);
     setSelection(shiftHeld ? [...new Set([...selectionRef.current, ...inside])] : inside);
   };
   const marqueeMode = selectTool || shiftHeld || peopleTool;
@@ -637,21 +679,30 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     if (m.target.kind === 'chair') {
       const { tableId, seat } = m.target;
       const occ = l.guests.find((g) => g.tableId === tableId && g.seat === seat);
-      const party = occ ? inviteDrafts(l.guests).find((d) => d.guestId === occ.id || d.memberIds.includes(occ.id)) : undefined;
-      const partyIds = party ? [party.guestId, ...party.memberIds].filter((id) => l.guests.some((g) => g.id === id && g.tableId)) : [];
+      const party = occ
+        ? inviteDrafts(l.guests).find((d) => d.guestId === occ.id || d.memberIds.includes(occ.id))
+        : undefined;
+      const partyIds = party
+        ? [party.guestId, ...party.memberIds].filter((id) => l.guests.some((g) => g.id === id && g.tableId))
+        : [];
       return [
-        { label: occ ? t('changeGuest') : t('seatGuestHere'), onClick: () => setPicker({ tableId, seat, x: m.x, y: m.y }) },
+        {
+          label: occ ? t('changeGuest') : t('seatGuestHere'),
+          onClick: () => setPicker({ tableId, seat, x: m.x, y: m.y }),
+        },
         ...(occ ? [{ label: `${t('emptyChair')} (${occ.name})`, onClick: () => emptyChair(occ.id) }] : []),
         ...(partyIds.length > 1
-          ? [{
-              label: `${t('selectParty')} (${partyIds.length})`,
-              onClick: () => {
-                setPeopleSel(partyIds);
-                setPeopleTool(true);
-                setSelectTool(false);
-                setToast(t('partySelected'));
+          ? [
+              {
+                label: `${t('selectParty')} (${partyIds.length})`,
+                onClick: () => {
+                  setPeopleSel(partyIds);
+                  setPeopleTool(true);
+                  setSelectTool(false);
+                  setToast(t('partySelected'));
+                },
               },
-            }]
+            ]
           : []),
       ];
     }
@@ -660,18 +711,38 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       const many = sel.length > 1;
       const only = !many ? l.elements.find((e) => e.id === sel[0]) : undefined;
       const items: MenuItem[] = [
-        { label: many ? `${t('duplicate')} (${sel.length})` : only?.kind === 'table' ? `${t('copyTable')} (${only.seats})` : t('duplicate'), onClick: duplicateSelected },
+        {
+          label: many
+            ? `${t('duplicate')} (${sel.length})`
+            : only?.kind === 'table'
+              ? `${t('copyTable')} (${only.seats})`
+              : t('duplicate'),
+          onClick: duplicateSelected,
+        },
         { label: t('rotate90'), onClick: rotateSelected },
       ];
-      const tablesSel = sel.map((id) => l.elements.find((e) => e.id === id)).filter((e): e is TableEl => !!e && e.kind === 'table');
+      const tablesSel = sel
+        .map((id) => l.elements.find((e) => e.id === id))
+        .filter((e): e is TableEl => !!e && e.kind === 'table');
       if (tablesSel.length > 0) {
         const toRect = tablesSel.some((x) => x.shape === 'round');
-        items.push({ label: toRect ? t('makeRect') : t('makeRound'), onClick: () => setShape(tablesSel.map((x) => x.id), toRect ? 'rect' : 'round') });
+        items.push({
+          label: toRect ? t('makeRect') : t('makeRound'),
+          onClick: () =>
+            setShape(
+              tablesSel.map((x) => x.id),
+              toRect ? 'rect' : 'round',
+            ),
+        });
       }
       if (only && only.kind === 'table' && l.guests.some((g) => g.tableId === only.id)) {
         items.push({ label: t('emptyTable'), onClick: () => emptyTable(only.id) });
       }
-      items.push('sep', { label: many ? `${t('remove')} (${sel.length})` : t('remove'), danger: true, onClick: removeSelected });
+      items.push('sep', {
+        label: many ? `${t('remove')} (${sel.length})` : t('remove'),
+        danger: true,
+        onClick: removeSelected,
+      });
       return items;
     }
     const at = (make: (x: number, y: number) => Element) => () => {
@@ -684,12 +755,14 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       { label: `+ ${t('roundTable')} (${seatsToAdd})`, onClick: () => addTableAt('round', seatsToAdd, m.wx, m.wy) },
       { label: `+ ${t('rectTable')} (${seatsToAdd})`, onClick: () => addTableAt('rect', seatsToAdd, m.wx, m.wy) },
       { label: `+ ${t('roundColumn')}`, onClick: at((x, y) => ({ ...newColumn(x, y, 'circle'), label: t('column') })) },
-      { label: `+ ${t('squareColumn')}`, onClick: at((x, y) => ({ ...newColumn(x, y, 'square'), label: t('column') })) },
+      {
+        label: `+ ${t('squareColumn')}`,
+        onClick: at((x, y) => ({ ...newColumn(x, y, 'square'), label: t('column') })),
+      },
       'sep',
       { label: t('selectAll'), disabled: l.elements.length === 0, onClick: selectAll },
     ];
   };
-
 
   /** Copies the selected table (same shape, chairs and angle, no guests) in a row beside it. */
   const copyTable = () => {
@@ -747,10 +820,11 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     const el = layoutRef.current.elements.find((e) => e.id === id);
     setViewTab('hall');
     setSelection([id]);
-    if (el) setView((v) => {
-      const scale = Math.max(v.scale, 40);
-      return { scale, x: size.w / 2 - el.x * scale, y: size.h / 2 - el.y * scale };
-    });
+    if (el)
+      setView((v) => {
+        const scale = Math.max(v.scale, 40);
+        return { scale, x: size.w / 2 - el.x * scale, y: size.h / 2 - el.y * scale };
+      });
   };
 
   const pickGuest = (guestId: string) => {
@@ -770,7 +844,22 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   };
   const editGuest = (id: string, patch: Partial<Guest>) => {
     const l = layoutRef.current;
-    commit({ ...l, guests: l.guests.map((g) => (g.id === id ? { ...g, ...patch, name: (patch.name ?? g.name).slice(0, LIMITS.nameMax), group: (patch.group ?? g.group).slice(0, LIMITS.nameMax) } : g)) }, `guest:${id}`);
+    commit(
+      {
+        ...l,
+        guests: l.guests.map((g) =>
+          g.id === id
+            ? {
+                ...g,
+                ...patch,
+                name: (patch.name ?? g.name).slice(0, LIMITS.nameMax),
+                group: (patch.group ?? g.group).slice(0, LIMITS.nameMax),
+              }
+            : g,
+        ),
+      },
+      `guest:${id}`,
+    );
   };
   const removeGuestById = (id: string) => {
     const name = layoutRef.current.guests.find((g) => g.id === id)?.name ?? '';
@@ -797,7 +886,14 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   /** Turn the given tables round or rectangular; chairs and guests stay with them. */
   const setShape = (ids: string[], shape: 'round' | 'rect') => {
     const l = layoutRef.current;
-    commit({ ...l, elements: l.elements.map((e) => (e.kind === 'table' && ids.includes(e.id) ? ({ ...e, shape, ...(shape === 'round' ? { half: undefined } : {}) } as Element) : e)) });
+    commit({
+      ...l,
+      elements: l.elements.map((e) =>
+        e.kind === 'table' && ids.includes(e.id)
+          ? ({ ...e, shape, ...(shape === 'round' ? { half: undefined } : {}) } as Element)
+          : e,
+      ),
+    });
   };
   const emptyChair = (guestId: string) => {
     const l = layoutRef.current;
@@ -821,7 +917,8 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     return null;
   };
 
-  const idsOfGroup = (group: string) => layoutRef.current.guests.filter((g) => g.group === group && !g.tableId).map((g) => g.id);
+  const idsOfGroup = (group: string) =>
+    layoutRef.current.guests.filter((g) => g.group === group && !g.tableId).map((g) => g.id);
 
   /** Seat several guests at the table (or chair) under a drop point, filling chairs in order. */
   const dropMany = (ids: string[], wx: number, wy: number) => {
@@ -833,7 +930,9 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       commit({ ...l, guests: res.guests });
       setSelectedId(r.tableId);
     }
-    setToast(res.left > 0 ? `${res.placed} ${t('seatedN')} · ${res.left} ${t('didNotFit')}` : `${res.placed} ${t('seatedN')}`);
+    setToast(
+      res.left > 0 ? `${res.placed} ${t('seatedN')} · ${res.left} ${t('didNotFit')}` : `${res.placed} ${t('seatedN')}`,
+    );
   };
 
   const dropGuest = (guestId: string, wx: number, wy: number) => {
@@ -864,7 +963,10 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       if (addRef.current?.contains(n) || addBtnRef.current?.contains(n)) return;
       setAddOpen(false);
     };
-    const gone = () => { setDragHide(false); setAddOpen(false); };
+    const gone = () => {
+      setDragHide(false);
+      setAddOpen(false);
+    };
     const tdrag = (e: Event) => {
       const ph = (e as CustomEvent).detail;
       if (ph === 'start') setDragHide(true);
@@ -892,7 +994,8 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
         if (sp) addSpecAt(sp, w.x, w.y);
       }
     } else {
-      const ids = p.kind === 'group' ? idsOfGroup(p.value) : p.kind === 'guests' ? p.value.split(',').filter(Boolean) : [p.value];
+      const ids =
+        p.kind === 'group' ? idsOfGroup(p.value) : p.kind === 'guests' ? p.value.split(',').filter(Boolean) : [p.value];
       if (final) {
         setDropHint(null);
         if (!over) return;
@@ -971,7 +1074,15 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       cancelPending();
       const x = e.clientX;
       const y = e.clientY;
-      pending = { x, y, el, timer: window.setTimeout(() => { pending = null; activate(el, x, y); }, 320) };
+      pending = {
+        x,
+        y,
+        el,
+        timer: window.setTimeout(() => {
+          pending = null;
+          activate(el, x, y);
+        }, 320),
+      };
     };
     const onMove = (e: PointerEvent) => {
       if (pending && Math.hypot(e.clientX - pending.x, e.clientY - pending.y) > 8) cancelPending();
@@ -979,7 +1090,9 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     // Android shows its own hold menu (copy / select / "right click") when a finger rests on a person or chip for a moment;
     // that would pop up over the drag. Block it after any touch, except inside text fields where select and paste are needed.
     let lastTouch = 0;
-    const markTouch = (e: PointerEvent) => { if (e.pointerType === 'touch') lastTouch = Date.now(); };
+    const markTouch = (e: PointerEvent) => {
+      if (e.pointerType === 'touch') lastTouch = Date.now();
+    };
     const noNativeMenu = (e: Event) => {
       const t = e.target as HTMLElement | null;
       if (t?.closest?.('input, textarea, select, [contenteditable=true]')) return;
@@ -1002,15 +1115,16 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       document.removeEventListener('pointercancel', cancelPending, true);
       document.removeEventListener('touchmove', onTouchMove, true);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const isGuestDrag = (e: React.DragEvent) => Array.from(e.dataTransfer.types).some((t) => t === 'text/guest-id' || t === 'text/guest-ids' || t === 'text/guest-group');
+  const isGuestDrag = (e: React.DragEvent) =>
+    Array.from(e.dataTransfer.types).some(
+      (t) => t === 'text/guest-id' || t === 'text/guest-ids' || t === 'text/guest-group',
+    );
   const isPresetDrag = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes('text/element-preset');
 
   const copyHandlerRef = useRef({ copy: () => {}, paste: () => {} });
   copyHandlerRef.current = { copy: copySelected, paste: pasteClipboard };
-  // keyboard: delete, undo, redo, copy, paste
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!inHallRef.current) return;
@@ -1047,7 +1161,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     return () => window.removeEventListener('keydown', onKey);
   }, [removeSelected, undo, redo]);
 
-  // Shift held = drag a selection box instead of panning
   useEffect(() => {
     const down = (e: KeyboardEvent) => e.key === 'Shift' && setShiftHeld(true);
     const up = (e: KeyboardEvent) => e.key === 'Shift' && setShiftHeld(false);
@@ -1068,7 +1181,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     const up = () => finishMarquee();
     window.addEventListener('mouseup', up);
     return () => window.removeEventListener('mouseup', up);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [marquee !== null]);
 
   useEffect(() => {
@@ -1111,7 +1223,8 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     }
     return m;
   }, [tables, layout.guests]);
-  const guestsAtSelected = selected && selected.kind === 'table' ? layout.guests.filter((g) => g.tableId === selected.id) : [];
+  const guestsAtSelected =
+    selected && selected.kind === 'table' ? layout.guests.filter((g) => g.tableId === selected.id) : [];
 
   const fit = () => {
     const els = layout.elements;
@@ -1119,7 +1232,10 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       setView({ scale: 40, x: size.w / 2, y: size.h / 2 });
       return;
     }
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
     for (const e of els) {
       let r = 1;
       if (e.kind === 'table') {
@@ -1137,14 +1253,12 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     setView({ scale, x: size.w / 2 - ((minX + maxX) / 2) * scale, y: size.h / 2 - ((minY + maxY) / 2) * scale });
   };
 
-  // when a saved hall is loaded, start zoomed to show all of it
   const fitOnLoad = useRef(true);
   useEffect(() => {
     if (!hydrated || !measured || !fitOnLoad.current || size.w < 50) return;
     fitOnLoad.current = false;
     if (focusGuest && locateGuestId(focusGuest)) return;
     if (layout.elements.length > 0) fit();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, measured, size, layout]);
 
   const gridLines = useMemo(() => {
@@ -1202,12 +1316,27 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   const canResize = !!selected && !layoutLocked && !peopleTool && selection.length <= 1;
 
   const palette: { key: string; label: string; glyph: string; spec: () => Spec }[] = [
-    { key: 'tr', label: t('roundTable'), glyph: 'round', spec: () => ({ kind: 'table', shape: 'round', seats: seatsToAdd }) },
-    { key: 'tc', label: t('rectTable'), glyph: 'rect', spec: () => ({ kind: 'table', shape: 'rect', seats: seatsToAdd }) },
+    {
+      key: 'tr',
+      label: t('roundTable'),
+      glyph: 'round',
+      spec: () => ({ kind: 'table', shape: 'round', seats: seatsToAdd }),
+    },
+    {
+      key: 'tc',
+      label: t('rectTable'),
+      glyph: 'rect',
+      spec: () => ({ kind: 'table', shape: 'rect', seats: seatsToAdd }),
+    },
     { key: 'cc', label: t('roundColumn'), glyph: 'col-round', spec: () => ({ kind: 'column', shape: 'circle' }) },
     { key: 'cs', label: t('squareColumn'), glyph: 'col-square', spec: () => ({ kind: 'column', shape: 'square' }) },
     { key: 'zn', label: t('raisedArea'), glyph: 'zone', spec: () => ({ kind: 'zone' }) },
-    ...MARKER_KINDS.map((k) => ({ key: `m-${k}`, label: markerLabel(k), glyph: `mk mk-${k}`, spec: (): Spec => ({ kind: 'marker', marker: k }) })),
+    ...MARKER_KINDS.map((k) => ({
+      key: `m-${k}`,
+      label: markerLabel(k),
+      glyph: `mk mk-${k}`,
+      spec: (): Spec => ({ kind: 'marker', marker: k }),
+    })),
   ];
 
   return (
@@ -1220,8 +1349,20 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       <header className="bar">
         {leading ?? <h1>{t('appTitle')}</h1>}
         <nav className="views" role="tablist">
-          {([['hall', t('tabHall')], ['guests', t('tabGuests')], ['tables', t('tabTables')]] as const).map(([k, label]) => (
-            <button key={k} role="tab" aria-selected={view_ === k} className={view_ === k ? 'on' : ''} onClick={() => setViewTab(k)}>
+          {(
+            [
+              ['hall', t('tabHall')],
+              ['guests', t('tabGuests')],
+              ['tables', t('tabTables')],
+            ] as const
+          ).map(([k, label]) => (
+            <button
+              key={k}
+              role="tab"
+              aria-selected={view_ === k}
+              className={view_ === k ? 'on' : ''}
+              onClick={() => setViewTab(k)}
+            >
               {label}
               {k === 'guests' && <span className="badge">{layout.guests.length}</span>}
               {k === 'tables' && <span className="badge">{tables.length}</span>}
@@ -1230,7 +1371,12 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
         </nav>
         <div className="bar-actions">
           <IconButton icon="undo" label={`${t('undo')} (Ctrl+Z)`} onClick={undo} disabled={past.current.length === 0} />
-          <IconButton icon="redo" label={`${t('redo')} (Ctrl+Y)`} onClick={redo} disabled={future.current.length === 0} />
+          <IconButton
+            icon="redo"
+            label={`${t('redo')} (Ctrl+Y)`}
+            onClick={redo}
+            disabled={future.current.length === 0}
+          />
           <span className="sep" aria-hidden />
           <IconButton icon="settings" label={t('appSettings')} onClick={() => setSettingsOpen(true)} />
           <input
@@ -1248,22 +1394,26 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       </header>
 
       {inHall && (
-      <QuickTablesBar
-        t={t}
-        presets={presets}
-        addOpen={addOpen}
-        addBtnRef={addBtnRef}
-        onToggleAdd={() => {
-          const r = addBtnRef.current?.getBoundingClientRect();
-          if (r) setAddPos({ y: r.bottom + 6, x: dirOf(lang) === 'rtl' ? Math.max(8, window.innerWidth - r.right) : Math.max(8, r.left) });
-          setAddOpen(!addOpen);
-        }}
-        onAddPreset={addPreset}
-        copies={copies}
-        onCopies={setCopies}
-        onCopyTable={copyTable}
-        selected={selected}
-      />
+        <QuickTablesBar
+          t={t}
+          presets={presets}
+          addOpen={addOpen}
+          addBtnRef={addBtnRef}
+          onToggleAdd={() => {
+            const r = addBtnRef.current?.getBoundingClientRect();
+            if (r)
+              setAddPos({
+                y: r.bottom + 6,
+                x: dirOf(lang) === 'rtl' ? Math.max(8, window.innerWidth - r.right) : Math.max(8, r.left),
+              });
+            setAddOpen(!addOpen);
+          }}
+          onAddPreset={addPreset}
+          copies={copies}
+          onCopies={setCopies}
+          onCopyTable={copyTable}
+          selected={selected}
+        />
       )}
 
       {addOpen && addPos && (
@@ -1275,31 +1425,46 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
           style={{ top: addPos.y, [dirOf(lang) === 'rtl' ? 'right' : 'left']: addPos.x }}
           onKeyDown={(e) => e.key === 'Escape' && setAddOpen(false)}
         >
-            <NumField label={t('chairs')} value={seatsToAdd} min={LIMITS.seatsMin} max={LIMITS.seatsMax} step={1} int onChange={setSeatsToAdd} />
-        <p className="muted">{t('paletteHint')}</p>
-        <div className="palette">
-          {palette.map((p) => (
-            <button
-              key={p.key}
-              className="tile"
-              draggable={!coarsePointer()}
-              data-tdrag={`preset:${specToString(p.spec())}`}
-              title={`${p.label} — ${t('paletteHint')}`}
-              onDragStart={(e) => {
-                e.dataTransfer.setData('text/element-preset', specToString(p.spec()));
-                e.dataTransfer.effectAllowed = 'copy';
-              }}
-              onClick={() => { addPreset(p.spec()); setAddOpen(false); }}
-            >
-              <span className={`pg ${p.glyph}`} aria-hidden />
-              <span className="tile-label">{p.label}</span>
-            </button>
-          ))}
-        </div>
+          <NumField
+            label={t('chairs')}
+            value={seatsToAdd}
+            min={LIMITS.seatsMin}
+            max={LIMITS.seatsMax}
+            step={1}
+            int
+            onChange={setSeatsToAdd}
+          />
+          <p className="muted">{t('paletteHint')}</p>
+          <div className="palette">
+            {palette.map((p) => (
+              <button
+                key={p.key}
+                className="tile"
+                draggable={!coarsePointer()}
+                data-tdrag={`preset:${specToString(p.spec())}`}
+                title={`${p.label} — ${t('paletteHint')}`}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('text/element-preset', specToString(p.spec()));
+                  e.dataTransfer.effectAllowed = 'copy';
+                }}
+                onClick={() => {
+                  addPreset(p.spec());
+                  setAddOpen(false);
+                }}
+              >
+                <span className={`pg ${p.glyph}`} aria-hidden />
+                <span className="tile-label">{p.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
-      {toast && <div className="toast" role="status">{toast}</div>}
+      {toast && (
+        <div className="toast" role="status">
+          {toast}
+        </div>
+      )}
 
       {settingsOpen && (
         <SettingsDialog
@@ -1311,7 +1476,10 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
           toggleLock={toggleLock}
           onExport={exportFile}
           onImport={() => fileRef.current?.click()}
-          onClear={() => { setSettingsOpen(false); clearAll(); }}
+          onClear={() => {
+            setSettingsOpen(false);
+            clearAll();
+          }}
           clearDisabled={layout.elements.length === 0}
           onClose={() => setSettingsOpen(false)}
         />
@@ -1319,10 +1487,25 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       {pendingDelete && (
         <>
           <div className="picker-backdrop" onMouseDown={() => setPendingDelete(null)} />
-          <div className="import-dialog confirm" role="alertdialog" aria-label={t('remove')} onKeyDown={(e) => e.key === 'Escape' && setPendingDelete(null)}>
+          <div
+            className="import-dialog confirm"
+            role="alertdialog"
+            aria-label={t('remove')}
+            onKeyDown={(e) => e.key === 'Escape' && setPendingDelete(null)}
+          >
             <p>{pendingDelete.text}</p>
             <div className="row">
-              <button className="primary danger-fill" onClick={() => { const r = pendingDelete.run; setPendingDelete(null); r(); }} autoFocus>{t('remove')}</button>
+              <button
+                className="primary danger-fill"
+                onClick={() => {
+                  const r = pendingDelete.run;
+                  setPendingDelete(null);
+                  r();
+                }}
+                autoFocus
+              >
+                {t('remove')}
+              </button>
               <button onClick={() => setPendingDelete(null)}>{t('importCancel')}</button>
             </div>
           </div>
@@ -1331,43 +1514,62 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       {askClear && (
         <>
           <div className="picker-backdrop" onMouseDown={() => setAskClear(false)} />
-          <div className="import-dialog confirm" role="alertdialog" aria-label={t('clearAll')} onKeyDown={(e) => e.key === 'Escape' && setAskClear(false)}>
+          <div
+            className="import-dialog confirm"
+            role="alertdialog"
+            aria-label={t('clearAll')}
+            onKeyDown={(e) => e.key === 'Escape' && setAskClear(false)}
+          >
             <p>{t('confirmClear')}</p>
             <div className="row">
-              <button className="primary danger-fill" onClick={doClear} autoFocus>{t('clearAll')}</button>
+              <button className="primary danger-fill" onClick={doClear} autoFocus>
+                {t('clearAll')}
+              </button>
               <button onClick={() => setAskClear(false)}>{t('importCancel')}</button>
             </div>
           </div>
         </>
       )}
 
-      {guestEdit && (() => {
-        const g = layout.guests.find((x) => x.id === guestEdit.id);
-        return g ? <GuestEditPopup t={t} guest={g} x={guestEdit.x} y={guestEdit.y} onEdit={editGuest} onRemoveGuest={removeGuestById} onClose={() => setGuestEdit(null)} /> : null;
-      })()}
+      {guestEdit &&
+        (() => {
+          const g = layout.guests.find((x) => x.id === guestEdit.id);
+          return g ? (
+            <GuestEditPopup
+              t={t}
+              guest={g}
+              x={guestEdit.x}
+              y={guestEdit.y}
+              onEdit={editGuest}
+              onRemoveGuest={removeGuestById}
+              onClose={() => setGuestEdit(null)}
+            />
+          ) : null;
+        })()}
 
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu)} onClose={() => setMenu(null)} />}
 
-      {picker && (() => {
-        const tb = tables.find((x) => x.id === picker.tableId);
-        return tb ? (
-          <ChairPicker
-            t={t}
-            table={tb}
-            seat={picker.seat}
-            x={picker.x}
-            y={picker.y}
-            guests={layout.guests}
-            tableLabel={nameById}
-            onPick={pickGuest}
-            onAddAndSeat={addAndSeat}
-            onEmpty={emptyChair}
-            onEdit={editGuest}
-            onRemoveGuest={removeGuestById}
-            onClose={() => setPicker(null)}
-          />
-        ) : null;
-      })()}
+      {picker &&
+        (() => {
+          const tb = tables.find((x) => x.id === picker.tableId);
+          return tb ? (
+            <ChairPicker
+              t={t}
+              table={tb}
+              seat={picker.seat}
+              x={picker.x}
+              y={picker.y}
+              guests={layout.guests}
+              tableLabel={nameById}
+              onPick={pickGuest}
+              onAddAndSeat={addAndSeat}
+              onEmpty={emptyChair}
+              onEdit={editGuest}
+              onRemoveGuest={removeGuestById}
+              onClose={() => setPicker(null)}
+            />
+          ) : null;
+        })()}
 
       <div className={`main${inHall ? '' : ' hidden'}`}>
         <div
@@ -1396,7 +1598,9 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
             cancelLongPress();
             if (lp?.ready && e.pointerType === 'touch') {
               const r = wrapRef.current?.getBoundingClientRect();
-              const node = r ? stageRef.current?.getIntersection({ x: lp.x - r.left, y: lp.y - r.top }) ?? null : null;
+              const node = r
+                ? (stageRef.current?.getIntersection({ x: lp.x - r.left, y: lp.y - r.top }) ?? null)
+                : null;
               openMenu(node, e.clientX, e.clientY);
             }
           }}
@@ -1506,10 +1710,26 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
           >
             <Layer listening={false}>
               {gridLines.map((l) => (
-                <Line key={l.key} points={l.points} stroke={theme === 'dark' ? (l.major ? '#3f424a' : '#2b2d33') : l.major ? '#cfc8b8' : '#e6e1d4'} strokeWidth={l.major ? 1.25 : 1} strokeScaleEnabled={false} />
+                <Line
+                  key={l.key}
+                  points={l.points}
+                  stroke={theme === 'dark' ? (l.major ? '#3f424a' : '#2b2d33') : l.major ? '#cfc8b8' : '#e6e1d4'}
+                  strokeWidth={l.major ? 1.25 : 1}
+                  strokeScaleEnabled={false}
+                />
               ))}
-              <Line points={[0, -0.25, 0, 0.25]} stroke={theme === 'dark' ? '#7d796f' : '#9a9283'} strokeWidth={1} strokeScaleEnabled={false} />
-              <Line points={[-0.25, 0, 0.25, 0]} stroke={theme === 'dark' ? '#7d796f' : '#9a9283'} strokeWidth={1} strokeScaleEnabled={false} />
+              <Line
+                points={[0, -0.25, 0, 0.25]}
+                stroke={theme === 'dark' ? '#7d796f' : '#9a9283'}
+                strokeWidth={1}
+                strokeScaleEnabled={false}
+              />
+              <Line
+                points={[-0.25, 0, 0.25, 0]}
+                stroke={theme === 'dark' ? '#7d796f' : '#9a9283'}
+                strokeWidth={1}
+                strokeScaleEnabled={false}
+              />
             </Layer>
             <Layer key={`${fontTick}-${theme}`}>
               {[...layout.elements]
@@ -1520,7 +1740,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
                     el={el}
                     settings={layout.settings}
                     issue={issueById.get(el.id)}
-                    seated={el.kind === 'table' && layout.guests.length > 0 ? seated.get(el.id) ?? 0 : undefined}
+                    seated={el.kind === 'table' && layout.guests.length > 0 ? (seated.get(el.id) ?? 0) : undefined}
                     seatGuests={el.kind === 'table' ? seatMap.get(el.id) : undefined}
                     highlightSeat={dropHint && dropHint.tableId === el.id ? dropHint.seat : null}
                     onChairDrop={dropGuest}
@@ -1536,7 +1756,11 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
                     onDragStartEl={onDragStartEl}
                     onDragMoveEl={onDragMoveEl}
                     onMove={onMoveEl}
-                    snapPos={(x, y, node) => (snapGrid ? snapToDrawnEdges(node, x, y) ?? snapToGridEdges(el, layout.settings, x, y, 1) : { x: snap(x, 0.1), y: snap(y, 0.1) })}
+                    snapPos={(x, y, node) =>
+                      snapGrid
+                        ? (snapToDrawnEdges(node, x, y) ?? snapToGridEdges(el, layout.settings, x, y, 1))
+                        : { x: snap(x, 0.1), y: snap(y, 0.1) }
+                    }
                     onOpenEl={openProps}
                     pickedIds={pickedSet}
                     onChairPick={peopleTool ? togglePerson : undefined}
@@ -1559,8 +1783,8 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
                 anchorSize={11}
                 anchorCornerRadius={2}
                 onTransformEnd={(e) => {
-                  const node = e.target as unknown as Konva.Group;
-                  const id = [...nodeRefs.current.entries()].find(([, n]) => n === node)?.[0];
+                  const node = e.target;
+                  const id = [...nodeRefs.current.entries()].find(([, n]) => n === (node as Konva.Node))?.[0];
                   if (!id) return;
                   let r = Math.round(node.rotation());
                   if (r > 180) r -= 360;
@@ -1583,7 +1807,9 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
                   const l = layoutRef.current;
                   if (el.kind === 'table') {
                     const seats = Math.min(LIMITS.seatsMax, Math.max(LIMITS.seatsMin, Math.round(el.seats * sx)));
-                    const elements = l.elements.map((x) => (x.id === id ? ({ ...x, seats, x: round2(nx), y: round2(ny), rotation: r } as Element) : x));
+                    const elements = l.elements.map((x) =>
+                      x.id === id ? ({ ...x, seats, x: round2(nx), y: round2(ny), rotation: r } as Element) : x,
+                    );
                     commit({ ...l, elements, guests: normalizeSeats(elements, l.guests) });
                   } else if (el.kind === 'column') {
                     patchEl(id, { size: clampSize(el.size * sx), x: round2(nx), y: round2(ny), rotation: r });
@@ -1623,7 +1849,10 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
               <button
                 onClick={() => {
                   const l = layoutRef.current;
-                  commit({ ...l, guests: l.guests.map((g) => (peopleSel.includes(g.id) ? { ...g, tableId: null, seat: null } : g)) });
+                  commit({
+                    ...l,
+                    guests: l.guests.map((g) => (peopleSel.includes(g.id) ? { ...g, tableId: null, seat: null } : g)),
+                  });
                   setPeopleSel([]);
                 }}
               >
@@ -1640,54 +1869,106 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
           {marquee && (
             <div
               className="marquee"
-              style={{ left: Math.min(marquee.x0, marquee.x1), top: Math.min(marquee.y0, marquee.y1), width: Math.abs(marquee.x1 - marquee.x0), height: Math.abs(marquee.y1 - marquee.y0) }}
+              style={{
+                left: Math.min(marquee.x0, marquee.x1),
+                top: Math.min(marquee.y0, marquee.y1),
+                width: Math.abs(marquee.x1 - marquee.x0),
+                height: Math.abs(marquee.y1 - marquee.y0),
+              }}
             />
           )}
           <div className="fit">
             <IconButton icon="fit" label={t('fit')} onClick={fit} />
             <IconButton icon="grid" label={t('snapGrid')} pressed={snapGrid} onClick={toggleSnap} />
             <IconButton icon="lock" label={t('lockLayout')} pressed={layoutLocked} onClick={toggleLock} />
-            <IconButton icon="select" label={t('selectTool')} pressed={selectTool} onClick={() => { setSelectTool(!selectTool); setPeopleTool(false); }} />
-            <IconButton icon="users" label={t('peopleTool')} pressed={peopleTool} onClick={() => { setPeopleTool(!peopleTool); setSelectTool(false); }} />
+            <IconButton
+              icon="select"
+              label={t('selectTool')}
+              pressed={selectTool}
+              onClick={() => {
+                setSelectTool(!selectTool);
+                setPeopleTool(false);
+              }}
+            />
+            <IconButton
+              icon="users"
+              label={t('peopleTool')}
+              pressed={peopleTool}
+              onClick={() => {
+                setPeopleTool(!peopleTool);
+                setSelectTool(false);
+              }}
+            />
           </div>
         </div>
 
         {inHall && (
-        <aside className={`side${sheetOpen ? '' : ' collapsed'}`}>
-          <button className="sheet-toggle" aria-expanded={sheetOpen} onClick={() => setSheetOpen(!sheetOpen)}>
-            <span>{selected ? selected.label || t('properties') : `${t('properties')} · ${t('guestsToSeat')}`}</span>
-            <span className="arrow" aria-hidden>{sheetOpen ? '▾' : '▴'}</span>
-          </button>
+          <aside className={`side${sheetOpen ? '' : ' collapsed'}`}>
+            <button className="sheet-toggle" aria-expanded={sheetOpen} onClick={() => setSheetOpen(!sheetOpen)}>
+              <span>{selected ? selected.label || t('properties') : `${t('properties')} · ${t('guestsToSeat')}`}</span>
+              <span className="arrow" aria-hidden>
+                {sheetOpen ? '▾' : '▴'}
+              </span>
+            </button>
 
-          <PropertiesCard
-            t={t}
-            selection={selection}
-            selected={selected}
-            settings={layout.settings}
-            guestsAtSelected={guestsAtSelected}
-            onPatch={patchEl}
-            onShape={setShape}
-            onSeats={changeSeats}
-            onHalf={(id, half) => { const l = layoutRef.current; commit({ ...l, elements: l.elements.map((x) => (x.id === id && x.kind === 'table' ? ({ ...x, half } as Element) : x)) }); }}
-            onDuplicate={duplicateSelected}
-            onRotate={rotateSelected}
-            onRemove={removeSelected}
-          />
+            <PropertiesCard
+              t={t}
+              selection={selection}
+              selected={selected}
+              settings={layout.settings}
+              guestsAtSelected={guestsAtSelected}
+              onPatch={patchEl}
+              onShape={setShape}
+              onSeats={changeSeats}
+              onHalf={(id, half) => {
+                const l = layoutRef.current;
+                commit({
+                  ...l,
+                  elements: l.elements.map((x) =>
+                    x.id === id && x.kind === 'table' ? ({ ...x, half } as Element) : x,
+                  ),
+                });
+              }}
+              onDuplicate={duplicateSelected}
+              onRotate={rotateSelected}
+              onRemove={removeSelected}
+            />
 
-          <section className="card">
-            <h2>{t('guestsToSeat')}</h2>
-            <SeatList t={t} guests={layout.guests} tables={tables} peopleTool={peopleTool} picked={pickedSet} onToggle={togglePerson} onEdit={(id, x, y) => setGuestEdit({ id, x, y })} />
-          </section>
+            <section className="card">
+              <h2>{t('guestsToSeat')}</h2>
+              <SeatList
+                t={t}
+                guests={layout.guests}
+                tables={tables}
+                peopleTool={peopleTool}
+                picked={pickedSet}
+                onToggle={togglePerson}
+                onEdit={(id, x, y) => setGuestEdit({ id, x, y })}
+              />
+            </section>
 
-          <WarningsCard t={t} totals={totals} issues={issues} full={full} seated={seated} nameById={nameById} onSelect={setSelectedId} />
+            <WarningsCard
+              t={t}
+              totals={totals}
+              issues={issues}
+              full={full}
+              seated={seated}
+              nameById={nameById}
+              onSelect={setSelectedId}
+            />
 
-          {error && <p className="error" role="alert">{error}</p>}
-          <p className="muted saved">{t('saved')}</p>
-        </aside>
+            {error && (
+              <p className="error" role="alert">
+                {error}
+              </p>
+            )}
+            <p className="muted saved">{t('saved')}</p>
+          </aside>
         )}
       </div>
 
-      {view_ === 'guests' && <GuestsView
+      {view_ === 'guests' && (
+        <GuestsView
           t={t}
           guests={layout.guests}
           tables={tables}
@@ -1696,9 +1977,14 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
           onAskRemove={removeGuestById}
           onImportAll={(added, made) => {
             const l = layoutRef.current;
-            commit({ ...l, elements: [...l.elements, ...placeNewTables(l.elements, l.settings, made)], guests: [...l.guests, ...added] });
+            commit({
+              ...l,
+              elements: [...l.elements, ...placeNewTables(l.elements, l.settings, made)],
+              guests: [...l.guests, ...added],
+            });
           }}
-        />}
+        />
+      )}
       {view_ === 'tables' && (
         <TablesView
           t={t}

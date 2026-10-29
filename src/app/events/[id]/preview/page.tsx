@@ -24,10 +24,16 @@ export default async function PreviewPage({ params }: { params: Promise<{ id: st
     <div className="site">
       <SiteHeader crumb={{ id, name: ev.name }} />
       <main className="container">
-        <div className="page-title"><h1>{s('planTitle')}</h1></div>
+        <div className="page-title">
+          <h1>{s('planTitle')}</h1>
+        </div>
         <StepBar id={id} active="hall" />
         <Link href={hall} className="preview-card" aria-label={s('openDesignerAria')}>
-          {layout.elements.length ? <HallPreview layout={layout} label={s('planTitle')} /> : <p className="muted">{s('emptyHall')}</p>}
+          {layout.elements.length ? (
+            <HallPreview layout={layout} label={s('planTitle')} />
+          ) : (
+            <p className="muted">{s('emptyHall')}</p>
+          )}
           <span className="btn preview-open">{layout.elements.length ? s('openDesigner') : s('startDrawing')}</span>
         </Link>
         <HallFileImport id={id} hasHall={layout.elements.length > 0 || layout.guests.length > 0} />

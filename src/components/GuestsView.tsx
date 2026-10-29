@@ -43,7 +43,10 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
 
   const counts = useMemo(() => seatedCounts(guests), [guests]);
   const tableById = useMemo(() => new Map(tables.map((tb) => [tb.id, tb])), [tables]);
-  const groups = useMemo(() => [...new Set(guests.map((g) => g.group).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [guests]);
+  const groups = useMemo(
+    () => [...new Set(guests.map((g) => g.group).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [guests],
+  );
   const room = LIMITS.maxGuests - guests.length;
   const seatedTotal = guests.filter((g) => g.tableId).length;
 
@@ -53,7 +56,7 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
         .map((g, i) => ({ g, i }))
         .filter(({ g }) => (filter === 'all' ? true : filter === 'seated' ? !!g.tableId : !g.tableId))
         .filter(({ g }) => !groupFilter || g.group === groupFilter)
-        .filter(({ g }) => matches(query, g.name, g.group, g.tableId ? tableById.get(g.tableId)?.label ?? '' : '')),
+        .filter(({ g }) => matches(query, g.name, g.group, g.tableId ? (tableById.get(g.tableId)?.label ?? '') : '')),
     [guests, filter, groupFilter, query, tableById],
   );
 
@@ -107,75 +110,131 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
     <div className="page">
       <div className="page-inner guests">
         <section className="card add-bar">
-          <button type="button" className="primary" onClick={() => { setJustAdded(0); setAdding(true); }} disabled={room <= 0}>
+          <button
+            type="button"
+            className="primary"
+            onClick={() => {
+              setJustAdded(0);
+              setAdding(true);
+            }}
+            disabled={room <= 0}
+          >
             <Icon name="plus" size={18} /> {t('addGuest')}
           </button>
           <button type="button" className="import-btn" onClick={() => setImporting(true)}>
             <Icon name="upload" size={18} /> {t('importGuests')}
           </button>
-          {importing && <ImportGuests t={t} guests={guests} tables={tables} onImport={(added, made) => (onImportAll && made.length ? onImportAll(added, made) : onChange([...guests, ...added]))} onClose={() => setImporting(false)} />}
+          {importing && (
+            <ImportGuests
+              t={t}
+              guests={guests}
+              tables={tables}
+              onImport={(added, made) =>
+                onImportAll && made.length ? onImportAll(added, made) : onChange([...guests, ...added])
+              }
+              onClose={() => setImporting(false)}
+            />
+          )}
         </section>
         {adding && (
           <>
             <div className="picker-backdrop" onMouseDown={() => setAdding(false)} />
-            <div className="import-dialog add-dialog" role="dialog" aria-label={t('addGuestCard')} onKeyDown={(e) => e.key === 'Escape' && setAdding(false)}>
+            <div
+              className="import-dialog add-dialog"
+              role="dialog"
+              aria-label={t('addGuestCard')}
+              onKeyDown={(e) => e.key === 'Escape' && setAdding(false)}
+            >
               <h3>{t('addGuestCard')}</h3>
-          <form
-            className="add-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (several) addMany();
-              else addOne();
-            }}
-          >
-            {!several ? (
-              <label className="field af-name">
-                <span>{t('guestName')}</span>
-                <input ref={nameRef} autoFocus type="text" maxLength={LIMITS.nameMax} value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
-              </label>
-            ) : (
-              <label className="field af-name" style={{ gridColumn: 'span 2' }}>
-                <span>{t('severalHint')}</span>
-                <textarea rows={5} value={bulk} onChange={(e) => setBulk(e.target.value)} />
-              </label>
-            )}
-            {!several && (
-              <label className="field af-extra">
-                <span>{t('extraPeople')}</span>
-                <input type="number" inputMode="numeric" min={0} max={99} value={extra || ''} placeholder="0" onChange={(e) => setExtra(Math.max(0, Math.min(99, parseInt(e.target.value, 10) || 0)))} />
-              </label>
-            )}
-            <label className="field af-group">
-              <span>{t('guestGroup')}</span>
-              <input type="text" list="group-list" maxLength={LIMITS.groupMax} value={group} onChange={(e) => setGroup(e.target.value)} autoComplete="off" />
-              <datalist id="group-list">
-                {groups.map((g) => (
-                  <option key={g} value={g} />
-                ))}
-              </datalist>
-            </label>
-            <label className="field af-table">
-              <span>{t('table')}</span>
-              <select value={tableId} onChange={(e) => setTableId(e.target.value)}>
-                <option value="">{t('unseated')}</option>
-                {tables.map(tableOption)}
-              </select>
-            </label>
-            <label className="check af-step">
-              <input type="checkbox" checked={stepFree} onChange={(e) => setStepFree(e.target.checked)} />
-              <span>{t('stepFree')}</span>
-            </label>
-            <div className="af-actions">
-              <button type="submit" className="primary" disabled={room <= 0 || (several ? !bulk.trim() : !name.trim())}>
-                <Icon name="plus" size={18} /> {several ? t('addAll') : t('addGuest')}
+              <form
+                className="add-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (several) addMany();
+                  else addOne();
+                }}
+              >
+                {!several ? (
+                  <label className="field af-name">
+                    <span>{t('guestName')}</span>
+                    <input
+                      ref={nameRef}
+                      autoFocus
+                      type="text"
+                      maxLength={LIMITS.nameMax}
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      autoComplete="off"
+                    />
+                  </label>
+                ) : (
+                  <label className="field af-name" style={{ gridColumn: 'span 2' }}>
+                    <span>{t('severalHint')}</span>
+                    <textarea rows={5} value={bulk} onChange={(e) => setBulk(e.target.value)} />
+                  </label>
+                )}
+                {!several && (
+                  <label className="field af-extra">
+                    <span>{t('extraPeople')}</span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={99}
+                      value={extra || ''}
+                      placeholder="0"
+                      onChange={(e) => setExtra(Math.max(0, Math.min(99, parseInt(e.target.value, 10) || 0)))}
+                    />
+                  </label>
+                )}
+                <label className="field af-group">
+                  <span>{t('guestGroup')}</span>
+                  <input
+                    type="text"
+                    list="group-list"
+                    maxLength={LIMITS.groupMax}
+                    value={group}
+                    onChange={(e) => setGroup(e.target.value)}
+                    autoComplete="off"
+                  />
+                  <datalist id="group-list">
+                    {groups.map((g) => (
+                      <option key={g} value={g} />
+                    ))}
+                  </datalist>
+                </label>
+                <label className="field af-table">
+                  <span>{t('table')}</span>
+                  <select value={tableId} onChange={(e) => setTableId(e.target.value)}>
+                    <option value="">{t('unseated')}</option>
+                    {tables.map(tableOption)}
+                  </select>
+                </label>
+                <label className="check af-step">
+                  <input type="checkbox" checked={stepFree} onChange={(e) => setStepFree(e.target.checked)} />
+                  <span>{t('stepFree')}</span>
+                </label>
+                <div className="af-actions">
+                  <button
+                    type="submit"
+                    className="primary"
+                    disabled={room <= 0 || (several ? !bulk.trim() : !name.trim())}
+                  >
+                    <Icon name="plus" size={18} /> {several ? t('addAll') : t('addGuest')}
+                  </button>
+                  <button type="button" onClick={() => setSeveral(!several)}>
+                    {several ? t('addGuest') : t('addSeveral')}
+                  </button>
+                </div>
+              </form>
+              {justAdded > 0 && (
+                <p className="notice ok" role="status" style={{ margin: 0 }}>
+                  ✓ {justAdded}
+                </p>
+              )}
+              <button type="button" onClick={() => setAdding(false)}>
+                {t('done')}
               </button>
-              <button type="button" onClick={() => setSeveral(!several)}>
-                {several ? t('addGuest') : t('addSeveral')}
-              </button>
-            </div>
-          </form>
-              {justAdded > 0 && <p className="notice ok" role="status" style={{ margin: 0 }}>✓ {justAdded}</p>}
-              <button type="button" onClick={() => setAdding(false)}>{t('done')}</button>
             </div>
           </>
         )}
@@ -184,13 +243,20 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
           <div className="list-head">
             <h2>{t('guestListTitle')}</h2>
             <p className="totals">
-              {t('guestsTotal')}: {guests.length} · {t('seated')}: {seatedTotal} · {t('noTable')}: {guests.length - seatedTotal}
+              {t('guestsTotal')}: {guests.length} · {t('seated')}: {seatedTotal} · {t('noTable')}:{' '}
+              {guests.length - seatedTotal}
             </p>
           </div>
           <div className="filters">
             <label className="search">
               <Icon name="search" size={18} />
-              <input type="search" placeholder={t('searchGuests')} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={t('searchGuests')} />
+              <input
+                type="search"
+                placeholder={t('searchGuests')}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                aria-label={t('searchGuests')}
+              />
             </label>
             <select value={filter} onChange={(e) => setFilter(e.target.value as Filter)} aria-label={t('filterAll')}>
               <option value="all">{t('filterAll')}</option>
@@ -200,7 +266,9 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
             <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} aria-label={t('groupAll')}>
               <option value="">{t('groupAll')}</option>
               {groups.map((g) => (
-                <option key={g} value={g}>{g}</option>
+                <option key={g} value={g}>
+                  {g}
+                </option>
               ))}
             </select>
           </div>
@@ -257,7 +325,14 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
                       onChange={(e) => {
                         const id = e.target.value;
                         const target = id ? tableById.get(id) : undefined;
-                        onChange(seatGuest(guests, g.id, target ? target.id : null, target ? firstFreeSeat(target, guests, g.id) : null));
+                        onChange(
+                          seatGuest(
+                            guests,
+                            g.id,
+                            target ? target.id : null,
+                            target ? firstFreeSeat(target, guests, g.id) : null,
+                          ),
+                        );
                       }}
                     >
                       <option value="">{t('unseated')}</option>
@@ -269,7 +344,11 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
                         value={g.seat ?? ''}
                         aria-label={t('chair')}
                         title={t('chair')}
-                        onChange={(e) => onChange(seatGuest(guests, g.id, g.tableId, e.target.value === '' ? null : Number(e.target.value)))}
+                        onChange={(e) =>
+                          onChange(
+                            seatGuest(guests, g.id, g.tableId, e.target.value === '' ? null : Number(e.target.value)),
+                          )
+                        }
                       >
                         <option value="">–</option>
                         {Array.from({ length: tb.seats }, (_, k) => {
@@ -287,16 +366,39 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
                     )}
                   </div>
                   <div className="guest-acts">
-                    {onLocate && (g.tableId ? <IconButton icon="pin" label={t('showOnMap')} onClick={() => onLocate(g)} /> : <span className="acts-gap" />)}
-                    <IconButton icon="access" label={t('stepFree')} pressed={g.stepFree} onClick={() => update(g.id, { stepFree: !g.stepFree }, 'step')} />
-                    <IconButton icon="trash" label={t('removeGuest')} danger onClick={() => (onAskRemove ? onAskRemove(g.id) : remove(g.id))} />
+                    {onLocate &&
+                      (g.tableId ? (
+                        <IconButton icon="pin" label={t('showOnMap')} onClick={() => onLocate(g)} />
+                      ) : (
+                        <span className="acts-gap" />
+                      ))}
+                    <IconButton
+                      icon="access"
+                      label={t('stepFree')}
+                      pressed={g.stepFree}
+                      onClick={() => update(g.id, { stepFree: !g.stepFree }, 'step')}
+                    />
+                    <IconButton
+                      icon="trash"
+                      label={t('removeGuest')}
+                      danger
+                      onClick={() => (onAskRemove ? onAskRemove(g.id) : remove(g.id))}
+                    />
                   </div>
                 </li>
               );
             })}
           </ul>
           {guests.length > 0 && (
-            <details className="danger-zone" onToggle={(e) => { if (!(e.target as HTMLDetailsElement).open) { setAskDeleteAll(false); setTyped(''); } }}>
+            <details
+              className="danger-zone"
+              onToggle={(e) => {
+                if (!(e.target as HTMLDetailsElement).open) {
+                  setAskDeleteAll(false);
+                  setTyped('');
+                }
+              }}
+            >
               <summary>{t('dangerZone')}</summary>
               {!askDeleteAll ? (
                 <button type="button" onClick={() => setAskDeleteAll(true)}>
@@ -304,15 +406,37 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
                 </button>
               ) : (
                 <div className="column-gap">
-                  <span className="error">{t('confirmDeleteAll')} ({guests.length})</span>
-                  <label className="field"><span>{t('typeToConfirm')} «{t('deleteWord')}»</span>
+                  <span className="error">
+                    {t('confirmDeleteAll')} ({guests.length})
+                  </span>
+                  <label className="field">
+                    <span>
+                      {t('typeToConfirm')} «{t('deleteWord')}»
+                    </span>
                     <input type="text" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />
                   </label>
                   <div className="row">
-                    <button type="button" className="primary danger-fill" disabled={typed.trim().toLowerCase() !== t('deleteWord').toLowerCase()} onClick={() => { onChange([]); setAskDeleteAll(false); setTyped(''); }}>
+                    <button
+                      type="button"
+                      className="primary danger-fill"
+                      disabled={typed.trim().toLowerCase() !== t('deleteWord').toLowerCase()}
+                      onClick={() => {
+                        onChange([]);
+                        setAskDeleteAll(false);
+                        setTyped('');
+                      }}
+                    >
                       {t('deleteAllGuests')}
                     </button>
-                    <button type="button" onClick={() => { setAskDeleteAll(false); setTyped(''); }}>{t('importCancel')}</button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAskDeleteAll(false);
+                        setTyped('');
+                      }}
+                    >
+                      {t('importCancel')}
+                    </button>
                   </div>
                 </div>
               )}

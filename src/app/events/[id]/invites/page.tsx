@@ -22,14 +22,25 @@ export default async function InvitesPage({ params }: { params: Promise<{ id: st
   const { data: invites } = await supabase.from('invites').select('*').eq('event_id', id).order('created_at');
   const plan = parseLayout(ev.layout);
   const h = await headers();
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || `${h.get('x-forwarded-proto') ?? 'https'}://${h.get('host')}`).replace(/\/$/, '');
+  const siteUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL || `${h.get('x-forwarded-proto') ?? 'https'}://${h.get('host')}`
+  ).replace(/\/$/, '');
   return (
     <div className="site">
       <SiteHeader crumb={{ id, name: ev.name }} />
       <main className="container">
-        <div className="page-title"><h1>{s('invitesTitle')}</h1></div>
+        <div className="page-title">
+          <h1>{s('invitesTitle')}</h1>
+        </div>
         <StepBar id={id} active="invites" />
-        <InvitesPanel eventId={id} eventName={ev.name} initialGuests={plan.guests} plan={plan} initial={(invites ?? []) as InviteRow[]} siteUrl={siteUrl} />
+        <InvitesPanel
+          eventId={id}
+          eventName={ev.name}
+          initialGuests={plan.guests}
+          plan={plan}
+          initial={(invites ?? []) as InviteRow[]}
+          siteUrl={siteUrl}
+        />
       </main>
     </div>
   );

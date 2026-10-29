@@ -46,7 +46,8 @@ const en = {
   // events
   myEvents: 'My events',
   backups: 'Backups',
-  backupsHint: 'A copy of every event is saved each day (and before any deletion). Restoring brings back the plan and the invitation links.',
+  backupsHint:
+    'A copy of every event is saved each day (and before any deletion). Restoring brings back the plan and the invitation links.',
   restoreFailed: 'Could not restore that backup.',
   backupsMissing: 'Backups are not set up yet (run migration 0009).',
   noBackups: 'No backups yet. The first one is taken tonight.',
@@ -191,7 +192,8 @@ const en = {
   planCheckFailed: 'Could not check the plan. Try again.',
   deleteFailedMsg: 'Could not delete: ',
   linksDeleted: 'Deleted {n} {w}.',
-  defaultTemplate: 'Hello {name},\nWe are delighted to invite you to {event}.\nPlease confirm your attendance with this link:\n{link}',
+  defaultTemplate:
+    'Hello {name},\nWe are delighted to invite you to {event}.\nPlease confirm your attendance with this link:\n{link}',
   // scanner
   cameraFailed: 'Could not start the camera. Allow access or paste the code by hand.',
   verify: 'Check',
@@ -517,7 +519,9 @@ export function makeS(lang: Lang): S {
   return (k, vars) => {
     let v = d[k];
     // text typed by people (names, venues) is wrapped in bidi isolates so Arabic and English never reorder each other
-    if (vars) for (const [name, val] of Object.entries(vars)) v = v.split(`{${name}}`).join(typeof val === 'string' && val ? `\u2068${val}\u2069` : String(val));
+    if (vars)
+      for (const [name, val] of Object.entries(vars))
+        v = v.split(`{${name}}`).join(typeof val === 'string' && val ? `\u2068${val}\u2069` : String(val));
     return v;
   };
 }
