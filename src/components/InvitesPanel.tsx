@@ -112,7 +112,9 @@ export default function InvitesPanel({
       setLive(true);
       setRows((cur) => {
         const mine = new Map(cur.filter((r) => pending.current.has(r.token)).map((r) => [r.token, r]));
-        return (inv.data as InviteRow[]).map((r) => mine.get(r.token) ?? r);
+        const next = (inv.data as InviteRow[]).map((r) => mine.get(r.token) ?? r);
+        // nothing changed: keep the same array so the whole list is not re-rendered every few seconds
+        return JSON.stringify(next) === JSON.stringify(cur) ? cur : next;
       });
       if (withGuests) {
         const ev = await sb.from('events').select('layout').eq('id', eventId).maybeSingle();
