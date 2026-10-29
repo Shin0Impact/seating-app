@@ -8,6 +8,7 @@ import SiteSettings from '@/components/SiteSettings';
 import { getS } from '@/lib/lang-server';
 import { localeOf } from '@/lib/site-i18n';
 import { Logo } from '@/components/Site';
+import ScanWatcher from '@/components/ScanWatcher';
 import GuestCount from '@/components/GuestCount';
 import ZoomPan from '@/components/ZoomPan';
 import ChangeRequestButton from '@/components/ChangeRequestButton';
@@ -155,6 +156,7 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
                 <HallPreview layout={planLayout} label={s('yourTable')} focus={focus} />
               </ZoomPan>
             )}
+            {!planLayout && <><p className="muted" style={{ margin: 0, fontSize: '.88em' }}>{s('mapAfterScan')}</p><ScanWatcher /></>}
             <ChangeRequestButton action={answer} token={token} />
           </section>
         )}
