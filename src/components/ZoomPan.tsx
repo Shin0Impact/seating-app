@@ -1,72 +1,135 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useS } from './LangProvider';
 
-/** Wheel / pinch / buttons to zoom, drag to move. Wraps anything (the hall drawing). */
-export default function ZoomPan({ children }: { children: React.ReactNode }) {
-  const s = useS();
-  const [v, setV] = useState({ k: 1, x: 0, y: 0 });
-  const box = useRef<HTMLDivElement>(null);
-  const pts = useRef(new Map<number, { x: number; y: number }>());
-  const last = useRef<{ d: number } | null>(null);
+type View = { k: number; x: number; y: number };
+const MAX = 10;
 
-  const zoomAt = (factor: number, cx: number, cy: number) =>
-    setV((p) => {
-      const k = Math.min(8, Math.max(1, p.k * factor));
-      const f = k / p.k;
-      // keep the point under (cx, cy) fixed
-      return k === 1 ? { k, x: 0, y: 0 } : { k, x: cx - (cx - p.x) * f, y: cy - (cy - p.y) * f };
-    });
-  const centre = () => {
-    const r = box.current?.getBoundingClientRect();
-    return { x: (r?.width ?? 0) / 2, y: (r?.height ?? 0) / 2 };
-  };
-  const rel = (e: { clientX: number; clientY: number }) => {
+/** The full-screen surface: pinch follows the fingers exactly, drag moves, wheel zooms toward the pointer. */
+function Surface({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  const s = useS();
+  const box = useRef<HTMLDivElement>(null);
+  const [v, setV] = useState<View>({ k: 1, x: 0, y: 0 });
+  const vRef = useRef(v);
+  vRef.current = v;
+  const pts = useRef(new Map<number, { x: number; y: number }>());
+  /** State when the current gesture began: the content point under the fingers must stay under them. */
+  const g = useRef<{ v0: View; mid0: { x: number; y: number }; d0: number } | null>(null);
+
+  const local = (cx: number, cy: number) => {
     const r = box.current!.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
+    return { x: cx - r.left, y: cy - r.top };
+  };
+  const begin = () => {
+    const ps = [...pts.current.values()].map((p) => local(p.x, p.y));
+    if (ps.length === 0) return (g.current = null);
+    const mid = ps.length === 1 ? ps[0] : { x: (ps[0].x + ps[1].x) / 2, y: (ps[0].y + ps[1].y) / 2 };
+    g.current = { v0: vRef.current, mid0: mid, d0: ps.length === 2 ? Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y) : 0 };
+  };
+  const apply = () => {
+    const cur = g.current;
+    if (!cur) return;
+    const ps = [...pts.current.values()].map((p) => local(p.x, p.y));
+    if (ps.length === 0) return;
+    const mid = ps.length === 1 ? ps[0] : { x: (ps[0].x + ps[1].x) / 2, y: (ps[0].y + ps[1].y) / 2 };
+    const d = ps.length === 2 ? Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y) : 0;
+    const k = ps.length === 2 && cur.d0 > 0 ? Math.min(MAX, Math.max(1, cur.v0.k * (d / cur.d0))) : cur.v0.k;
+    const px = (cur.mid0.x - cur.v0.x) / cur.v0.k; // content point first under the fingers
+    const py = (cur.mid0.y - cur.v0.y) / cur.v0.k;
+    setV(k === 1 ? { k, x: 0, y: 0 } : { k, x: mid.x - px * k, y: mid.y - py * k });
+  };
+
+  // wheel must be non-passive to stop the page scrolling behind
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const p = local(e.clientX, e.clientY);
+      const factor = Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0016));
+      setV((c) => {
+        const k = Math.min(MAX, Math.max(1, c.k * factor));
+        const f = k / c.k;
+        return k === 1 ? { k, x: 0, y: 0 } : { k, x: p.x - (p.x - c.x) * f, y: p.y - (p.y - c.y) * f };
+      });
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', key);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', key);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+
+  const buttonZoom = (factor: number) => {
+    const r = box.current!.getBoundingClientRect();
+    const p = { x: r.width / 2, y: r.height / 2 };
+    setV((c) => {
+      const k = Math.min(MAX, Math.max(1, c.k * factor));
+      const f = k / c.k;
+      return k === 1 ? { k, x: 0, y: 0 } : { k, x: p.x - (p.x - c.x) * f, y: p.y - (p.y - c.y) * f };
+    });
   };
 
   return (
-    <div
-      className="zoompan"
-      ref={box}
-      onWheel={(e) => {
-        const p = rel(e);
-        zoomAt(e.deltaY < 0 ? 1.2 : 1 / 1.2, p.x, p.y);
-      }}
-      onPointerDown={(e) => {
-        if ((e.target as HTMLElement).closest('.zp-btns')) return;
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-        pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-        last.current = null;
-      }}
-      onPointerMove={(e) => {
-        const prev = pts.current.get(e.pointerId);
-        if (!prev) return;
-        pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-        if (pts.current.size === 2) {
-          const [a, b] = [...pts.current.values()];
-          const d = Math.hypot(a.x - b.x, a.y - b.y);
-          if (last.current && last.current.d > 0) {
-            const mid = rel({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 });
-            zoomAt(d / last.current.d, mid.x, mid.y);
-          }
-          last.current = { d };
-        } else if (pts.current.size === 1) {
-          const dx = e.clientX - prev.x;
-          const dy = e.clientY - prev.y;
-          setV((p) => (p.k === 1 ? p : { ...p, x: p.x + dx, y: p.y + dy }));
-        }
-      }}
-      onPointerUp={(e) => { pts.current.delete(e.pointerId); last.current = null; }}
-      onPointerCancel={(e) => { pts.current.delete(e.pointerId); last.current = null; }}
-    >
-      <div className="zp-inner" style={{ transform: `translate(${v.x}px, ${v.y}px) scale(${v.k})` }}>{children}</div>
+    <div className="zp-full" role="dialog" aria-modal="true" aria-label={s('zoomIn')}>
+      <div
+        className="zp-surface"
+        ref={box}
+        onPointerDown={(e) => {
+          if ((e.target as HTMLElement).closest('.zp-btns')) return;
+          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+          pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          begin();
+        }}
+        onPointerMove={(e) => {
+          if (!pts.current.has(e.pointerId)) return;
+          pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          apply();
+        }}
+        onPointerUp={(e) => { pts.current.delete(e.pointerId); begin(); }}
+        onPointerCancel={(e) => { pts.current.delete(e.pointerId); begin(); }}
+        onDoubleClick={(e) => {
+          const p = local(e.clientX, e.clientY);
+          setV((c) => {
+            if (c.k > 1.01) return { k: 1, x: 0, y: 0 };
+            const k = 3;
+            return { k, x: p.x - p.x * k, y: p.y - p.y * k };
+          });
+        }}
+      >
+        <div className="zp-inner" style={{ transform: `translate(${v.x}px, ${v.y}px) scale(${v.k})` }}>{children}</div>
+      </div>
       <div className="zp-btns">
-        <button type="button" aria-label={s('zoomIn')} onClick={() => { const c = centre(); zoomAt(1.5, c.x, c.y); }}>+</button>
-        <button type="button" aria-label={s('zoomOut')} onClick={() => { const c = centre(); zoomAt(1 / 1.5, c.x, c.y); }}>−</button>
-        {v.k > 1 && <button type="button" aria-label={s('zoomReset')} onClick={() => setV({ k: 1, x: 0, y: 0 })}>⟲</button>}
+        <button type="button" aria-label={s('closeMap')} onClick={onClose}>✕</button>
+        <button type="button" aria-label={s('zoomIn')} onClick={() => buttonZoom(1.6)}>+</button>
+        <button type="button" aria-label={s('zoomOut')} onClick={() => buttonZoom(1 / 1.6)}>−</button>
       </div>
     </div>
+  );
+}
+
+/** A small map you can tap: it opens full screen where you can pinch, drag and scroll-zoom. */
+export default function ZoomPan({ children }: { children: React.ReactNode }) {
+  const s = useS();
+  const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const close = useCallback(() => setOpen(false), []);
+  return (
+    <>
+      <div className="zoompan" role="button" tabIndex={0} aria-label={s('openMapFull')} onClick={() => setOpen(true)} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setOpen(true)}>
+        {children}
+        <span className="zp-hint" aria-hidden>⤢ {s('openMapFull')}</span>
+      </div>
+      {open && mounted && createPortal(<Surface onClose={close}>{children}</Surface>, document.body)}
+    </>
   );
 }
