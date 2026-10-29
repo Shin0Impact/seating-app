@@ -10,9 +10,31 @@ const MAX = 10;
 function Surface({ children, label, onClose }: { children: React.ReactNode; label: string; onClose: () => void }) {
   const s = useS();
   const box = useRef<HTMLDivElement>(null);
-  const [v, setV] = useState<View>({ k: 1, x: 0, y: 0 });
-  const vRef = useRef(v);
-  vRef.current = v;
+  const inner = useRef<HTMLDivElement>(null);
+  /** The view lives outside React: a gesture writes one transform per frame instead of re-rendering. */
+  const vRef = useRef<View>({ k: 1, x: 0, y: 0 });
+  const raf = useRef(0);
+  const idle = useRef<number | undefined>(undefined);
+  const setV = (next: View | ((c: View) => View)) => {
+    vRef.current = typeof next === 'function' ? next(vRef.current) : next;
+    const el = inner.current;
+    if (el) el.classList.add('live'); // promoted to its own layer while moving, so scaling is a cheap GPU op
+    window.clearTimeout(idle.current);
+    idle.current = window.setTimeout(() => inner.current?.classList.remove('live'), 250); // then re-sharpen
+    if (raf.current) return;
+    raf.current = requestAnimationFrame(() => {
+      raf.current = 0;
+      const c = vRef.current;
+      if (inner.current) inner.current.style.transform = `translate(${c.x}px, ${c.y}px) scale(${c.k})`;
+    });
+  };
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(raf.current);
+      window.clearTimeout(idle.current);
+    },
+    [],
+  );
   const pts = useRef(new Map<number, { x: number; y: number }>());
   /** State when the current gesture began: the content point under the fingers must stay under them. */
   const g = useRef<{ v0: View; mid0: { x: number; y: number }; d0: number } | null>(null);
@@ -115,7 +137,7 @@ function Surface({ children, label, onClose }: { children: React.ReactNode; labe
           });
         }}
       >
-        <div className="zp-inner" style={{ transform: `translate(${v.x}px, ${v.y}px) scale(${v.k})` }}>
+        <div className="zp-inner" ref={inner}>
           {children}
         </div>
       </div>

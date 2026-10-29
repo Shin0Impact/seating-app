@@ -3429,6 +3429,9 @@ button.primary.danger-fill {
   user-select: none;
   -webkit-user-select: none;
 }
+.zp-surface .zp-inner.live {
+  will-change: transform;
+}
 .zp-surface .zp-inner {
   width: 100%;
   height: 100%;
