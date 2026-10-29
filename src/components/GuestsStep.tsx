@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { STRINGS } from '@/lib/i18n';
@@ -63,7 +62,7 @@ export default function GuestsStep({ id, initial, version }: { id: string; initi
   const label = { saved: s('saved'), saving: s('saving'), error: s('saveError'), conflict: s('saveConflict') }[status];
 
   return (
-    <div className="card-box guests-step">
+    <div className="guests-step">
       <p className={`save-status ${status}`} role="status" style={{ margin: 0 }}>{label}</p>
       <GuestsView
         t={t}
@@ -78,10 +77,6 @@ export default function GuestsStep({ id, initial, version }: { id: string; initi
           void flush().then(() => router.push(`/events/${id}/hall?focus=${g.id}`));
         }}
       />
-      <div className="row" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <Link className="btn" href={`/events/${id}`}>{s('skipBack')}</Link>
-        <Link className="btn" href={`/events/${id}/preview`}>{s('continueToPlan')}</Link>
-      </div>
     </div>
   );
 }
