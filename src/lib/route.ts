@@ -139,6 +139,7 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     paint(f, (idx) => {
       cost[idx] = DANCE_COST;
     });
+  const costNoWalk = cost.slice();
   // drawn safe routes: the guests' usual foot traffic, so the line strongly prefers them (never blocked, just cheaper)
   for (const w of walkways)
     paint(w, (idx) => {
@@ -191,7 +192,7 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     [0, -1],
     [1, -1],
   ];
-  const astar = (start: number): number[] | null => {
+  const astar = (start: number, costs: Float32Array, withWalk: boolean): number[] | null => {
     const states = cols * rows * 9;
     // Float64: with Float32 rounding a state could look improvable forever and the search never ended (ran out of memory)
     const dist = new Float64Array(states).fill(Infinity);
@@ -203,7 +204,8 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
       const dx = Math.abs(i - gi),
         dy = Math.abs(j - gj);
       return (
-        (dx + dy + (Math.SQRT2 - 2) * Math.min(dx, dy)) * (walkways.length ? WALK_COST : floors.length ? DANCE_COST : 1)
+        (dx + dy + (Math.SQRT2 - 2) * Math.min(dx, dy)) *
+        (withWalk && walkways.length ? WALK_COST : floors.length ? DANCE_COST : 1)
       );
     };
     const s0 = start * 9 + NONE;
@@ -231,7 +233,7 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
         const n = nj * cols + ni;
         if (blocked[n]) continue;
         if (di && dj && (blocked[cj * cols + ni] || blocked[nj * cols + ci])) continue; // no cutting corners
-        const step = ((di && dj ? Math.SQRT2 : 1) * (cost[cur] + cost[n])) / 2;
+        const step = ((di && dj ? Math.SQRT2 : 1) * (costs[cur] + costs[n])) / 2;
         let turn = 0;
         if (dir !== NONE && dir !== d) {
           const k = Math.abs(dir - d);
@@ -261,17 +263,11 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     return true;
   };
 
-  let best: { pts: Pt[]; len: number; start: Pt } | null = null;
-  for (const en of entrances) {
-    const s = nearestFree({ x: en.x, y: en.y });
-    if (s === null) continue;
-    const cells = astar(s);
-    if (!cells) continue;
-    const raw = cells.map((c) => centre(c % cols, Math.floor(c / cols)));
-    // pull the string tight: keep only the corners that matter (with drawn walkways only straight-run merging, so the line stays on them)
+  /** Straight-run merge only: the line stays on the drawn walkways. */
+  const mergeRuns = (raw: Pt[]): Pt[] => {
     const pts: Pt[] = [raw[0]];
     let at = 0;
-    while (walkways.length && at < raw.length - 1) {
+    while (at < raw.length - 1) {
       let to = at + 1;
       while (
         to < raw.length - 1 &&
@@ -283,18 +279,49 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
       pts.push(raw[to]);
       at = to;
     }
-    while (!walkways.length && at < raw.length - 1) {
+    return pts;
+  };
+  /** Pull the string tight: keep only the corners that matter. */
+  const pullTight = (raw: Pt[]): Pt[] => {
+    const pts: Pt[] = [raw[0]];
+    let at = 0;
+    while (at < raw.length - 1) {
       let to = raw.length - 1;
       while (to > at + 1 && !free(raw[at], raw[to])) to--;
       pts.push(raw[to]);
       at = to;
     }
+    return pts;
+  };
+  const toPoints = (cells: number[]) => cells.map((c) => centre(c % cols, Math.floor(c / cols)));
+  const lengthOf = (pts: Pt[]) => {
     let len = 0;
     for (let k = 1; k < pts.length; k++) len += Math.hypot(pts[k].x - pts[k - 1].x, pts[k].y - pts[k - 1].y);
-    if (!best || len < best.len) best = { pts, len, start: { x: en.x, y: en.y } };
+    return len;
+  };
+
+  let best: { route: Pt[]; len: number; start: Pt } | null = null;
+  for (const en of entrances) {
+    const s = nearestFree({ x: en.x, y: en.y });
+    if (s === null) continue;
+    const start = { x: en.x, y: en.y };
+    // The straightest way there, ignoring drawn walkways.
+    const plainCells = astar(s, costNoWalk, false);
+    if (!plainCells) continue;
+    let route = dropJogs([start, ...pullTight(toPoints(plainCells)), chair]);
+    // A drawn walkway is followed only when that does not make the line much more bendy.
+    if (walkways.length) {
+      const walkCells = astar(s, cost, true);
+      if (walkCells) {
+        const walked = dropJogs([start, ...mergeRuns(toPoints(walkCells)), chair]);
+        if (walked.length <= route.length + 1) route = walked;
+      }
+    }
+    const len = lengthOf(route);
+    if (!best || len < best.len) best = { route, len, start };
   }
   if (!best) return null;
-  return { route: dropJogs([best.start, ...best.pts, chair]), start: best.start };
+  return { route: best.route, start: best.start };
 }
 
 /** Removes tiny zig-zags: a point right next to the start, or one only a few centimetres before the next turn. */
@@ -317,23 +344,52 @@ export function buildFocus(layout: Layout, guestIds: string[]): Focus | null {
   if (!seated.length) return null;
   const tables = layout.elements.filter((e): e is TableEl => e.kind === 'table');
   const head = seated[0];
-  const table = tables.find((t) => t.id === head.tableId);
-  if (!table) return null;
-  const chair = chairWorld(layout.elements, layout.settings, head);
-  const target = chair ?? { x: table.x, y: table.y };
+  const headTable = tables.find((t) => t.id === head.tableId);
+  if (!headTable) return null;
+  // With several people on the invite, lead to whichever of their chairs is the shortest walk.
+  const options = seated
+    .map((g) => ({ g, chair: chairWorld(layout.elements, layout.settings, g) }))
+    .filter((o): o is { g: typeof head; chair: Pt } => !!o.chair);
+  const entrances = layout.elements.filter((e) => e.kind === 'marker' && e.marker === 'entrance');
+  const nearEntrance = (p: Pt) => Math.min(...entrances.map((e) => Math.hypot(e.x - p.x, e.y - p.y)), Infinity);
+  options.sort((a, b) => nearEntrance(a.chair) - nearEntrance(b.chair));
+  let pick: { g: typeof head; chair: Pt | null } = options[0] ?? { g: head, chair: null };
   let found: ReturnType<typeof findRoute> = null;
-  try {
-    found = findRoute(layout, target);
-  } catch {
-    /* a drawing problem must never break the page */
+  let bestLen = Infinity;
+  for (const o of options.slice(0, 4)) {
+    let r: ReturnType<typeof findRoute> = null;
+    try {
+      r = findRoute(layout, o.chair);
+    } catch {
+      /* a drawing problem must never break the page */
+    }
+    if (!r) continue;
+    let len = 0;
+    for (let k = 1; k < r.route.length; k++)
+      len += Math.hypot(r.route[k].x - r.route[k - 1].x, r.route[k].y - r.route[k - 1].y);
+    if (len < bestLen) {
+      bestLen = len;
+      found = r;
+      pick = o;
+    }
   }
+  if (!found && !options.length) {
+    // no chair position known: lead to the middle of the table
+    try {
+      found = findRoute(layout, { x: headTable.x, y: headTable.y });
+    } catch {
+      /* ignore */
+    }
+  }
+  const chair = pick.chair;
+  const table = tables.find((t) => t.id === pick.g.tableId) ?? headTable;
   return {
     tableIds: [...new Set(seated.map((g) => g.tableId as string))],
     chair,
     route: found?.route ?? null,
     start: found?.start ?? null,
     table: table.label,
-    seat: head.seat !== null ? head.seat + 1 : null,
+    seat: pick.g.seat !== null ? pick.g.seat + 1 : null,
   };
 }
 
