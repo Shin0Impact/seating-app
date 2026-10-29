@@ -51,7 +51,7 @@ export default function HallPreview({ layout, label, focus }: { layout: Layout; 
         if (e.kind === 'marker' && e.marker === 'walkway') return null;
         return (
           <g key={e.id} transform={`translate(${e.x} ${e.y}) rotate(${e.rotation})`}>
-            <rect x={-e.w / 2} y={-e.h / 2} width={e.w} height={e.h} rx={0.15} className={e.kind === 'zone' ? 'hp-zone' : 'hp-marker'} />
+            <rect x={-e.w / 2} y={-e.h / 2} width={e.w} height={e.h} rx={0.15} className={e.kind === 'zone' ? 'hp-zone' : e.kind === 'marker' && e.marker === 'exit' ? 'hp-exit' : 'hp-marker'} />
             {e.label && <text className="hp-text" fontSize={fs} textAnchor="middle" dominantBaseline="central">{e.label}</text>}
           </g>
         );

@@ -47,7 +47,7 @@ export default function Scanner() {
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     (async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } });
         const v = video.current;
         if (!v || stop) return;
         v.srcObject = stream;
@@ -56,7 +56,7 @@ export default function Scanner() {
         const tick = () => {
           if (stop) return;
           if (v.videoWidth && ctx && !lock.current) {
-            const w = 480, h = Math.round((v.videoHeight / v.videoWidth) * w);
+            const w = Math.min(720, v.videoWidth), h = Math.round((v.videoHeight / v.videoWidth) * w);
             canvas.width = w; canvas.height = h;
             ctx.drawImage(v, 0, 0, w, h);
             const code = jsQR(ctx.getImageData(0, 0, w, h).data, w, h);
@@ -75,6 +75,7 @@ export default function Scanner() {
   const ok = res && 'ok' in res ? res : null;
   const err = res && 'error' in res ? res.error : null;
   return (
+    <div className="scan-grid">
     <div className="card-box">
       <video ref={video} playsInline muted className="scan-video" />
       {cam === 'off' && <p className="notice err">{s('cameraFailed')}</p>}
@@ -82,6 +83,8 @@ export default function Scanner() {
         <input className="field-input" style={{ flex: 1, minHeight: 44, padding: '0 12px', border: '1px solid var(--line)', borderRadius: 10 }} value={manual} onChange={(e) => setManual(e.target.value)} placeholder={s('pasteCode')} dir="ltr" />
         <button className="btn">{s('verify')}</button>
       </form>
+    </div>
+    <div className="scan-side">
       {err && <div className="scan-result bad" role="alert">{err === 'not_found' ? s('unknownCode') : err === 'login' ? s('signInAgain') : s('genericError')}</div>}
       {ok && (
         <div className={`scan-result ${ok.already ? 'warn' : ok.status === 'confirmed' ? 'good' : 'warn'}`} role="status">
@@ -102,6 +105,7 @@ export default function Scanner() {
           <button className="btn primary" onClick={() => setRes(null)}>{s('next')}</button>
         </div>
       )}
+    </div>
     </div>
   );
 }
