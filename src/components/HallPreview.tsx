@@ -52,16 +52,13 @@ export default function HallPreview({ layout, label, focus }: { layout: Layout; 
         if (e.kind === 'zone') {
           // guests only need the stairs, not the raised area itself
           if (e.steps <= 0) return null;
-          const d = 0.34, hh = d * e.steps;
-          const n = Math.max(1, Math.floor(e.w / 1.4));
+          // a small staircase symbol in the middle of the raised area
+          const k = Math.min(1.1, Math.max(0.6, Math.min(e.w, e.h) * 0.35)) / 1.1;
           return (
-            <g key={e.id} transform={`translate(${e.x} ${e.y}) rotate(${e.rotation})`} aria-hidden>
-              <rect x={-e.w / 2} y={e.h / 2} width={e.w} height={hh} className="hp-stairs" />
-              {Array.from({ length: e.steps - 1 }, (_, i) => <line key={i} x1={-e.w / 2} x2={e.w / 2} y1={e.h / 2 + d * (i + 1)} y2={e.h / 2 + d * (i + 1)} className="hp-stair-line" />)}
-              {Array.from({ length: n }, (_, i) => {
-                const cx = -e.w / 2 + (e.w * (i + 0.5)) / n, cy = e.h / 2 + hh / 2;
-                return <path key={`c${i}`} d={`M ${cx - 0.28} ${cy + 0.14} L ${cx} ${cy - 0.14} L ${cx + 0.28} ${cy + 0.14}`} className="hp-stair-arrow" />;
-              })}
+            <g key={e.id} transform={`translate(${e.x} ${e.y}) rotate(${-e.rotation}) scale(${k})`} aria-hidden>
+              <circle r={0.78} className="hp-stairs-bg" />
+              <path d="M -0.5 0.4 H -0.17 V 0.1 H 0.17 V -0.2 H 0.5 V -0.5" className="hp-stairs-icon" />
+              <path d="M 0.3 -0.45 L 0.5 -0.5 L 0.45 -0.3" className="hp-stairs-icon" />
             </g>
           );
         }

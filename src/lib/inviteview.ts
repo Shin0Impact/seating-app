@@ -25,14 +25,6 @@ export function inviteState(r: Pick<InviteRow, 'status' | 'checked_in_at' | 'sen
   return r.sent_at ? 'waiting' : 'unsent';
 }
 
-export const STATE_LABEL: Record<InviteState, string> = {
-  unsent: 'لم تُرسل',
-  waiting: 'بانتظار الرد',
-  confirmed: 'أكّدوا',
-  declined: 'اعتذروا',
-  arrived: 'وصلوا',
-};
-
 export type Totals = { families: number; people: number; sent: number; confirmedFamilies: number; confirmedPeople: number; declined: number; arrived: number };
 
 export function totals(rows: InviteRow[]): Totals {
