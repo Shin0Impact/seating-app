@@ -37,7 +37,7 @@ export default async function EventHome({ params, searchParams }: { params: Prom
         <div className="page-title"><h1>{ev.name}</h1></div>
         <div className="step-cards">
           <section className="step-card">
-            <div className="sc-head"><span className="n">1</span><h3>{s('guests')} <span className="tag">{s('optional')}</span></h3></div>
+            <div className="sc-head"><span className="n">1</span><h3>{s('guests')}</h3></div>
             <div className="big">{layout.guests.length}</div>
             <p className="muted" style={{ margin: 0 }}>{layout.guests.length ? s('guestsInList') : s('startImportHint')}</p>
             <Link className="btn" href={`/events/${id}/import`}>{layout.guests.length ? s('importMore') : s('importList')}</Link>

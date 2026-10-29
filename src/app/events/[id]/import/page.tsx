@@ -21,7 +21,7 @@ export default async function ImportPage({ params }: { params: Promise<{ id: str
     <div className="site">
       <SiteHeader crumb={{ id, name: ev.name }} />
       <main className="container">
-        <div className="page-title"><h1>{s('stepGuests')} <span className="tag">{s('optional')}</span></h1></div>
+        <div className="page-title"><h1>{s('stepGuests')}</h1></div>
         <StepBar id={id} active="import" />
         <GuestsStep id={id} initial={parseLayout(ev.layout)} version={ev.version} />
       </main>

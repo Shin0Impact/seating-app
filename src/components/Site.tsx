@@ -56,7 +56,7 @@ export type StepKey = 'import' | 'hall' | 'invites' | 'scan';
 export async function StepBar({ id, active }: { id: string; active: StepKey }) {
   const { s } = await getS();
   const steps: { key: StepKey; label: string; sub: string; path: string }[] = [
-    { key: 'import', label: s('stepGuests'), sub: s('optional'), path: 'import' },
+    { key: 'import', label: s('stepGuests'), sub: '', path: 'import' },
     { key: 'hall', label: s('stepHall'), sub: s('stepHallSub'), path: 'preview' },
     { key: 'invites', label: s('stepInvites'), sub: s('stepInvitesSub'), path: 'invites' },
     { key: 'scan', label: s('stepEntry'), sub: s('stepEntrySub'), path: 'scan' },
