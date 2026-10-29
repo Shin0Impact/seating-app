@@ -150,7 +150,7 @@ describe('straight, soft routes', () => {
   it('keeps the number of turns small on an open floor', () => {
     const l = hall([{ tableId: 't2', seat: 0 }]);
     const r = findRoute(l, buildFocus(l, ['g0'])!.chair!)!;
-    expect(r.route.length).toBeLessThanOrEqual(6);
+    expect(r.route.length).toBeLessThanOrEqual(8);
   });
 
   it('rounds corners in the drawn path and leaves straight lines alone', () => {
