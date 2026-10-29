@@ -49,6 +49,17 @@ export default function HallPreview({ layout, label, focus }: { layout: Layout; 
             ? <circle key={e.id} cx={e.x} cy={e.y} r={e.size / 2} className="hp-col" />
             : <rect key={e.id} x={-e.size / 2} y={-e.size / 2} width={e.size} height={e.size} className="hp-col" transform={`translate(${e.x} ${e.y}) rotate(${e.rotation})`} />;
         if (e.kind === 'marker' && e.marker === 'walkway') return null;
+        if (e.kind === 'zone') {
+          // guests only need the stairs, not the raised area itself
+          if (e.steps <= 0) return null;
+          const d = 0.28, hh = d * e.steps;
+          return (
+            <g key={e.id} transform={`translate(${e.x} ${e.y}) rotate(${e.rotation})`} aria-hidden>
+              <rect x={-e.w / 2} y={e.h / 2} width={e.w} height={hh} className="hp-stairs" />
+              {Array.from({ length: e.steps - 1 }, (_, i) => <line key={i} x1={-e.w / 2} x2={e.w / 2} y1={e.h / 2 + d * (i + 1)} y2={e.h / 2 + d * (i + 1)} className="hp-stair-line" />)}
+            </g>
+          );
+        }
         return (
           <g key={e.id} transform={`translate(${e.x} ${e.y}) rotate(${e.rotation})`}>
             <rect x={-e.w / 2} y={-e.h / 2} width={e.w} height={e.h} rx={0.15} className={e.kind === 'zone' ? 'hp-zone' : e.kind === 'marker' && e.marker === 'exit' ? 'hp-exit' : 'hp-marker'} />
