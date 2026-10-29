@@ -86,7 +86,8 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
   const pad = 2;
   x0 -= pad; y0 -= pad; x1 += pad; y1 += pad;
   let cell = 0.25;
-  while (((x1 - x0) / cell) * ((y1 - y0) / cell) > 160000) cell *= 1.4;
+  if (![x0, y0, x1, y1].every(Number.isFinite)) return null;
+  for (let g = 0; g < 200 && ((x1 - x0) / cell) * ((y1 - y0) / cell) > 160000; g++) cell *= 1.4;
   const cols = Math.ceil((x1 - x0) / cell), rows = Math.ceil((y1 - y0) / cell);
 
   const blocked = new Uint8Array(cols * rows);
@@ -129,7 +130,10 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
   const gi = goal % cols, gj = Math.floor(goal / cols);
 
   const astar = (start: number): number[] | null => {
-    const dist = new Float32Array(cols * rows).fill(Infinity);
+    // Float64: with Float32 rounding a cell could look improvable forever and the search never ended (ran out of memory)
+    const dist = new Float64Array(cols * rows).fill(Infinity);
+    const closed = new Uint8Array(cols * rows);
+    let budget = cols * rows * 16;
     const prev = new Int32Array(cols * rows).fill(-1);
     const heap = new Heap();
     const h = (i: number, j: number) => {
@@ -139,7 +143,10 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     dist[start] = 0;
     heap.push(h(start % cols, Math.floor(start / cols)), start);
     while (heap.size) {
+      if (--budget < 0) return null; // safety net: never spin
       const [, cur] = heap.pop();
+      if (closed[cur]) continue;
+      closed[cur] = 1;
       if (cur === goal) break;
       const ci = cur % cols, cj = Math.floor(cur / cols);
       for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
@@ -156,7 +163,7 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     }
     if (!isFinite(dist[goal])) return null;
     const out: number[] = [];
-    for (let c = goal; c !== -1; c = prev[c]) out.push(c);
+    for (let c = goal; c !== -1 && out.length <= cols * rows; c = prev[c]) out.push(c);
     return out.reverse();
   };
 
@@ -204,7 +211,8 @@ export function buildFocus(layout: Layout, guestIds: string[]): Focus | null {
   if (!table) return null;
   const chair = chairWorld(layout.elements, layout.settings, head);
   const target = chair ?? { x: table.x, y: table.y };
-  const found = findRoute(layout, target);
+  let found: ReturnType<typeof findRoute> = null;
+  try { found = findRoute(layout, target); } catch { /* a drawing problem must never break the page */ }
   return {
     tableIds: [...new Set(seated.map((g) => g.tableId as string))],
     chair,

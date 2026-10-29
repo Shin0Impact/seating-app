@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { intersects, parseLayout, tableFootprint, type TableEl } from './layout';
+import { emptyLayout, intersects, parseLayout, tableFootprint, type Layout, type TableEl } from './layout';
 import { buildFocus, findRoute } from './route';
 
 const hall = (guestsAt: { tableId: string; seat: number }[], entrance = true) =>
@@ -54,5 +54,15 @@ describe('findRoute', () => {
   it('returns nothing for guests with no table', () => {
     const layout = parseLayout({ version: 1, elements: [], guests: [{ id: 'g0', name: 'A', tableId: null }] });
     expect(buildFocus(layout, ['g0'])).toBeNull();
+  });
+});
+
+
+describe('findRoute stays finite', () => {
+  it('finishes on a layout that used to make the search spin until it ran out of memory', () => {
+    const l = { ...emptyLayout(), elements: [{"id": "41147374-1548-41ed-add9-ed582e5b4be7", "kind": "marker", "x": -26.08909808039001, "y": 18.737369182997313, "rotation": 0, "label": "Entrance", "marker": "entrance", "w": 2, "h": 0.5}, {"id": "a2ce00e9-ec66-40c6-95ff-bc163a16ae26", "kind": "table", "x": 19.95239453929866, "y": 6.597527179365322, "rotation": -143.79243056092048, "label": "Table 0", "shape": "rect", "seats": 45}, {"id": "78a7affe-0752-4aea-a576-2e217f6cdfe5", "kind": "table", "x": -13.270194105649118, "y": -20.022945078985398, "rotation": 21.42669894822123, "label": "Table 1", "shape": "rect", "seats": 50}, {"id": "5a40acce-343e-4d41-bbb3-2e86bb960e70", "kind": "table", "x": -29.290602305923414, "y": 17.754418536602458, "rotation": -21.085628269048556, "label": "Table 2", "shape": "rect", "seats": 50}, {"id": "c8bce674-6e45-4d17-b4a5-7262e71a624f", "kind": "table", "x": 13.234451618693889, "y": 17.605814544415225, "rotation": -99.74908808282974, "label": "Table 3", "shape": "round", "seats": 87}, {"id": "e1e55da3-ac3f-40cb-8a88-f216ea043593", "kind": "marker", "x": 8.378662309137653, "y": -28.70523557368226, "rotation": 0, "label": "Stage", "marker": "stage", "w": 14.50520525711553, "h": 16.24199949550187}, {"id": "bbfdd4f4-7a69-4a43-8c46-27244b6fb527", "kind": "table", "x": 7.867597836358023, "y": 1.9710464610323832, "rotation": -155.7410042763628, "label": "Table 5", "shape": "round", "seats": 76}, {"id": "0b0066c2-6312-4edf-a724-13ba6dfa908e", "kind": "table", "x": -14.985987420717573, "y": 29.97751756117453, "rotation": 176.63959073395188, "label": "Table 6", "shape": "round", "seats": 1}, {"id": "7b425360-7d88-47a5-9570-884269fef0fd", "kind": "marker", "x": -10.365640869651504, "y": 11.750831117239706, "rotation": 0, "label": "Stage", "marker": "stage", "w": 21.32522409597215, "h": 1.716653812366449}] } as unknown as Layout;
+    const t0 = Date.now();
+    for (const c of [{ x: 0, y: 0 }, { x: 12, y: -3 }, { x: -20, y: 25 }, { x: 25, y: 10 }]) findRoute(l, c);
+    expect(Date.now() - t0).toBeLessThan(4000);
   });
 });
