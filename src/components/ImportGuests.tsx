@@ -5,7 +5,17 @@ import { Guest, TableEl } from '@/lib/layout';
 import { Icon } from './Icon';
 import { Key } from '@/lib/i18n';
 import { looksLikeXlsx, xlsxToText } from '@/lib/xlsx';
-import { IMPORT_LIMITS, Mapping, NO_COLUMN, buildGuests, decodeBytes, detectDelimiter, guessMapping, guessNameColumn, parseCsv } from '@/lib/csv';
+import {
+  IMPORT_LIMITS,
+  Mapping,
+  NO_COLUMN,
+  buildGuests,
+  decodeBytes,
+  detectDelimiter,
+  guessMapping,
+  guessNameColumn,
+  parseCsv,
+} from '@/lib/csv';
 
 type Props = {
   t: (k: Key) => string;
@@ -24,7 +34,13 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
   const [header, setHeader] = useState(true);
   const [over, setOver] = useState(false);
   const [createTables, setCreateTables] = useState(true);
-  const [map, setMap] = useState<Mapping>({ name: NO_COLUMN, surname: NO_COLUMN, group: NO_COLUMN, count: NO_COLUMN, table: NO_COLUMN });
+  const [map, setMap] = useState<Mapping>({
+    name: NO_COLUMN,
+    surname: NO_COLUMN,
+    group: NO_COLUMN,
+    count: NO_COLUMN,
+    table: NO_COLUMN,
+  });
   const fileRef = useRef<HTMLInputElement>(null);
 
   const rows = useMemo(() => (text.trim() ? parseCsv(text, detectDelimiter(text)) : []), [text]);
@@ -35,12 +51,19 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
     if (rows.length === 0) return;
     const g = guessMapping(rows[0]);
     setHeader(g.foundHeader);
-    setMap(g.foundHeader ? g.mapping : { name: guessNameColumn(rows), surname: NO_COLUMN, group: NO_COLUMN, count: NO_COLUMN, table: NO_COLUMN });
+    setMap(
+      g.foundHeader
+        ? g.mapping
+        : { name: guessNameColumn(rows), surname: NO_COLUMN, group: NO_COLUMN, count: NO_COLUMN, table: NO_COLUMN },
+    );
   }, [rows]);
 
   const data = header ? rows.slice(1) : rows;
   const colLabel = (i: number) => (header && rows[0]?.[i] ? `${i + 1}. ${rows[0][i]}` : `${i + 1}`);
-  const result = useMemo(() => (map.name === NO_COLUMN ? null : buildGuests(data, map, guests, tables, createTables)), [data, map, guests, tables, createTables]);
+  const result = useMemo(
+    () => (map.name === NO_COLUMN ? null : buildGuests(data, map, guests, tables, createTables)),
+    [data, map, guests, tables, createTables],
+  );
 
   const load = async (file: File) => {
     setError('');
@@ -62,7 +85,9 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
         {optional && <option value={NO_COLUMN}>{t('importNone')}</option>}
         {!optional && map[key] === NO_COLUMN && <option value={NO_COLUMN}>{t('importNone')}</option>}
         {Array.from({ length: cols }, (_, i) => (
-          <option key={i} value={i}>{colLabel(i)}</option>
+          <option key={i} value={i}>
+            {colLabel(i)}
+          </option>
         ))}
       </select>
     </label>
@@ -71,7 +96,12 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
   return (
     <>
       {!inline && <div className="picker-backdrop" onMouseDown={onClose} />}
-      <div className={`import-dialog${inline ? ' inline' : ''}`} role="dialog" aria-label={t('importGuests')} onKeyDown={(e) => e.key === 'Escape' && onClose()}>
+      <div
+        className={`import-dialog${inline ? ' inline' : ''}`}
+        role="dialog"
+        aria-label={t('importGuests')}
+        onKeyDown={(e) => e.key === 'Escape' && onClose()}
+      >
         <h3>{t('importGuests')}</h3>
         <p className="muted">{t('importIntro')}</p>
         <label
@@ -105,9 +135,18 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
         </label>
         <label className="field">
           <span>{t('importPaste')}</span>
-          <textarea rows={3} value={text} onChange={(e) => setText(e.target.value.slice(0, IMPORT_LIMITS.bytes))} dir="auto" />
+          <textarea
+            rows={3}
+            value={text}
+            onChange={(e) => setText(e.target.value.slice(0, IMPORT_LIMITS.bytes))}
+            dir="auto"
+          />
         </label>
-        {error && <p className="error" role="alert">{error}</p>}
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
 
         {rows.length > 0 && (
           <>
@@ -139,11 +178,31 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
                   {t('importWill')}: {result.people} {t('importPeople')}
                 </p>
                 <ul className="import-notes">
-                  {result.skippedDuplicates > 0 && <li>{result.skippedDuplicates} {t('importDup')}</li>}
-                  {result.skippedEmpty > 0 && <li>{result.skippedEmpty} {t('importEmpty')}</li>}
-                  {result.newTables.length > 0 && <li>{result.newTables.length} {t('importTablesMade')}</li>}
-                  {result.tablesMatched > 0 && <li>{result.tablesMatched} {t('importTables')}</li>}
-                  {result.tablesUnmatched > 0 && <li>{result.tablesUnmatched} {t('importTablesMiss')}</li>}
+                  {result.skippedDuplicates > 0 && (
+                    <li>
+                      {result.skippedDuplicates} {t('importDup')}
+                    </li>
+                  )}
+                  {result.skippedEmpty > 0 && (
+                    <li>
+                      {result.skippedEmpty} {t('importEmpty')}
+                    </li>
+                  )}
+                  {result.newTables.length > 0 && (
+                    <li>
+                      {result.newTables.length} {t('importTablesMade')}
+                    </li>
+                  )}
+                  {result.tablesMatched > 0 && (
+                    <li>
+                      {result.tablesMatched} {t('importTables')}
+                    </li>
+                  )}
+                  {result.tablesUnmatched > 0 && (
+                    <li>
+                      {result.tablesUnmatched} {t('importTablesMiss')}
+                    </li>
+                  )}
                   {result.capped && <li>{t('importCapped')}</li>}
                 </ul>
                 <p className="muted">{t('importPreview')}</p>
@@ -161,7 +220,11 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
         )}
 
         <div className="row">
-          <button className="primary" disabled={!result || result.people === 0} onClick={() => result && (onImport(result.guests, result.newTables), onClose())}>
+          <button
+            className="primary"
+            disabled={!result || result.people === 0}
+            onClick={() => result && (onImport(result.guests, result.newTables), onClose())}
+          >
             {t('importDo')}
           </button>
           <button onClick={onClose}>{t('importCancel')}</button>

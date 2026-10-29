@@ -5,7 +5,17 @@ import { useEffect, useRef } from 'react';
 export type MenuItem = { label: string; onClick: () => void; danger?: boolean; disabled?: boolean } | 'sep';
 
 /** Right-click / long-press menu. Closes on outside press, Escape or after choosing. */
-export function ContextMenu({ x, y, items, onClose }: { x: number; y: number; items: MenuItem[]; onClose: () => void }) {
+export function ContextMenu({
+  x,
+  y,
+  items,
+  onClose,
+}: {
+  x: number;
+  y: number;
+  items: MenuItem[];
+  onClose: () => void;
+}) {
   const opened = useRef(Date.now());
   const ref = useRef<HTMLDivElement>(null);
   const lastTouch = useRef(0);

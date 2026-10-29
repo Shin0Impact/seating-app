@@ -25,10 +25,26 @@ export function inviteState(r: Pick<InviteRow, 'status' | 'checked_in_at' | 'sen
   return r.sent_at ? 'waiting' : 'unsent';
 }
 
-export type Totals = { families: number; people: number; sent: number; confirmedFamilies: number; confirmedPeople: number; declined: number; arrived: number };
+export type Totals = {
+  families: number;
+  people: number;
+  sent: number;
+  confirmedFamilies: number;
+  confirmedPeople: number;
+  declined: number;
+  arrived: number;
+};
 
 export function totals(rows: InviteRow[]): Totals {
-  const t: Totals = { families: rows.length, people: 0, sent: 0, confirmedFamilies: 0, confirmedPeople: 0, declined: 0, arrived: 0 };
+  const t: Totals = {
+    families: rows.length,
+    people: 0,
+    sent: 0,
+    confirmedFamilies: 0,
+    confirmedPeople: 0,
+    declined: 0,
+    arrived: 0,
+  };
   for (const r of rows) {
     t.people += r.party_size;
     if (r.sent_at || r.status !== 'pending') t.sent++;
@@ -42,9 +58,13 @@ export function totals(rows: InviteRow[]): Totals {
   return t;
 }
 
-export const DEFAULT_TEMPLATE = 'أهلاً {name}،\nيسعدنا دعوتكم إلى {event}.\nالرجاء تأكيد حضوركم عبر هذا الرابط:\n{link}';
+export const DEFAULT_TEMPLATE =
+  'أهلاً {name}،\nيسعدنا دعوتكم إلى {event}.\nالرجاء تأكيد حضوركم عبر هذا الرابط:\n{link}';
 
-export function fillMessage(template: string, v: { name: string; event: string; link: string; people: number }): string {
+export function fillMessage(
+  template: string,
+  v: { name: string; event: string; link: string; people: number },
+): string {
   return template
     .replace(/\{name\}/g, v.name)
     .replace(/\{event\}/g, v.event)

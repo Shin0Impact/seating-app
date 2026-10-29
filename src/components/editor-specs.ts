@@ -22,11 +22,18 @@ export type Spec =
   | { kind: 'marker'; marker: MarkerKind };
 
 export const specToString = (sp: Spec) =>
-  sp.kind === 'table' ? `table:${sp.shape}:${sp.seats}` : sp.kind === 'column' ? `column:${sp.shape}` : sp.kind === 'marker' ? `marker:${sp.marker}` : 'zone';
+  sp.kind === 'table'
+    ? `table:${sp.shape}:${sp.seats}`
+    : sp.kind === 'column'
+      ? `column:${sp.shape}`
+      : sp.kind === 'marker'
+        ? `marker:${sp.marker}`
+        : 'zone';
 
 export function parseSpec(str: string): Spec | null {
   const [kind, a, b] = str.split(':');
-  if (kind === 'table' && (a === 'round' || a === 'rect') && Number.isFinite(Number(b))) return { kind, shape: a, seats: clamp(Math.round(Number(b)), LIMITS.seatsMin, LIMITS.seatsMax) };
+  if (kind === 'table' && (a === 'round' || a === 'rect') && Number.isFinite(Number(b)))
+    return { kind, shape: a, seats: clamp(Math.round(Number(b)), LIMITS.seatsMin, LIMITS.seatsMax) };
   if (kind === 'column' && (a === 'circle' || a === 'square')) return { kind, shape: a };
   if (kind === 'zone') return { kind };
   if (kind === 'marker' && (MARKER_KINDS as readonly string[]).includes(a)) return { kind, marker: a as MarkerKind };

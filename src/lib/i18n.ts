@@ -1,5 +1,4 @@
-// UI strings. Arabic is the day-one language; English is kept for development.
-// The Arabic text is a first draft and should be reviewed by a native speaker.
+// Editor UI strings (Arabic and English). Site pages use site-i18n.ts.
 
 export type Lang = 'ar' | 'en';
 
@@ -135,7 +134,8 @@ const en = {
   allChairs: 'Set chairs on all tables',
   apply: 'Apply',
   sizeExamples: 'What these sizes give',
-  sizeHelp: 'Table size comes from the number of chairs: each chair needs this much table edge. Change them here and every table updates.',
+  sizeHelp:
+    'Table size comes from the number of chairs: each chair needs this much table edge. Change them here and every table updates.',
   yes: 'Yes',
   importGuests: 'Import list',
   importIntro: 'Choose a CSV or Excel file, or paste cells copied from Excel or Google Sheets.',
@@ -155,7 +155,7 @@ const en = {
   importPeople: 'guests',
   importDup: 'already in the list (skipped)',
   importEmpty: 'rows without a name (skipped)',
-  importCreateTables: 'Create rectangular tables for table names that don\'t exist yet',
+  importCreateTables: "Create rectangular tables for table names that don't exist yet",
   importTablesMade: 'new tables will be created',
   importTables: 'matched to a table',
   importTablesMiss: 'table not found (left unseated)',
@@ -170,7 +170,8 @@ const en = {
   selectedItems: 'selected',
   selectAll: 'Select all',
   selectParty: 'Select the whole party',
-  partySelected: 'Party selected. Drag any one of their chairs to move them all together, or drag a single person from the list.',
+  partySelected:
+    'Party selected. Drag any one of their chairs to move them all together, or drag a single person from the list.',
   lockLayout: 'Lock the layout (tables and shapes stop moving, turning and being deleted; you can still seat people)',
   layoutLocked: 'Layout is locked. Tap the lock to change it.',
   peopleTool: 'Select several people (drag a box over seated chairs, or click chairs). Then drag any one of them.',
@@ -324,7 +325,8 @@ const ar: Record<keyof typeof en, string> = {
   allChairs: 'ضبط عدد الكراسي لكل الطاولات',
   apply: 'تطبيق',
   sizeExamples: 'ماذا تعطي هذه المقاسات',
-  sizeHelp: 'يُحسب حجم الطاولة من عدد الكراسي: كل كرسي يحتاج هذا القدر من حافة الطاولة. غيّرها هنا وستتحدث كل الطاولات.',
+  sizeHelp:
+    'يُحسب حجم الطاولة من عدد الكراسي: كل كرسي يحتاج هذا القدر من حافة الطاولة. غيّرها هنا وستتحدث كل الطاولات.',
   yes: 'نعم',
   importGuests: 'استيراد قائمة',
   importIntro: 'اختر ملف CSV، أو الصق خلايا منسوخة من Excel أو Google Sheets.',

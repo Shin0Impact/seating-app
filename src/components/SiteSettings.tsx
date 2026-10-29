@@ -10,7 +10,13 @@ export default function SiteSettings({ account }: { account?: AccountProps }) {
   const s = useS();
   return (
     <>
-      <button className="icon-btn" aria-label={s('settings')} title={s('settings')} aria-haspopup="dialog" onClick={() => setOpen(true)}>
+      <button
+        className="icon-btn"
+        aria-label={s('settings')}
+        title={s('settings')}
+        aria-haspopup="dialog"
+        onClick={() => setOpen(true)}
+      >
         <Icon name="settings" />
       </button>
       {open && <SettingsPanel account={account} onClose={() => setOpen(false)} />}

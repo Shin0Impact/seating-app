@@ -10,13 +10,20 @@ const Ctx = createContext<{ lang: Lang; setLang: (l: Lang) => void }>({ lang: 'a
 export function LangProvider({ initial, children }: { initial: Lang; children: ReactNode }) {
   const [lang, setL] = useState<Lang>(initial);
   const router = useRouter();
-  const setLang = useCallback((l: Lang) => {
-    setL(l);
-    try { document.cookie = `seating-lang=${l};path=/;max-age=31536000;samesite=lax`; } catch { /* ignore */ }
-    document.documentElement.lang = l;
-    document.documentElement.dir = dirOf(l);
-    router.refresh();
-  }, [router]);
+  const setLang = useCallback(
+    (l: Lang) => {
+      setL(l);
+      try {
+        document.cookie = `seating-lang=${l};path=/;max-age=31536000;samesite=lax`;
+      } catch {
+        /* ignore */
+      }
+      document.documentElement.lang = l;
+      document.documentElement.dir = dirOf(l);
+      router.refresh();
+    },
+    [router],
+  );
   const value = useMemo(() => ({ lang, setLang }), [lang, setLang]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -19,7 +19,9 @@ export default async function ScanPage({ params }: { params: Promise<{ id: strin
     <div className="site">
       <SiteHeader crumb={{ id, name: ev.name }} />
       <main className="container scan">
-        <div className="page-title"><h1>{s('scanTitle')}</h1></div>
+        <div className="page-title">
+          <h1>{s('scanTitle')}</h1>
+        </div>
         <StepBar id={id} active="scan" />
         <Scanner />
       </main>

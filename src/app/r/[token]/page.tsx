@@ -32,7 +32,8 @@ async function answer(form: FormData) {
   await supabase.rpc('rsvp_set', { p_token: token, p_status: status, p_count: n });
   // more people than the invitation: the extras wait for the host's approval (the function ignores a count that matches)
   const party = Number.parseInt(String(form.get('party') ?? '0'), 10);
-  if (status === 'confirmed' && n > (Number.isFinite(party) ? party : 0)) await supabase.rpc('rsvp_change_count', { p_token: token, p_count: n });
+  if (status === 'confirmed' && n > (Number.isFinite(party) ? party : 0))
+    await supabase.rpc('rsvp_change_count', { p_token: token, p_count: n });
   redirect(`/r/${token}`);
 }
 
@@ -47,7 +48,13 @@ async function changeCount(form: FormData) {
   redirect(`/r/${token}?saved=1`);
 }
 
-export default async function Rsvp({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ saved?: string }> }) {
+export default async function Rsvp({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ token: string }>;
+  searchParams: Promise<{ saved?: string }>;
+}) {
   const { token } = await params;
   const q = await searchParams;
   if (!isToken(token)) notFound();
@@ -58,18 +65,37 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
   if (!inv) notFound();
 
   const h = await headers();
-  const site = (process.env.NEXT_PUBLIC_SITE_URL || `${h.get('x-forwarded-proto') ?? 'https'}://${h.get('host')}`).replace(/\/$/, '');
-  const qr = inv.status === 'confirmed' ? await QRCode.toString(`${site}/r/${token}`, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' }) : '';
+  const site = (
+    process.env.NEXT_PUBLIC_SITE_URL || `${h.get('x-forwarded-proto') ?? 'https'}://${h.get('host')}`
+  ).replace(/\/$/, '');
+  const qr =
+    inv.status === 'confirmed'
+      ? await QRCode.toString(`${site}/r/${token}`, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' })
+      : '';
   // Confirmed families also see where their table is, with a walking line from the entrance.
   let focus: ReturnType<typeof buildFocus> = null;
   let planLayout: ReturnType<typeof parseLayout> | null = null;
   if (inv.status === 'confirmed') {
     const { data: map } = await supabase.rpc('rsvp_map', { p_token: token });
     if (map && typeof map === 'object') {
-      const m = map as { settings: unknown; elements: unknown; placements: { id: string; tableId: string | null; seat: number | null }[] };
-      const guests: Guest[] = (m.placements ?? []).map((p) => ({ id: p.id, name: '-', group: '', tableId: p.tableId, seat: p.seat, stepFree: false }));
+      const m = map as {
+        settings: unknown;
+        elements: unknown;
+        placements: { id: string; tableId: string | null; seat: number | null }[];
+      };
+      const guests: Guest[] = (m.placements ?? []).map((p) => ({
+        id: p.id,
+        name: '-',
+        group: '',
+        tableId: p.tableId,
+        seat: p.seat,
+        stepFree: false,
+      }));
       planLayout = parseLayout({ version: 1, settings: m.settings, elements: m.elements, guests });
-      focus = buildFocus(planLayout, guests.map((g) => g.id));
+      focus = buildFocus(
+        planLayout,
+        guests.map((g) => g.id),
+      );
     }
   }
   const loc = localeOf(lang);
@@ -78,27 +104,63 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
   const monthName = d ? d.toLocaleDateString(loc, { month: 'long' }) : '';
   const weekday = d ? d.toLocaleDateString(loc, { weekday: 'long' }) : '';
   const yearNum = d ? d.getFullYear() : null;
-  const daysLeft = d ? Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate())) / 86400000) : null;
+  const daysLeft = d
+    ? Math.round(
+        (Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) -
+          Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate())) /
+          86400000,
+      )
+    : null;
   const countdown =
-    daysLeft === null || daysLeft < 0 ? '' :
-    daysLeft === 0 ? s('eventToday') :
-    lang === 'en' ? (daysLeft === 1 ? 'Tomorrow' : `${daysLeft} days to go`) :
-    daysLeft === 1 ? 'باقي يوم واحد' : daysLeft === 2 ? 'باقي يومان' : daysLeft <= 10 ? `باقي ${daysLeft} أيام` : `باقي ${daysLeft} يومًا`;
+    daysLeft === null || daysLeft < 0
+      ? ''
+      : daysLeft === 0
+        ? s('eventToday')
+        : lang === 'en'
+          ? daysLeft === 1
+            ? 'Tomorrow'
+            : `${daysLeft} days to go`
+          : daysLeft === 1
+            ? 'باقي يوم واحد'
+            : daysLeft === 2
+              ? 'باقي يومان'
+              : daysLeft <= 10
+                ? `باقي ${daysLeft} أيام`
+                : `باقي ${daysLeft} يومًا`;
   // where this invitation sits: "Table 3 · chairs 1-8", or "chairs 5-7 and 11-14"
   const seatsText = planLayout
-    ? seatsSummary(planLayout, planLayout.guests.map((g) => g.id), (table, n, chairs) => s('tableChairs', { table, word: n === 1 ? s('chairOne') : s('chairMany'), chairs }), s('andWord'))
+    ? seatsSummary(
+        planLayout,
+        planLayout.guests.map((g) => g.id),
+        (table, n, chairs) => s('tableChairs', { table, word: n === 1 ? s('chairOne') : s('chairMany'), chairs }),
+        s('andWord'),
+      )
     : '';
 
   return (
     <div className={`site rsvp-wrap${inv.status === 'confirmed' ? ' is-conf' : ''}`}>
-      <div className="theme-float"><LangToggle /><SiteSettings /></div>
+      <div className="theme-float">
+        <LangToggle />
+        <SiteSettings />
+      </div>
       <main className="rsvp-card">
-        <span className="rc-corner tl" aria-hidden /><span className="rc-corner tr" aria-hidden /><span className="rc-corner bl" aria-hidden /><span className="rc-corner br" aria-hidden />
+        <span className="rc-corner tl" aria-hidden />
+        <span className="rc-corner tr" aria-hidden />
+        <span className="rc-corner bl" aria-hidden />
+        <span className="rc-corner br" aria-hidden />
         <header className="rc-head">
-          <div className="rc-logo"><Logo size={40} /></div>
+          <div className="rc-logo">
+            <Logo size={40} />
+          </div>
           <p className="rc-eyebrow">{s('youAreInvited')}</p>
-          <h1 className="rc-title"><bdi>{inv.event_name}</bdi></h1>
-          <div className="rc-orn" aria-hidden><i /><b /><i /></div>
+          <h1 className="rc-title">
+            <bdi>{inv.event_name}</bdi>
+          </h1>
+          <div className="rc-orn" aria-hidden>
+            <i />
+            <b />
+            <i />
+          </div>
           <p className="rc-hello">{s('hello', { name: inv.guest_name })}</p>
         </header>
         {(d || inv.event_time || inv.venue) && (
@@ -112,13 +174,31 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
             )}
             <div className="rc-details">
               {inv.event_time && (
-                <p className="rc-line"><svg viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg><span>{inv.event_time}</span></p>
+                <p className="rc-line">
+                  <svg viewBox="0 0 24 24" aria-hidden>
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3 2" />
+                  </svg>
+                  <span>{inv.event_time}</span>
+                </p>
               )}
               {inv.venue && (
-                <p className="rc-line"><svg viewBox="0 0 24 24" aria-hidden><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg><span><bdi>{inv.venue}</bdi></span></p>
+                <p className="rc-line">
+                  <svg viewBox="0 0 24 24" aria-hidden>
+                    <path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z" />
+                    <circle cx="12" cy="9.5" r="2.5" />
+                  </svg>
+                  <span>
+                    <bdi>{inv.venue}</bdi>
+                  </span>
+                </p>
               )}
               <div className="rc-actions">
-                {inv.venue_url && <a className="rc-map" href={inv.venue_url} target="_blank" rel="noopener noreferrer">{s('openMaps')} ↗</a>}
+                {inv.venue_url && (
+                  <a className="rc-map" href={inv.venue_url} target="_blank" rel="noopener noreferrer">
+                    {s('openMaps')} ↗
+                  </a>
+                )}
               </div>
               {countdown && <p className="rc-count">{countdown}</p>}
             </div>
@@ -131,15 +211,27 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
             <input type="hidden" name="party" value={inv.party_size} />
             <GuestCount count={inv.party_size} pending token={token} />
             <div className="row">
-              <SubmitButton name="status" value="confirmed" className="btn primary">{s('yesWeCome')}</SubmitButton>
-              <SubmitButton name="status" value="declined" className="btn">{s('noWeDecline')}</SubmitButton>
+              <SubmitButton name="status" value="confirmed" className="btn primary">
+                {s('yesWeCome')}
+              </SubmitButton>
+              <SubmitButton name="status" value="declined" className="btn">
+                {s('noWeDecline')}
+              </SubmitButton>
             </div>
           </form>
         )}
         {inv.status === 'confirmed' && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p className="notice ok rc-confirmed" style={{ margin: 0 }}>{s('rsvpConfirmedShort')}</p>
-            <GuestCount count={inv.confirmed_count ?? inv.party_size} token={token} action={changeCount} waitingExtra={inv.extra_requested ?? 0} saved={q.saved === '1'} />
+            <p className="notice ok rc-confirmed" style={{ margin: 0 }}>
+              {s('rsvpConfirmedShort')}
+            </p>
+            <GuestCount
+              count={inv.confirmed_count ?? inv.party_size}
+              token={token}
+              action={changeCount}
+              waitingExtra={inv.extra_requested ?? 0}
+              saved={q.saved === '1'}
+            />
             <p style={{ margin: 0 }}>{s('showCode')}</p>
             <div className="qr" role="img" aria-label={s('entryCode')} dangerouslySetInnerHTML={{ __html: qr }} />
             {focus && planLayout && (

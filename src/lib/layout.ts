@@ -21,7 +21,12 @@ export const DEFAULT_SETTINGS: Settings = {
 
 type Base = { id: string; x: number; y: number; rotation: number; label: string };
 
-export type TableEl = Base & { kind: 'table'; shape: 'round' | 'rect'; seats: number; /** rectangular only: chairs on one side */ half?: boolean };
+export type TableEl = Base & {
+  kind: 'table';
+  shape: 'round' | 'rect';
+  seats: number;
+  /** rectangular only: chairs on one side */ half?: boolean;
+};
 export type ColumnEl = Base & { kind: 'column'; shape: 'circle' | 'square'; size: number };
 export type ZoneEl = Base & { kind: 'zone'; w: number; h: number; steps: number };
 export type MarkerKind = 'stage' | 'dancefloor' | 'entrance' | 'buffet' | 'other' | 'walkway' | 'exit';
@@ -76,10 +81,7 @@ export function emptyLayout(): Layout {
   return { version: 1, settings: { ...DEFAULT_SETTINGS }, elements: [], guests: [] };
 }
 
-
-export type TableDims =
-  | { shape: 'round'; diameter: number }
-  | { shape: 'rect'; length: number; width: number };
+export type TableDims = { shape: 'round'; diameter: number } | { shape: 'rect'; length: number; width: number };
 
 /** Table size follows from the number of chairs entered. */
 export function tableDims(t: Pick<TableEl, 'shape' | 'seats' | 'half'>, s: Settings): TableDims {
@@ -90,7 +92,6 @@ export function tableDims(t: Pick<TableEl, 'shape' | 'seats' | 'half'>, s: Setti
   const perSide = t.half ? t.seats : Math.ceil(t.seats / 2);
   return { shape: 'rect', length: Math.max(1.2, perSide * s.seatWidth), width: s.rectTableWidth };
 }
-
 
 type Circle = { type: 'circle'; cx: number; cy: number; r: number };
 type Rect = { type: 'rect'; cx: number; cy: number; w: number; h: number; rot: number };
@@ -125,10 +126,14 @@ function corners(r: Rect): [number, number][] {
   const sin = Math.sin(a);
   const hw = r.w / 2;
   const hh = r.h / 2;
-  return ([[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]] as [number, number][]).map(([x, y]) => [
-    r.cx + x * cos - y * sin,
-    r.cy + x * sin + y * cos,
-  ]);
+  return (
+    [
+      [-hw, -hh],
+      [hw, -hh],
+      [hw, hh],
+      [-hw, hh],
+    ] as [number, number][]
+  ).map(([x, y]) => [r.cx + x * cos - y * sin, r.cy + x * sin + y * cos]);
 }
 
 function project(pts: [number, number][], ax: number, ay: number): [number, number] {
@@ -181,7 +186,6 @@ export function intersects(a: Shape, b: Shape): boolean {
   return rectRect(a as Rect, b as Rect);
 }
 
-
 export type Issue = {
   type: 'overlap' | 'tight';
   a: string;
@@ -224,7 +228,6 @@ export function summarize(elements: Element[]) {
   return { tables: tables.length, seats: tables.reduce((n, t) => n + t.seats, 0) };
 }
 
-
 export function newGuest(
   name: string,
   group = '',
@@ -241,7 +244,6 @@ export function newGuest(
     stepFree,
   };
 }
-
 
 export type ChairSlot = { x: number; y: number; /** degrees, facing the table */ rot: number };
 
@@ -309,7 +311,9 @@ export function tableAt(elements: Element[], s: Settings, x: number, y: number):
 
 /** Lowest-numbered chair at the table that nobody is using, or null when the table is full. */
 export function firstFreeSeat(t: Pick<TableEl, 'id' | 'seats'>, guests: Guest[], ignoreId?: string): number | null {
-  const taken = new Set(guests.filter((g) => g.tableId === t.id && g.id !== ignoreId && g.seat !== null).map((g) => g.seat));
+  const taken = new Set(
+    guests.filter((g) => g.tableId === t.id && g.id !== ignoreId && g.seat !== null).map((g) => g.seat),
+  );
   for (let i = 0; i < t.seats; i++) if (!taken.has(i)) return i;
   return null;
 }
@@ -342,7 +346,12 @@ export function normalizeSeats(elements: Element[], guests: Guest[]): Guest[] {
   return guests.map((g) => {
     const tb = g.tableId ? tables.get(g.tableId) : undefined;
     if (!tb) return g.tableId === null && g.seat === null ? g : { ...g, tableId: null, seat: null };
-    const ok = g.seat !== null && Number.isInteger(g.seat) && g.seat >= 0 && g.seat < tb.seats && !used.has(`${tb.id}:${g.seat}`);
+    const ok =
+      g.seat !== null &&
+      Number.isInteger(g.seat) &&
+      g.seat >= 0 &&
+      g.seat < tb.seats &&
+      !used.has(`${tb.id}:${g.seat}`);
     if (ok) used.add(`${tb.id}:${g.seat}`);
     return ok || g.seat === null ? g : { ...g, seat: null };
   });
@@ -360,7 +369,6 @@ export function overfullTables(elements: Element[], guests: Guest[]): TableEl[] 
   const counts = seatedCounts(guests);
   return elements.filter((e): e is TableEl => e.kind === 'table' && (counts.get(e.id) ?? 0) > e.seats);
 }
-
 
 const num = (v: unknown, min: number, max: number, fallback?: number): number => {
   if (typeof v !== 'number' || !Number.isFinite(v)) {
@@ -466,7 +474,6 @@ export function parseLayout(raw: unknown): Layout {
   return { version: 1, settings, elements, guests: normalizeSeats(elements, guests) };
 }
 
-
 export function newTable(x: number, y: number, shape: 'round' | 'rect', seats: number, n: number): TableEl {
   return { id: uid(), kind: 'table', x, y, rotation: 0, label: `Table ${n}`, shape, seats };
 }
@@ -497,7 +504,13 @@ export function placeNewTables(elements: Element[], settings: Settings, fresh: T
   const GAP = 1.2;
   let top = 0;
   for (const e of elements) {
-    const bottom = e.kind === 'table' ? e.y + (tableFootprint(e, settings).type === 'circle' ? (tableFootprint(e, settings) as { r: number }).r : (tableFootprint(e, settings) as { h: number }).h / 2) : e.y + 3;
+    const bottom =
+      e.kind === 'table'
+        ? e.y +
+          (tableFootprint(e, settings).type === 'circle'
+            ? (tableFootprint(e, settings) as { r: number }).r
+            : (tableFootprint(e, settings) as { h: number }).h / 2)
+        : e.y + 3;
     top = Math.max(top, bottom);
   }
   const ordered = [...fresh].sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
@@ -536,7 +549,9 @@ export function seatMany(
   const table = elements.find((e): e is TableEl => e.kind === 'table' && e.id === tableId);
   const moving = new Set(ids);
   if (!table) return { guests, placed: 0, left: ids.length };
-  const taken = new Set(guests.filter((g) => !moving.has(g.id) && g.tableId === tableId && g.seat !== null).map((g) => g.seat as number));
+  const taken = new Set(
+    guests.filter((g) => !moving.has(g.id) && g.tableId === tableId && g.seat !== null).map((g) => g.seat as number),
+  );
   const order: number[] = [];
   const from = startSeat !== null && startSeat >= 0 && startSeat < table.seats ? startSeat : 0;
   for (let k = 0; k < table.seats; k++) order.push((from + k) % table.seats);

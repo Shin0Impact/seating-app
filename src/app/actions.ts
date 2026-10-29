@@ -42,11 +42,17 @@ export async function updateUsername(raw: string): Promise<UsernameResult> {
 /** Renames an event and/or changes its date. */
 export async function renameEvent(form: FormData) {
   const id = String(form.get('id') ?? '');
-  const name = String(form.get('name') ?? '').trim().slice(0, 120);
+  const name = String(form.get('name') ?? '')
+    .trim()
+    .slice(0, 120);
   const date = String(form.get('date') ?? '');
   const time = String(form.get('time') ?? '');
-  const venue = String(form.get('venue') ?? '').trim().slice(0, 200);
-  const venueUrl = String(form.get('venue_url') ?? '').trim().slice(0, 500);
+  const venue = String(form.get('venue') ?? '')
+    .trim()
+    .slice(0, 200);
+  const venueUrl = String(form.get('venue_url') ?? '')
+    .trim()
+    .slice(0, 500);
   if (!/^[0-9a-f-]{36}$/.test(id)) redirect('/events');
   if (!name) redirect(`/events/${id}?rename=invalid`);
   const supabase = await serverClient();

@@ -9,6 +9,7 @@ Stack: Next.js 16, React 19, TypeScript, Konva (canvas), Supabase (Postgres, Aut
 ## Features
 
 **Hall editor**
+
 - Round and rectangular tables, half tables against a wall, columns, raised areas with steps, and markers (stage, dance floor, entrance, buffet, emergency exit, walkway).
 - Everything is drawn in meters. Table size follows the chair count (adjustable under sizing settings). Overlap and minimum-walkway warnings.
 - Drag, rotate (15 degree snap), multi-select, undo/redo, copy tables, right-click or long-press menus, quick-table presets that learn what you use.
@@ -16,18 +17,22 @@ Stack: Next.js 16, React 19, TypeScript, Konva (canvas), Supabase (Postgres, Aut
 - JSON export/import (validated and clamped on load).
 
 **Guests**
+
 - Add one at a time, paste a list, or import CSV/Excel with automatic column detection. Arabic-aware search and duplicate detection.
 - Groups, step-free access flag, table and chair assignment, jump-to-chair from the list.
 
 **Invites and RSVP**
+
 - One secret link per named guest ("Name +1" entries are folded into the invite). Share by WhatsApp or download a CSV.
 - Guests open the link without logging in, confirm how many are coming, request changes, and get a QR code and a map to their seat. They never see other guests.
 - Planners approve or reject change requests.
 
 **Door check-in**
+
 - The scanner reads the QR on a phone and shows the table and chair. Repeat scans and unconfirmed guests are flagged.
 
 **Accounts and safety**
+
 - Email and password accounts; each planner sees only their own events (row-level security).
 - Saves are debounced and version-checked, so a stale tab cannot overwrite newer work.
 - Daily automatic backups with a restore page.
@@ -54,11 +59,11 @@ Copy `.env.example` to `.env.local` and fill it in. The offline editor at `/edit
 4. Import the repo into Vercel and set the environment variables below. The build command stays `npm run build`.
 5. Open the site, go to `/login`, create an account, confirm the email, and create an event.
 
-| Variable | Purpose |
-| --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Project URL |
+| Variable                               | Purpose                                                                |
+| -------------------------------------- | ---------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | Project URL                                                            |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable key (the older `NEXT_PUBLIC_SUPABASE_ANON_KEY` also works) |
-| `NEXT_PUBLIC_SITE_URL` | Public address, used to build invite links |
+| `NEXT_PUBLIC_SITE_URL`                 | Public address, used to build invite links                             |
 
 ## Layout
 

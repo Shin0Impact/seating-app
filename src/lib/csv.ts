@@ -32,7 +32,10 @@ function countOutsideQuotes(line: string, d: string): number {
 }
 
 export function detectDelimiter(text: string): string {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim() !== '').slice(0, 6);
+  const lines = text
+    .split(/\r?\n/)
+    .filter((l) => l.trim() !== '')
+    .slice(0, 6);
   let best = ',';
   let bestScore = 0;
   for (const d of [',', ';', '\t', '|']) {
@@ -102,7 +105,13 @@ export function guessMapping(headers: string[]): { mapping: Mapping; foundHeader
     if (m.table === NO_COLUMN && RE.table.test(x)) m.table = i;
     else if (m.surname === NO_COLUMN && RE.surname.test(x)) m.surname = i;
     else if (m.count === NO_COLUMN && RE.count.test(x) && !/(name|اسم|שם)/.test(x)) m.count = i;
-    else if (m.group === NO_COLUMN && RE.group.test(x) && !/(first|اول|פרטי)/.test(x) && !/name|اسم|שם/.test(x.replace(/family|عايله|משפחה/g, ''))) m.group = i;
+    else if (
+      m.group === NO_COLUMN &&
+      RE.group.test(x) &&
+      !/(first|اول|פרטי)/.test(x) &&
+      !/name|اسم|שם/.test(x.replace(/family|عايله|משפחה/g, ''))
+    )
+      m.group = i;
     else if (m.name === NO_COLUMN && RE.name.test(x)) m.name = i;
   });
   const foundHeader = m.name !== NO_COLUMN || m.group !== NO_COLUMN || m.count !== NO_COLUMN || m.table !== NO_COLUMN;
@@ -113,14 +122,22 @@ export function guessMapping(headers: string[]): { mapping: Mapping; foundHeader
 export function guessNameColumn(rows: string[][]): number {
   const cols = Math.max(0, ...rows.map((r) => r.length));
   for (let c = 0; c < cols; c++) {
-    const vals = rows.slice(0, 20).map((r) => r[c] ?? '').filter(Boolean);
+    const vals = rows
+      .slice(0, 20)
+      .map((r) => r[c] ?? '')
+      .filter(Boolean);
     if (vals.length && vals.filter((v) => !/^[\d\s+()\-.٠-٩]+$/.test(v)).length / vals.length > 0.8) return c;
   }
   return 0;
 }
 
 const clean = (s: string, max: number) =>
-  Array.from(s.replace(/[\u0000-\u001f\u007f‎‏‪-‮]/g, ' ').replace(/\s+/g, ' ').trim())
+  Array.from(
+    s
+      .replace(/[\u0000-\u001f\u007f‎‏‪-‮]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim(),
+  )
     .slice(0, max)
     .join('');
 
@@ -132,7 +149,10 @@ const toInt = (s: string): number => {
 /** Chairs on a table made by the import when the file lists fewer people than this. */
 export const DEFAULT_IMPORT_SEATS = 10;
 
-const tableKey = (s: string) => normalize(s).replace(/(table|طاوله|שולחן)/g, '').trim();
+const tableKey = (s: string) =>
+  normalize(s)
+    .replace(/(table|طاوله|שולחן)/g, '')
+    .trim();
 
 export type ImportResult = {
   guests: Guest[];
@@ -147,8 +167,14 @@ export type ImportResult = {
 };
 
 /** Turns table rows into guests. A count above 1 adds "Name +1", "Name +2" ... in the same group. */
-export function buildGuests(rows: string[][], map: Mapping, existing: Guest[], tables: TableEl[], createTables = false): ImportResult {
-  const cell = (r: string[], i: number) => (i === NO_COLUMN ? '' : r[i] ?? '');
+export function buildGuests(
+  rows: string[][],
+  map: Mapping,
+  existing: Guest[],
+  tables: TableEl[],
+  createTables = false,
+): ImportResult {
+  const cell = (r: string[], i: number) => (i === NO_COLUMN ? '' : (r[i] ?? ''));
   const seenNames = new Set(existing.map((g) => normalize(g.name)));
   const byKey = new Map<string, TableEl>();
   for (const tb of tables) {
@@ -158,14 +184,29 @@ export function buildGuests(rows: string[][], map: Mapping, existing: Guest[], t
   }
   const out: Guest[] = [];
   const working = [...existing];
-  const res: ImportResult = { guests: out, people: 0, skippedDuplicates: 0, skippedEmpty: 0, tablesMatched: 0, tablesUnmatched: 0, newTables: [], capped: false };
+  const res: ImportResult = {
+    guests: out,
+    people: 0,
+    skippedDuplicates: 0,
+    skippedEmpty: 0,
+    tablesMatched: 0,
+    tablesUnmatched: 0,
+    newTables: [],
+    capped: false,
+  };
   // People per unknown table name, so a table made from the file gets enough chairs.
   const demand = new Map<string, number>();
   if (createTables && map.table !== NO_COLUMN) {
     for (const r of rows) {
       const tc = cell(r, map.table);
       const k = tableKey(tc);
-      if (!tc || !k || byKey.has(k) || !clean([cell(r, map.name), cell(r, map.surname)].filter(Boolean).join(' '), LIMITS.nameMax)) continue;
+      if (
+        !tc ||
+        !k ||
+        byKey.has(k) ||
+        !clean([cell(r, map.name), cell(r, map.surname)].filter(Boolean).join(' '), LIMITS.nameMax)
+      )
+        continue;
       const n = map.count === NO_COLUMN ? 1 : Math.min(toInt(cell(r, map.count)), IMPORT_LIMITS.extraPeople + 1);
       demand.set(k, (demand.get(k) ?? 0) + Math.max(n, 1));
     }
@@ -183,7 +224,8 @@ export function buildGuests(rows: string[][], map: Mapping, existing: Guest[], t
     }
     seenNames.add(key);
     const group = clean(cell(r, map.group), LIMITS.groupMax);
-    const extra = map.count === NO_COLUMN ? 0 : Math.min(Math.max(toInt(cell(r, map.count)) - 1, 0), IMPORT_LIMITS.extraPeople);
+    const extra =
+      map.count === NO_COLUMN ? 0 : Math.min(Math.max(toInt(cell(r, map.count)) - 1, 0), IMPORT_LIMITS.extraPeople);
     const tableCell = cell(r, map.table);
     let tb = tableCell ? byKey.get(tableKey(tableCell)) : undefined;
     if (tableCell && !tb && createTables && tableKey(tableCell)) {

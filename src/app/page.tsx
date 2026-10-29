@@ -46,7 +46,10 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
   }
   return (
     <div className="site">
-      <div className="theme-float"><LangToggle /><SiteSettings account={signedIn ? { signOut } : undefined} /></div>
+      <div className="theme-float">
+        <LangToggle />
+        <SiteSettings account={signedIn ? { signOut } : undefined} />
+      </div>
       <section className="hero">
         <div className="hero-inner">
           <div className="login-card">
@@ -60,15 +63,44 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
             ) : signedIn ? (
               <>
                 <h2>{s('welcomeBack')}</h2>
-                <Link className="btn primary" href={next}>{s('continueToEvents')}</Link>
-                <form action={signOut}><button className="btn" style={{ width: '100%' }}>{s('signOut')}</button></form>
+                <Link className="btn primary" href={next}>
+                  {s('continueToEvents')}
+                </Link>
+                <form action={signOut}>
+                  <button className="btn" style={{ width: '100%' }}>
+                    {s('signOut')}
+                  </button>
+                </form>
               </>
             ) : (
-              <form action={signIn} className="login-form" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <form
+                action={signIn}
+                className="login-form"
+                style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
+              >
                 <input type="hidden" name="next" value={next} />
-                {q.error && <p className="notice err" role="alert">{s('badLogin')}</p>}
-                <label className="field-col">{s('userOrEmail')}<input name="email" type="text" required autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} dir="ltr" /></label>
-                <label className="field-col">{s('password')}<input name="password" type="password" required autoComplete="current-password" dir="ltr" /></label>
+                {q.error && (
+                  <p className="notice err" role="alert">
+                    {s('badLogin')}
+                  </p>
+                )}
+                <label className="field-col">
+                  {s('userOrEmail')}
+                  <input
+                    name="email"
+                    type="text"
+                    required
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    dir="ltr"
+                  />
+                </label>
+                <label className="field-col">
+                  {s('password')}
+                  <input name="password" type="password" required autoComplete="current-password" dir="ltr" />
+                </label>
                 <button className="btn primary">{s('signIn')}</button>
               </form>
             )}

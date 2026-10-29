@@ -11,16 +11,25 @@ export type Measure = (text: string, px: number) => number;
 
 let ctx: CanvasRenderingContext2D | null | undefined;
 /** Real text width in pixels (Arabic shapes are wider than a character count suggests). */
-export const canvasMeasure = (font: string): Measure => (text, px) => {
-  if (ctx === undefined) ctx = typeof document === 'undefined' ? null : document.createElement('canvas').getContext('2d');
-  if (!ctx) return Array.from(text).length * px * 0.62;
-  ctx.font = `bold ${px}px ${font}`;
-  return ctx.measureText(text).width;
-};
+export const canvasMeasure =
+  (font: string): Measure =>
+  (text, px) => {
+    if (ctx === undefined)
+      ctx = typeof document === 'undefined' ? null : document.createElement('canvas').getContext('2d');
+    if (!ctx) return Array.from(text).length * px * 0.62;
+    ctx.font = `bold ${px}px ${font}`;
+    return ctx.measureText(text).width;
+  };
 
 const SHRINK = [1, 0.86, 0.74];
 
-export function fitChairLabel(name: string, availW: number, availH: number, fontPx: number, measure: Measure): ChairLabel {
+export function fitChairLabel(
+  name: string,
+  availW: number,
+  availH: number,
+  fontPx: number,
+  measure: Measure,
+): ChairLabel {
   const { base, plus } = splitPlus(name);
   const first = base.split(/\s+/)[0] ?? base;
   const twoLines = !!plus && availH >= fontPx * 1.9;

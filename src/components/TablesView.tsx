@@ -20,7 +20,18 @@ type Props = {
 };
 
 /** Full-page table metrics: the sizing rules, and every table's name, shape and chair count. */
-export function TablesView({ t, settings, tables, seated, onSettings, onPatchTable, onSeats, onAllSeats, onLocate, onRemove }: Props) {
+export function TablesView({
+  t,
+  settings,
+  tables,
+  seated,
+  onSettings,
+  onPatchTable,
+  onSeats,
+  onAllSeats,
+  onLocate,
+  onRemove,
+}: Props) {
   const [all, setAll] = useState(10);
 
   const sample = (shape: 'round' | 'rect', seats: number) => {
@@ -39,22 +50,63 @@ export function TablesView({ t, settings, tables, seated, onSettings, onPatchTab
           <h2>{t('settings')}</h2>
           <p className="muted">{t('sizeHelp')}</p>
           <div className="settings-grid">
-            <NumField label={t('seatWidth')} value={settings.seatWidth} min={0.3} max={1.5} step={0.05} onChange={(v) => onSettings({ seatWidth: v }, 'sw')} />
-            <NumField label={t('chairDepth')} value={settings.chairDepth} min={0} max={1.5} step={0.05} onChange={(v) => onSettings({ chairDepth: v }, 'cd')} />
-            <NumField label={t('rectWidth')} value={settings.rectTableWidth} min={0.3} max={3} step={0.05} onChange={(v) => onSettings({ rectTableWidth: v }, 'rw')} />
-            <NumField label={t('walkway')} value={settings.walkway} min={0} max={3} step={0.05} onChange={(v) => onSettings({ walkway: v }, 'ww')} />
+            <NumField
+              label={t('seatWidth')}
+              value={settings.seatWidth}
+              min={0.3}
+              max={1.5}
+              step={0.05}
+              onChange={(v) => onSettings({ seatWidth: v }, 'sw')}
+            />
+            <NumField
+              label={t('chairDepth')}
+              value={settings.chairDepth}
+              min={0}
+              max={1.5}
+              step={0.05}
+              onChange={(v) => onSettings({ chairDepth: v }, 'cd')}
+            />
+            <NumField
+              label={t('rectWidth')}
+              value={settings.rectTableWidth}
+              min={0.3}
+              max={3}
+              step={0.05}
+              onChange={(v) => onSettings({ rectTableWidth: v }, 'rw')}
+            />
+            <NumField
+              label={t('walkway')}
+              value={settings.walkway}
+              min={0}
+              max={3}
+              step={0.05}
+              onChange={(v) => onSettings({ walkway: v }, 'ww')}
+            />
           </div>
           <h3 className="sub">{t('sizeExamples')}</h3>
           <div className="examples">
-            {([['round', 8], ['round', 10], ['round', 12], ['rect', 8], ['rect', 10], ['rect', 12]] as const).map(([shape, n]) => {
+            {(
+              [
+                ['round', 8],
+                ['round', 10],
+                ['round', 12],
+                ['rect', 8],
+                ['rect', 10],
+                ['rect', 12],
+              ] as const
+            ).map(([shape, n]) => {
               const s = sample(shape, n);
               return (
                 <div key={`${shape}${n}`} className="example">
                   <b>
                     {t(shape === 'round' ? 'shapeRound' : 'shapeRect')} · {n} {t('chairs')}
                   </b>
-                  <span>{t('tableSize')}: {s.size}</span>
-                  <span>{t('withChairs')}: {s.withChairs}</span>
+                  <span>
+                    {t('tableSize')}: {s.size}
+                  </span>
+                  <span>
+                    {t('withChairs')}: {s.withChairs}
+                  </span>
                 </div>
               );
             })}
@@ -70,7 +122,15 @@ export function TablesView({ t, settings, tables, seated, onSettings, onPatchTab
           {tables.length > 0 && (
             <>
               <div className="bulk">
-                <NumField label={t('allChairs')} value={all} min={LIMITS.seatsMin} max={LIMITS.seatsMax} step={1} int onChange={setAll} />
+                <NumField
+                  label={t('allChairs')}
+                  value={all}
+                  min={LIMITS.seatsMin}
+                  max={LIMITS.seatsMax}
+                  step={1}
+                  int
+                  onChange={setAll}
+                />
                 <button onClick={() => onAllSeats(all)}>{t('apply')}</button>
               </div>
               <div className="trow thead" aria-hidden>
@@ -88,14 +148,39 @@ export function TablesView({ t, settings, tables, seated, onSettings, onPatchTab
                   const n = seated.get(tb.id) ?? 0;
                   return (
                     <li key={tb.id} className="trow">
-                      <input type="text" maxLength={LIMITS.labelMax} value={tb.label} aria-label={t('name')} onChange={(e) => onPatchTable(tb.id, { label: e.target.value }, 'label')} />
-                      <select value={tb.shape} aria-label={t('shape')} onChange={(e) => onPatchTable(tb.id, { shape: e.target.value as 'round' | 'rect' }, 'shape')}>
+                      <input
+                        type="text"
+                        maxLength={LIMITS.labelMax}
+                        value={tb.label}
+                        aria-label={t('name')}
+                        onChange={(e) => onPatchTable(tb.id, { label: e.target.value }, 'label')}
+                      />
+                      <select
+                        value={tb.shape}
+                        aria-label={t('shape')}
+                        onChange={(e) => onPatchTable(tb.id, { shape: e.target.value as 'round' | 'rect' }, 'shape')}
+                      >
                         <option value="round">{t('shapeRound')}</option>
                         <option value="rect">{t('shapeRect')}</option>
                       </select>
-                      <NumField label={t('chairs')} hideLabel value={tb.seats} min={LIMITS.seatsMin} max={LIMITS.seatsMax} step={1} int onChange={(v) => onSeats(tb.id, v)} />
-                      <span className="tsize">{d.shape === 'round' ? `⌀ ${round2(d.diameter)} m` : `${round2(d.length)} × ${round2(d.width)} m`}</span>
-                      <span className={n > tb.seats ? 'over' : ''}>{n}/{tb.seats}</span>
+                      <NumField
+                        label={t('chairs')}
+                        hideLabel
+                        value={tb.seats}
+                        min={LIMITS.seatsMin}
+                        max={LIMITS.seatsMax}
+                        step={1}
+                        int
+                        onChange={(v) => onSeats(tb.id, v)}
+                      />
+                      <span className="tsize">
+                        {d.shape === 'round'
+                          ? `⌀ ${round2(d.diameter)} m`
+                          : `${round2(d.length)} × ${round2(d.width)} m`}
+                      </span>
+                      <span className={n > tb.seats ? 'over' : ''}>
+                        {n}/{tb.seats}
+                      </span>
                       <IconButton icon="fit" label={t('showInHall')} onClick={() => onLocate(tb.id)} />
                       <IconButton icon="trash" label={t('remove')} danger onClick={() => onRemove(tb.id)} />
                     </li>

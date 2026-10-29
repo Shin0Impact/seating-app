@@ -17,7 +17,8 @@ export function readPref(): ThemePref {
 }
 
 export function resolve(pref: ThemePref): Theme {
-  if (pref === 'auto') return typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  if (pref === 'auto')
+    return typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   return pref;
 }
 
@@ -52,7 +53,9 @@ export function useTheme() {
 
   const setPref = useCallback((p: ThemePref) => {
     setPrefState(p);
-    try { localStorage.setItem(THEME_KEY, p); } catch {}
+    try {
+      localStorage.setItem(THEME_KEY, p);
+    } catch {}
     const t = resolve(p);
     setTheme(t);
     apply(t);

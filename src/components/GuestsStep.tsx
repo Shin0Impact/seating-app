@@ -43,15 +43,20 @@ export default function GuestsStep({ id, initial, version }: { id: string; initi
     if (pending.current) void flush();
   }, [id]);
 
-  const commit = useCallback((next: Layout) => {
-    setLayout(next);
-    pending.current = next;
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => void flush(), 600);
-  }, [flush]);
+  const commit = useCallback(
+    (next: Layout) => {
+      setLayout(next);
+      pending.current = next;
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => void flush(), 600);
+    },
+    [flush],
+  );
 
   useEffect(() => {
-    const warn = (e: BeforeUnloadEvent) => { if (pending.current || busy.current) e.preventDefault(); };
+    const warn = (e: BeforeUnloadEvent) => {
+      if (pending.current || busy.current) e.preventDefault();
+    };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, []);
@@ -63,7 +68,9 @@ export default function GuestsStep({ id, initial, version }: { id: string; initi
 
   return (
     <div className="guests-step">
-      <p className={`save-status ${status}`} role="status" style={{ margin: 0 }}>{label}</p>
+      <p className={`save-status ${status}`} role="status" style={{ margin: 0 }}>
+        {label}
+      </p>
       <GuestsView
         t={t}
         guests={layout.guests}
@@ -71,7 +78,11 @@ export default function GuestsStep({ id, initial, version }: { id: string; initi
         onChange={(guests: Guest[]) => commit({ ...layoutRef.current, guests })}
         onImportAll={(added, made) => {
           const l = layoutRef.current;
-          commit({ ...l, elements: [...l.elements, ...placeNewTables(l.elements, l.settings, made)], guests: [...l.guests, ...added] });
+          commit({
+            ...l,
+            elements: [...l.elements, ...placeNewTables(l.elements, l.settings, made)],
+            guests: [...l.guests, ...added],
+          });
         }}
         onLocate={(g) => {
           void flush().then(() => router.push(`/events/${id}/hall?focus=${g.id}`));

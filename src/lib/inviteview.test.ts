@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_TEMPLATE, fillMessage, inviteState, totals, whatsappUrl, type InviteRow } from './inviteview';
 
-const row = (o: Partial<InviteRow> = {}): InviteRow => ({ token: 't'.repeat(32), guest_id: 'g', party_size: 2, status: 'pending', confirmed_count: null, checked_in_at: null, sent_at: null, ...o });
+const row = (o: Partial<InviteRow> = {}): InviteRow => ({
+  token: 't'.repeat(32),
+  guest_id: 'g',
+  party_size: 2,
+  status: 'pending',
+  confirmed_count: null,
+  checked_in_at: null,
+  sent_at: null,
+  ...o,
+});
 
 describe('inviteState', () => {
   it('moves through the stages', () => {
@@ -21,7 +30,15 @@ describe('totals', () => {
       row({ party_size: 1, status: 'declined' }),
       row({ party_size: 2, status: 'confirmed', confirmed_count: null, checked_in_at: 'x' }),
     ]);
-    expect(t).toEqual({ families: 4, people: 10, sent: 4, confirmedFamilies: 2, confirmedPeople: 4, declined: 1, arrived: 1 });
+    expect(t).toEqual({
+      families: 4,
+      people: 10,
+      sent: 4,
+      confirmedFamilies: 2,
+      confirmedPeople: 4,
+      declined: 1,
+      arrived: 1,
+    });
   });
 });
 

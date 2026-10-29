@@ -5,7 +5,11 @@ import { useLang } from './LangProvider';
 export default function LangToggle() {
   const { lang, setLang } = useLang();
   return (
-    <button className="btn small" onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')} lang={lang === 'ar' ? 'en' : 'ar'}>
+    <button
+      className="btn small"
+      onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
+      lang={lang === 'ar' ? 'en' : 'ar'}
+    >
       {lang === 'ar' ? 'English' : 'العربية'}
     </button>
   );

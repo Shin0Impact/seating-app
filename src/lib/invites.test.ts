@@ -4,7 +4,8 @@ import { emptyLayout, newGuest, newTable } from './layout';
 
 describe('tokens', () => {
   it('are url-safe, long and unique', () => {
-    const a = makeToken(), b = makeToken();
+    const a = makeToken(),
+      b = makeToken();
     expect(a).toMatch(/^[A-Za-z0-9_-]{32}$/);
     expect(a).not.toBe(b);
     expect(isToken(a)).toBe(true);

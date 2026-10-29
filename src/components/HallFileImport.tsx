@@ -25,7 +25,12 @@ export default function HallFileImport({ id, hasHall }: { id: string; hasHall: b
       const sb = browserClient();
       const { data: cur, error: e1 } = await sb.from('events').select('version').eq('id', id).single();
       if (e1 || !cur) throw new Error('read');
-      const { data, error } = await sb.from('events').update({ layout, version: cur.version + 1, updated_at: new Date().toISOString() }).eq('id', id).eq('version', cur.version).select('version');
+      const { data, error } = await sb
+        .from('events')
+        .update({ layout, version: cur.version + 1, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('version', cur.version)
+        .select('version');
       if (error || !data?.length) throw new Error('save');
       setMsg({ ok: true, text: s('hallImported') });
       setFile(null);
@@ -48,18 +53,38 @@ export default function HallFileImport({ id, hasHall }: { id: string; hasHall: b
   return (
     <section className="hall-import">
       <input ref={ref} type="file" accept="application/json,.json" hidden onChange={(e) => pick(e.target.files?.[0])} />
-      <button className="btn" disabled={busy} onClick={() => ref.current?.click()}><Icon name="upload" size={18} /> {busy ? s('importing') : s('importHall')}</button>
+      <button className="btn" disabled={busy} onClick={() => ref.current?.click()}>
+        <Icon name="upload" size={18} /> {busy ? s('importing') : s('importHall')}
+      </button>
       <span className="muted">{s('importHallHint')}</span>
       {file && (
-        <div className="notice err" role="alert" style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div
+          className="notice err"
+          role="alert"
+          style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}
+        >
           <span>{s('importHallConfirm', { file: file.name })}</span>
           <span style={{ display: 'flex', gap: 8 }}>
-            <button className="btn danger-fill" onClick={() => run(file)}>{s('yesReplace')}</button>
-            <button className="btn" onClick={() => { setFile(null); if (ref.current) ref.current.value = ''; }}>{s('cancel')}</button>
+            <button className="btn danger-fill" onClick={() => run(file)}>
+              {s('yesReplace')}
+            </button>
+            <button
+              className="btn"
+              onClick={() => {
+                setFile(null);
+                if (ref.current) ref.current.value = '';
+              }}
+            >
+              {s('cancel')}
+            </button>
           </span>
         </div>
       )}
-      {msg && <p className={`notice ${msg.ok ? 'ok' : 'err'}`} role="status">{msg.text}</p>}
+      {msg && (
+        <p className={`notice ${msg.ok ? 'ok' : 'err'}`} role="status">
+          {msg.text}
+        </p>
+      )}
     </section>
   );
 }

@@ -1,7 +1,9 @@
 import type { Guest, Layout, TableEl } from './layout';
 
 /** 24 random bytes as base64url (32 characters): unguessable, safe in a URL and in a QR code. */
-export function makeToken(random: (n: number) => Uint8Array = (n) => crypto.getRandomValues(new Uint8Array(n))): string {
+export function makeToken(
+  random: (n: number) => Uint8Array = (n) => crypto.getRandomValues(new Uint8Array(n)),
+): string {
   const bytes = random(24);
   let bin = '';
   for (const b of bytes) bin += String.fromCharCode(b);
@@ -46,7 +48,14 @@ export function locate(layout: Layout, ids: string[]): Placement[] {
     const g = byId.get(id);
     if (!g) return [];
     const t = g.tableId ? tables.get(g.tableId) : undefined;
-    return [{ name: g.name, table: t ? t.label : null, seat: t && g.seat !== null ? g.seat + 1 : null, tableId: t ? t.id : null }];
+    return [
+      {
+        name: g.name,
+        table: t ? t.label : null,
+        seat: t && g.seat !== null ? g.seat + 1 : null,
+        tableId: t ? t.id : null,
+      },
+    ];
   });
 }
 
@@ -78,6 +87,12 @@ export function seatsSummary(
 ): string {
   const want = new Set(ids);
   const byTable = new Map<string, number[]>();
-  for (const g of layout.guests) if (want.has(g.id) && g.tableId && g.seat !== null) byTable.set(g.tableId, [...(byTable.get(g.tableId) ?? []), g.seat + 1]);
-  return [...byTable.entries()].map(([id, seats]) => make(layout.elements.find((e) => e.id === id)?.label ?? '', seats.length, formatRanges(seatRanges(seats), and))).join(' | ');
+  for (const g of layout.guests)
+    if (want.has(g.id) && g.tableId && g.seat !== null)
+      byTable.set(g.tableId, [...(byTable.get(g.tableId) ?? []), g.seat + 1]);
+  return [...byTable.entries()]
+    .map(([id, seats]) =>
+      make(layout.elements.find((e) => e.id === id)?.label ?? '', seats.length, formatRanges(seatRanges(seats), and)),
+    )
+    .join(' | ');
 }

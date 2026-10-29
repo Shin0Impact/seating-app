@@ -22,7 +22,21 @@ type Props = {
 };
 
 /** Popup opened by double-clicking a chair: choose which invited guest sits there. */
-export function ChairPicker({ t, table, seat, x, y, guests, tableLabel, onPick, onAddAndSeat, onEmpty, onEdit, onRemoveGuest, onClose }: Props) {
+export function ChairPicker({
+  t,
+  table,
+  seat,
+  x,
+  y,
+  guests,
+  tableLabel,
+  onPick,
+  onAddAndSeat,
+  onEmpty,
+  onEdit,
+  onRemoveGuest,
+  onClose,
+}: Props) {
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => inputRef.current?.focus(), []);
@@ -94,7 +108,9 @@ export function ChairPicker({ t, table, seat, x, y, guests, tableLabel, onPick, 
                 <span className="pn">{g.name}</span>
                 <span className="pm">
                   {g.group}
-                  {g.tableId ? `${g.group ? ' · ' : ''}${t('seatedAt')} ${tableLabel(g.tableId)}${g.seat !== null ? ` #${g.seat + 1}` : ''}` : ''}
+                  {g.tableId
+                    ? `${g.group ? ' · ' : ''}${t('seatedAt')} ${tableLabel(g.tableId)}${g.seat !== null ? ` #${g.seat + 1}` : ''}`
+                    : ''}
                 </span>
               </button>
             </li>
@@ -114,19 +130,43 @@ export function ChairPicker({ t, table, seat, x, y, guests, tableLabel, onPick, 
 }
 
 /** Name, group and access fields for one guest; edits apply as you type. */
-export function GuestFields({ t, guest, onEdit }: { t: (k: Key) => string; guest: Guest; onEdit: (id: string, patch: Partial<Guest>) => void }) {
+export function GuestFields({
+  t,
+  guest,
+  onEdit,
+}: {
+  t: (k: Key) => string;
+  guest: Guest;
+  onEdit: (id: string, patch: Partial<Guest>) => void;
+}) {
   return (
     <div className="guest-fields">
       <label className="field">
         <span>{t('guestName')}</span>
-        <input type="text" dir="auto" maxLength={LIMITS.nameMax} value={guest.name} onChange={(e) => onEdit(guest.id, { name: e.target.value })} />
+        <input
+          type="text"
+          dir="auto"
+          maxLength={LIMITS.nameMax}
+          value={guest.name}
+          onChange={(e) => onEdit(guest.id, { name: e.target.value })}
+        />
       </label>
       <label className="field">
         <span>{t('guestGroup')}</span>
-        <input type="text" dir="auto" maxLength={LIMITS.nameMax} value={guest.group} onChange={(e) => onEdit(guest.id, { group: e.target.value })} />
+        <input
+          type="text"
+          dir="auto"
+          maxLength={LIMITS.nameMax}
+          value={guest.group}
+          onChange={(e) => onEdit(guest.id, { group: e.target.value })}
+        />
       </label>
       <label className="check">
-        <input type="checkbox" checked={guest.stepFree} onChange={(e) => onEdit(guest.id, { stepFree: e.target.checked })} />
+        <input
+          type="checkbox"
+          checked={guest.stepFree}
+          onChange={(e) => onEdit(guest.id, { stepFree: e.target.checked })}
+        />
         <span>{t('stepFree')}</span>
       </label>
     </div>
@@ -134,19 +174,51 @@ export function GuestFields({ t, guest, onEdit }: { t: (k: Key) => string; guest
 }
 
 /** Popup to edit a guest who has no chair yet (opened from the side list). */
-export function GuestEditPopup({ t, guest, x, y, onEdit, onRemoveGuest, onClose }: { t: (k: Key) => string; guest: Guest; x: number; y: number; onEdit: (id: string, patch: Partial<Guest>) => void; onRemoveGuest: (id: string) => void; onClose: () => void }) {
+export function GuestEditPopup({
+  t,
+  guest,
+  x,
+  y,
+  onEdit,
+  onRemoveGuest,
+  onClose,
+}: {
+  t: (k: Key) => string;
+  guest: Guest;
+  x: number;
+  y: number;
+  onEdit: (id: string, patch: Partial<Guest>) => void;
+  onRemoveGuest: (id: string) => void;
+  onClose: () => void;
+}) {
   const W = 300;
   const left = Math.max(8, Math.min(x - W / 2, window.innerWidth - W - 8));
   const top = Math.max(8, Math.min(y + 8, window.innerHeight - 340));
   return (
     <>
       <div className="picker-backdrop" onMouseDown={onClose} />
-      <div className="picker" role="dialog" aria-label={t('editPerson')} style={{ left, top, width: W }} onKeyDown={(e) => e.key === 'Escape' && onClose()}>
+      <div
+        className="picker"
+        role="dialog"
+        aria-label={t('editPerson')}
+        style={{ left, top, width: W }}
+        onKeyDown={(e) => e.key === 'Escape' && onClose()}
+      >
         <h3>{t('editPerson')}</h3>
         <GuestFields t={t} guest={guest} onEdit={onEdit} />
         <div className="picker-row">
-          <button className="primary" onClick={onClose}>{t('done')}</button>
-          <button className="picker-empty danger" onClick={() => { onRemoveGuest(guest.id); onClose(); }}>{t('removeGuest')}</button>
+          <button className="primary" onClick={onClose}>
+            {t('done')}
+          </button>
+          <button
+            className="picker-empty danger"
+            onClick={() => {
+              onRemoveGuest(guest.id);
+              onClose();
+            }}
+          >
+            {t('removeGuest')}
+          </button>
         </div>
       </div>
     </>
