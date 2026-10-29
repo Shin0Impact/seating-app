@@ -25,7 +25,7 @@ export type Focus = {
   seat: number | null;
 };
 
-const WALK_COST = 0.15;
+const WALK_COST = 0.3;
 const DANCE_COST = 0.3;
 const BLOCKING_MARKERS = new Set(['stage', 'buffet', 'other']);
 

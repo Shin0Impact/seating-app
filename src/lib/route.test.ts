@@ -103,7 +103,12 @@ describe('findRoute stays finite', () => {
 
 describe('safe routes and half tables', () => {
   it('detours along a drawn walkway', () => {
-    const base = hall([{ tableId: 't2', seat: 0 }]);
+    // no dance floor here: it costs the same as a safe route, so the two would not compete for the detour
+    const full = hall([{ tableId: 't2', seat: 0 }]);
+    const base: Layout = {
+      ...full,
+      elements: full.elements.filter((e) => !(e.kind === 'marker' && e.marker === 'dancefloor')),
+    };
     const withWalk: Layout = {
       ...base,
       elements: [
