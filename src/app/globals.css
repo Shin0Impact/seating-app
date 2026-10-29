@@ -812,3 +812,16 @@ button.primary.danger-fill { background: var(--danger); border-color: var(--dang
   .rsvp-card > section > p:not(.notice) { font-size: .9em; }
   .zp-open { min-height: 40px !important; }
 }
+
+/* confirmed = second screen: the confirmation and the QR get the room */
+.rc-brief { margin: 0; text-align: center; color: var(--muted); font-size: .95em; }
+.rc-brief a { color: var(--accent-ink); font-weight: 600; }
+@media (max-width: 560px) {
+  .is-conf .rc-confirmed { display: flex !important; }
+  .is-conf .guest-count .gc-row b::before { content: none; }
+  .is-conf .rsvp-card .qr { width: min(66vw, 250px); padding: 10px; }
+  .is-conf .rc-logo { display: grid; width: 52px; height: 52px; }
+  .is-conf .rc-eyebrow { margin-top: 2px; }
+  .is-conf .theme-float { position: static; justify-content: center; pointer-events: auto; }
+  .is-conf .rsvp-card { gap: 12px; }
+}
