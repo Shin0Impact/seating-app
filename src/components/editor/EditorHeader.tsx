@@ -2,14 +2,13 @@ import type { ReactNode, RefObject } from 'react';
 import type { Key } from '@/lib/i18n';
 import { IconButton } from '../Icon';
 
-export type EditorView = 'hall' | 'guests' | 'tables';
+export type EditorView = 'hall' | 'tables';
 
 type Props = {
   t: (k: Key) => string;
   leading?: ReactNode;
   view: EditorView;
   onView: (v: EditorView) => void;
-  guestCount: number;
   tableCount: number;
   canUndo: boolean;
   canRedo: boolean;
@@ -20,34 +19,21 @@ type Props = {
   onImportFile: (file: File) => void;
 };
 
-/** Top bar: title, the Hall / Guests / Tables tabs, undo and redo, settings. */
+/** Top bar: title, the table sizes toggle, undo and redo, settings. */
 export function EditorHeader(p: Props) {
   const { t } = p;
   return (
     <header className="bar">
       {p.leading ?? <h1>{t('appTitle')}</h1>}
-      <nav className="views" role="tablist">
-        {(
-          [
-            ['hall', t('tabHall')],
-            ['guests', t('tabGuests')],
-            ['tables', t('tabTables')],
-          ] as const
-        ).map(([k, label]) => (
-          <button
-            key={k}
-            role="tab"
-            aria-selected={p.view === k}
-            className={p.view === k ? 'on' : ''}
-            onClick={() => p.onView(k)}
-          >
-            {label}
-            {k === 'guests' && <span className="badge">{p.guestCount}</span>}
-            {k === 'tables' && <span className="badge">{p.tableCount}</span>}
-          </button>
-        ))}
-      </nav>
       <div className="bar-actions">
+        <IconButton
+          icon="ruler"
+          label={t('tabTables')}
+          pressed={p.view === 'tables'}
+          count={p.tableCount}
+          onClick={() => p.onView(p.view === 'tables' ? 'hall' : 'tables')}
+        />
+        <span className="sep" aria-hidden />
         <IconButton icon="undo" label={`${t('undo')} (Ctrl+Z)`} onClick={p.onUndo} disabled={!p.canUndo} />
         <IconButton icon="redo" label={`${t('redo')} (Ctrl+Y)`} onClick={p.onRedo} disabled={!p.canRedo} />
         <span className="sep" aria-hidden />
