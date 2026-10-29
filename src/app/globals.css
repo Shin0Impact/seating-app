@@ -690,6 +690,8 @@ button.primary.danger-fill { background: var(--danger); border-color: var(--dang
 .hp-chair.on { fill: var(--accent); stroke: var(--accent); }
 .hp-col { fill: var(--line-strong); }
 .hp-zone { fill: var(--accent-soft); stroke: var(--line-strong); stroke-width: 0.05; stroke-dasharray: 0.3 0.2; }
+.hp-stairs { fill: var(--accent-soft); stroke: var(--line-strong); stroke-width: 0.05; }
+.hp-stair-line { stroke: var(--line-strong); stroke-width: 0.05; }
 .hp-exit { fill: #bfe8c9; stroke: #1f8a4c; stroke-width: 0.08; }
 .hp-marker { fill: var(--chip); stroke: var(--line-strong); stroke-width: 0.05; }
 .hp-text { fill: var(--ink); pointer-events: none; }
