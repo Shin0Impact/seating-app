@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: 'طاولتنا', statusBarStyle: 'default' },
 };
 
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#2f5fc4' };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#fffdf8' };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const lang = await getLang();
