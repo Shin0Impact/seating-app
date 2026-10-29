@@ -17,10 +17,11 @@ const HallCanvas = forwardRef<HallCanvasApi, { layout: Layout; focus?: Focus | n
     const paint = useCallback(() => {
       const c = cv.current;
       if (!c) return;
+      const t0 = performance.now();
       const w = c.clientWidth,
         h = c.clientHeight;
       if (!w || !h) return;
-      const dpr = Math.min(3, window.devicePixelRatio || 1);
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
       if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) {
         c.width = Math.round(w * dpr);
         c.height = Math.round(h * dpr);
@@ -43,6 +44,10 @@ const HallCanvas = forwardRef<HallCanvasApi, { layout: Layout; focus?: Focus | n
         (v.y + v.k * ((h - b.h * fit) / 2 - b.y0 * fit)) * dpr,
       );
       drawHall(ctx, layout, focus, pal.current);
+      const dt = performance.now() - t0;
+      const st = ((window as unknown as { __hall?: { last: number; max: number } }).__hall ??= { last: 0, max: 0 });
+      st.last = dt;
+      st.max = Math.max(st.max * 0.98, dt);
     }, [layout, focus]);
 
     useImperativeHandle(ref, () => ({

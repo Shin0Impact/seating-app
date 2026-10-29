@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useS } from './LangProvider';
+import PerfMeter from './PerfMeter';
 import HallCanvas, { type HallCanvasApi } from './HallCanvas';
 import type { Layout } from '@/lib/layout';
 import type { Focus } from '@/lib/route';
@@ -27,6 +28,7 @@ function Surface({
   const m = useMemo(() => (typeof map === 'function' ? map() : map), [map]);
   const inner = useRef<HTMLDivElement>(null);
   const canvas = useRef<HallCanvasApi>(null);
+  const [perf] = useState(() => new URLSearchParams(window.location.search).has('perf'));
   /** The view lives outside React: a gesture writes one transform per frame instead of re-rendering. */
   const vRef = useRef<View>({ k: 1, x: 0, y: 0 });
   const raf = useRef(0);
@@ -162,6 +164,7 @@ function Surface({
           </div>
         )}
       </div>
+      {perf && <PerfMeter />}
       <div className="zp-title">{label}</div>
       <div className="zp-btns">
         <button type="button" aria-label={s('closeMap')} onClick={onClose}>
