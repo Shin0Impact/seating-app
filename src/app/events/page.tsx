@@ -92,6 +92,7 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
             </Link>
           )}
         </div>
+        <p style={{ margin: 0 }}><Link href="/events/backups" className="muted">{s('backups')}</Link></p>
       </main>
     </div>
   );

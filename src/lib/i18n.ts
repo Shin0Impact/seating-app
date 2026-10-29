@@ -218,7 +218,7 @@ const ar: Record<keyof typeof en, string> = {
   emergencyExit: 'مخرج طوارئ',
   column: 'عمود',
   properties: 'الخصائص',
-  nothingSelected: 'اختر شيئًا على اللوحة (طاولة أو غيرها) لتعديله.',
+  nothingSelected: 'اختر من اللوحة (طاولة أو غيرها) لتعديله.',
   name: 'الاسم',
   rotation: 'الدوران (°)',
   posX: 'الموضع س (م)',
