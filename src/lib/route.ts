@@ -29,6 +29,9 @@ const WALK_COST = 0.2;
 const DANCE_COST = 0.3;
 /** Extra cost for each 45 degrees of turn (in cell lengths), so routes stay as straight as they can. */
 const TURN_COST = 0.4;
+/** Walking this close to a table, column or stage is discouraged: the line stays in the middle of the aisle. */
+const CLEAR_RADIUS = 1.1;
+const CLEAR_WEIGHT = 1.6;
 const BLOCKING_MARKERS = new Set(['stage', 'buffet', 'other']);
 
 class Heap {
@@ -150,6 +153,43 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
       blocked[idx] = 1;
     });
 
+  // Distance (in meters) from every cell to the nearest obstacle, then a penalty that grows as a cell gets close to one.
+  {
+    const near = new Float32Array(cols * rows);
+    for (let k = 0; k < near.length; k++) near[k] = blocked[k] ? 0 : Infinity;
+    const D = Math.SQRT2;
+    const relax = (k: number, from: number, w: number) => {
+      if (near[from] + w < near[k]) near[k] = near[from] + w;
+    };
+    for (let j = 0; j < rows; j++)
+      for (let i = 0; i < cols; i++) {
+        const k = j * cols + i;
+        if (i > 0) relax(k, k - 1, 1);
+        if (j > 0) {
+          relax(k, k - cols, 1);
+          if (i > 0) relax(k, k - cols - 1, D);
+          if (i < cols - 1) relax(k, k - cols + 1, D);
+        }
+      }
+    for (let j = rows - 1; j >= 0; j--)
+      for (let i = cols - 1; i >= 0; i--) {
+        const k = j * cols + i;
+        if (i < cols - 1) relax(k, k + 1, 1);
+        if (j < rows - 1) {
+          relax(k, k + cols, 1);
+          if (i < cols - 1) relax(k, k + cols + 1, D);
+          if (i > 0) relax(k, k + cols - 1, D);
+        }
+      }
+    for (let k = 0; k < near.length; k++) {
+      const m = near[k] * cell;
+      if (m >= CLEAR_RADIUS || blocked[k]) continue;
+      const pen = CLEAR_WEIGHT * ((CLEAR_RADIUS - m) / CLEAR_RADIUS) ** 2;
+      cost[k] += pen;
+      costNoWalk[k] += pen;
+    }
+  }
+
   const cellOf = (p: Pt): [number, number] => [
     Math.min(cols - 1, Math.max(0, Math.floor((p.x - x0) / cell))),
     Math.min(rows - 1, Math.max(0, Math.floor((p.y - y0) / cell))),
@@ -263,35 +303,35 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     return true;
   };
 
-  /** Straight-run merge only: the line stays on the drawn walkways. */
-  const mergeRuns = (raw: Pt[]): Pt[] => {
-    const pts: Pt[] = [raw[0]];
-    let at = 0;
-    while (at < raw.length - 1) {
-      let to = at + 1;
-      while (
-        to < raw.length - 1 &&
-        Math.abs(
-          (raw[to].x - raw[at].x) * (raw[to + 1].y - raw[at].y) - (raw[to].y - raw[at].y) * (raw[to + 1].x - raw[at].x),
-        ) < 1e-9
-      )
-        to++;
-      pts.push(raw[to]);
-      at = to;
+  /**
+   * Keeps only the corners that matter (Douglas-Peucker): a stretch is replaced by a straight line when the line stays
+   * within a small distance of the path the search found and does not touch anything. The path itself already keeps
+   * to the middle of the aisles, so the simplified line does too.
+   */
+  const simplify = (raw: Pt[], tolerance = 0.3): Pt[] => {
+    const keep = new Uint8Array(raw.length);
+    keep[0] = keep[raw.length - 1] = 1;
+    const stack: [number, number][] = [[0, raw.length - 1]];
+    while (stack.length) {
+      const [a, b] = stack.pop()!;
+      if (b <= a + 1) continue;
+      const dx = raw[b].x - raw[a].x,
+        dy = raw[b].y - raw[a].y;
+      const len = Math.hypot(dx, dy) || 1;
+      let far = -1,
+        farD = -1;
+      for (let k = a + 1; k < b; k++) {
+        const d = Math.abs((raw[k].x - raw[a].x) * dy - (raw[k].y - raw[a].y) * dx) / len;
+        if (d > farD) {
+          farD = d;
+          far = k;
+        }
+      }
+      if (farD <= tolerance && free(raw[a], raw[b])) continue;
+      keep[far] = 1;
+      stack.push([a, far], [far, b]);
     }
-    return pts;
-  };
-  /** Pull the string tight: keep only the corners that matter. */
-  const pullTight = (raw: Pt[]): Pt[] => {
-    const pts: Pt[] = [raw[0]];
-    let at = 0;
-    while (at < raw.length - 1) {
-      let to = raw.length - 1;
-      while (to > at + 1 && !free(raw[at], raw[to])) to--;
-      pts.push(raw[to]);
-      at = to;
-    }
-    return pts;
+    return raw.filter((_, k) => keep[k]);
   };
   const toPoints = (cells: number[]) => cells.map((c) => centre(c % cols, Math.floor(c / cols)));
   const lengthOf = (pts: Pt[]) => {
@@ -308,12 +348,12 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     // The straightest way there, ignoring drawn walkways.
     const plainCells = astar(s, costNoWalk, false);
     if (!plainCells) continue;
-    let route = dropJogs([start, ...pullTight(toPoints(plainCells)), chair]);
+    let route = dropJogs([start, ...simplify(toPoints(plainCells)), chair]);
     // A drawn walkway is followed unless that makes the line far more bendy or much longer.
     if (walkways.length) {
       const walkCells = astar(s, cost, true);
       if (walkCells) {
-        const walked = dropJogs([start, ...mergeRuns(toPoints(walkCells)), chair]);
+        const walked = dropJogs([start, ...simplify(toPoints(walkCells)), chair]);
         if (walked.length <= route.length + 4 && lengthOf(walked) <= lengthOf(route) * 1.6) route = walked;
       }
     }
@@ -397,7 +437,7 @@ export function buildFocus(layout: Layout, guestIds: string[]): Focus | null {
  * SVG path through the route points with the corners rounded off. Each corner is cut back by `radius`
  * (or half the shorter neighbouring segment) and joined with a curve, so the line bends softly.
  */
-export function softPath(pts: Pt[], radius = 0.8): string {
+export function softPath(pts: Pt[], radius = 2.5): string {
   if (pts.length < 3) return pts.map((p, i) => `${i ? 'L' : 'M'}${p.x} ${p.y}`).join(' ');
   const f = (n: number) => Math.round(n * 1000) / 1000;
   let d = `M${f(pts[0].x)} ${f(pts[0].y)}`;

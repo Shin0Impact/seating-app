@@ -13,18 +13,11 @@ function Surface({ children, label, onClose }: { children: React.ReactNode; labe
   const [v, setV] = useState<View>({ k: 1, x: 0, y: 0 });
   const vRef = useRef(v);
   vRef.current = v;
-  /**
-   * While a gesture is going the hall is moved and scaled with a cheap transform; once it has been still for a moment
-   * the hall is laid out again at the new size, so lines and text are sharp. `base` is the size it is laid out at.
-   */
-  const [base, setBase] = useState(1);
+  /** True while the view is changing; the route animation pauses meanwhile so the gesture gets all the frames. */
   const [moving, setMoving] = useState(false);
   useEffect(() => {
     setMoving(true);
-    const id = window.setTimeout(() => {
-      setBase(v.k);
-      setMoving(false);
-    }, 180);
+    const id = window.setTimeout(() => setMoving(false), 180);
     return () => window.clearTimeout(id);
   }, [v]);
   const pts = useRef(new Map<number, { x: number; y: number }>());
@@ -129,14 +122,7 @@ function Surface({ children, label, onClose }: { children: React.ReactNode; labe
           });
         }}
       >
-        <div
-          className="zp-inner"
-          style={{
-            width: `${base * 100}%`,
-            height: `${base * 100}%`,
-            transform: `translate(${v.x}px, ${v.y}px) scale(${v.k / base})`,
-          }}
-        >
+        <div className="zp-inner" style={{ transform: `translate(${v.x}px, ${v.y}px) scale(${v.k})` }}>
           {children}
         </div>
       </div>
