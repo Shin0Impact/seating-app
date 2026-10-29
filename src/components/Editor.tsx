@@ -1098,34 +1098,42 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
         {inHall && (
           <aside className={`side${sheetOpen ? '' : ' collapsed'}`}>
             <button className="sheet-toggle" aria-expanded={sheetOpen} onClick={() => setSheetOpen(!sheetOpen)}>
-              <span>{selected ? selected.label || t('properties') : `${t('properties')} · ${t('guestsToSeat')}`}</span>
+              <span>
+                {layoutLocked
+                  ? t('guestsToSeat')
+                  : selected
+                    ? selected.label || t('properties')
+                    : `${t('properties')} · ${t('guestsToSeat')}`}
+              </span>
               <span className="arrow" aria-hidden>
                 {sheetOpen ? '▾' : '▴'}
               </span>
             </button>
 
-            <PropertiesCard
-              t={t}
-              selection={selection}
-              selected={selected}
-              settings={layout.settings}
-              guestsAtSelected={guestsAtSelected}
-              onPatch={patchEl}
-              onShape={setShape}
-              onSeats={changeSeats}
-              onHalf={(id, half) => {
-                const l = layoutRef.current;
-                commit({
-                  ...l,
-                  elements: l.elements.map((x) =>
-                    x.id === id && x.kind === 'table' ? ({ ...x, half } as Element) : x,
-                  ),
-                });
-              }}
-              onDuplicate={duplicateSelected}
-              onRotate={rotateSelected}
-              onRemove={removeSelected}
-            />
+            {!layoutLocked && (
+              <PropertiesCard
+                t={t}
+                selection={selection}
+                selected={selected}
+                settings={layout.settings}
+                guestsAtSelected={guestsAtSelected}
+                onPatch={patchEl}
+                onShape={setShape}
+                onSeats={changeSeats}
+                onHalf={(id, half) => {
+                  const l = layoutRef.current;
+                  commit({
+                    ...l,
+                    elements: l.elements.map((x) =>
+                      x.id === id && x.kind === 'table' ? ({ ...x, half } as Element) : x,
+                    ),
+                  });
+                }}
+                onDuplicate={duplicateSelected}
+                onRotate={rotateSelected}
+                onRemove={removeSelected}
+              />
+            )}
 
             <section className="card">
               <h2>{t('guestsToSeat')}</h2>
