@@ -25,7 +25,7 @@ export type Focus = {
   seat: number | null;
 };
 
-const WALK_COST = 0.3;
+const WALK_COST = 0.2;
 const DANCE_COST = 0.3;
 /** Extra cost for each 45 degrees of turn (in cell lengths), so routes stay as straight as they can. */
 const TURN_COST = 0.4;
@@ -309,12 +309,12 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     const plainCells = astar(s, costNoWalk, false);
     if (!plainCells) continue;
     let route = dropJogs([start, ...pullTight(toPoints(plainCells)), chair]);
-    // A drawn walkway is followed only when that does not make the line much more bendy.
+    // A drawn walkway is followed unless that makes the line far more bendy or much longer.
     if (walkways.length) {
       const walkCells = astar(s, cost, true);
       if (walkCells) {
         const walked = dropJogs([start, ...mergeRuns(toPoints(walkCells)), chair]);
-        if (walked.length <= route.length + 1) route = walked;
+        if (walked.length <= route.length + 4 && lengthOf(walked) <= lengthOf(route) * 1.6) route = walked;
       }
     }
     const len = lengthOf(route);
