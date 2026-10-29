@@ -26,6 +26,7 @@ export type Focus = {
 };
 
 const WALK_COST = 0.2;
+const DANCE_COST = 0.3;
 const BLOCKING_MARKERS = new Set(['stage', 'buffet', 'other']);
 
 class Heap {
@@ -134,7 +135,7 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
   };
   for (const f of floors)
     paint(f, (idx) => {
-      cost[idx] = 0.55;
+      cost[idx] = DANCE_COST;
     });
   // drawn safe routes: the guests' usual foot traffic, so the line strongly prefers them (never blocked, just cheaper)
   for (const w of walkways)
@@ -186,7 +187,9 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     const h = (i: number, j: number) => {
       const dx = Math.abs(i - gi),
         dy = Math.abs(j - gj);
-      return (dx + dy + (Math.SQRT2 - 2) * Math.min(dx, dy)) * (walkways.length ? WALK_COST : 0.55);
+      return (
+        (dx + dy + (Math.SQRT2 - 2) * Math.min(dx, dy)) * (walkways.length ? WALK_COST : floors.length ? DANCE_COST : 1)
+      );
     };
     dist[start] = 0;
     heap.push(h(start % cols, Math.floor(start / cols)), start);
