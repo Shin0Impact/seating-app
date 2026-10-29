@@ -1,16 +1,32 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useS } from './LangProvider';
+import HallCanvas, { type HallCanvasApi } from './HallCanvas';
+import type { Layout } from '@/lib/layout';
+import type { Focus } from '@/lib/route';
 
 type View = { k: number; x: number; y: number };
+type MapProps = { layout: Layout; focus?: Focus | null };
 const MAX = 10;
 
 /** The full-screen surface: pinch follows the fingers exactly, drag moves, wheel zooms toward the pointer. */
-function Surface({ children, label, onClose }: { children: React.ReactNode; label: string; onClose: () => void }) {
+function Surface({
+  children,
+  map,
+  label,
+  onClose,
+}: {
+  children?: React.ReactNode;
+  map?: MapProps | (() => MapProps);
+  label: string;
+  onClose: () => void;
+}) {
   const s = useS();
   const box = useRef<HTMLDivElement>(null);
+  const m = useMemo(() => (typeof map === 'function' ? map() : map), [map]);
   const inner = useRef<HTMLDivElement>(null);
+  const canvas = useRef<HallCanvasApi>(null);
   /** The view lives outside React: a gesture writes one transform per frame instead of re-rendering. */
   const vRef = useRef<View>({ k: 1, x: 0, y: 0 });
   const raf = useRef(0);
@@ -25,6 +41,7 @@ function Surface({ children, label, onClose }: { children: React.ReactNode; labe
     raf.current = requestAnimationFrame(() => {
       raf.current = 0;
       const c = vRef.current;
+      canvas.current?.draw(c);
       if (inner.current) inner.current.style.transform = `translate(${c.x}px, ${c.y}px) scale(${c.k})`;
     });
   };
@@ -137,9 +154,13 @@ function Surface({ children, label, onClose }: { children: React.ReactNode; labe
           });
         }}
       >
-        <div className="zp-inner" ref={inner}>
-          {children}
-        </div>
+        {m ? (
+          <HallCanvas ref={canvas} layout={m.layout} focus={m.focus} label={label} />
+        ) : (
+          <div className="zp-inner" ref={inner}>
+            {children}
+          </div>
+        )}
       </div>
       <div className="zp-title">{label}</div>
       <div className="zp-btns">
@@ -160,10 +181,13 @@ function Surface({ children, label, onClose }: { children: React.ReactNode; labe
 /** A button showing where your table is; it opens the hall full screen to pinch, drag and scroll-zoom. */
 export default function ZoomPan({
   children,
+  map,
   label,
   small,
 }: {
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  /** Draw the hall on a canvas instead of showing `children`; far smoother to zoom on phones and tablets. */
+  map?: MapProps | (() => MapProps);
   label: string;
   small?: boolean;
 }) {
@@ -188,7 +212,7 @@ export default function ZoomPan({
       {open &&
         mounted &&
         createPortal(
-          <Surface label={label} onClose={close}>
+          <Surface label={label} map={map} onClose={close}>
             {children}
           </Surface>,
           document.body,

@@ -12,7 +12,6 @@ import SubmitButton from '@/components/SubmitButton';
 import GuestCount from '@/components/GuestCount';
 import ZoomPan from '@/components/ZoomPan';
 import ChangeRequestButton from '@/components/ChangeRequestButton';
-import HallPreview from '@/components/HallPreview';
 import { parseLayout, type Guest } from '@/lib/layout';
 import { buildFocus } from '@/lib/route';
 import { isToken, seatsSummary } from '@/lib/invites';
@@ -235,9 +234,10 @@ export default async function Rsvp({
             <p style={{ margin: 0 }}>{s('showCode')}</p>
             <div className="qr" role="img" aria-label={s('entryCode')} dangerouslySetInnerHTML={{ __html: qr }} />
             {focus && planLayout && (
-              <ZoomPan label={`${s('yourTable')}: ${seatsText || s('tableOnly', { table: focus.table })}`}>
-                <HallPreview layout={planLayout} label={s('yourTable')} focus={focus} />
-              </ZoomPan>
+              <ZoomPan
+                label={`${s('yourTable')}: ${seatsText || s('tableOnly', { table: focus.table })}`}
+                map={{ layout: planLayout, focus }}
+              />
             )}
             <ChangeRequestButton action={answer} token={token} />
           </section>
