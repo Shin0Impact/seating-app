@@ -3058,7 +3058,6 @@ button.primary.danger-fill {
   stroke: var(--accent);
   stroke-width: 0.14;
   stroke-dasharray: 0.5 0.3;
-  animation: hp-pulse 1.6s ease-in-out infinite;
 }
 .hp-route {
   fill: none;
@@ -3067,7 +3066,6 @@ button.primary.danger-fill {
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-dasharray: 0.7 0.5;
-  animation: hp-flow 1.2s linear infinite;
 }
 .hp-start {
   fill: var(--accent);
@@ -3078,24 +3076,6 @@ button.primary.danger-fill {
   fill: #e0a53a;
   stroke: var(--panel);
   stroke-width: 0.12;
-  animation: hp-pulse 1.6s ease-in-out infinite;
-}
-@keyframes hp-flow {
-  to {
-    stroke-dashoffset: -1.2;
-  }
-}
-@keyframes hp-pulse {
-  50% {
-    opacity: 0.55;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .hp-route,
-  .hp-ring,
-  .hp-you {
-    animation: none;
-  }
 }
 .where-map {
   margin-top: 12px;
@@ -3453,11 +3433,6 @@ button.primary.danger-fill {
   width: 100%;
   height: 100%;
   transform-origin: 0 0;
-}
-.zp-full.moving .hp-route,
-.zp-full.moving .hp-ring,
-.zp-full.moving .hp-you {
-  animation-play-state: paused;
 }
 .zp-surface .hall-preview {
   width: 100%;

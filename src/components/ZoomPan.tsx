@@ -13,13 +13,6 @@ function Surface({ children, label, onClose }: { children: React.ReactNode; labe
   const [v, setV] = useState<View>({ k: 1, x: 0, y: 0 });
   const vRef = useRef(v);
   vRef.current = v;
-  /** True while the view is changing; the route animation pauses meanwhile so the gesture gets all the frames. */
-  const [moving, setMoving] = useState(false);
-  useEffect(() => {
-    setMoving(true);
-    const id = window.setTimeout(() => setMoving(false), 180);
-    return () => window.clearTimeout(id);
-  }, [v]);
   const pts = useRef(new Map<number, { x: number; y: number }>());
   /** State when the current gesture began: the content point under the fingers must stay under them. */
   const g = useRef<{ v0: View; mid0: { x: number; y: number }; d0: number } | null>(null);
@@ -90,7 +83,7 @@ function Surface({ children, label, onClose }: { children: React.ReactNode; labe
   };
 
   return (
-    <div className={`zp-full${moving ? ' moving' : ''}`} role="dialog" aria-modal="true" aria-label={label}>
+    <div className="zp-full" role="dialog" aria-modal="true" aria-label={label}>
       <div
         className="zp-surface"
         ref={box}
