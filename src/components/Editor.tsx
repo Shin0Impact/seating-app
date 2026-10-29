@@ -32,12 +32,11 @@ import {
   seatedCounts,
   snap,
   summarize,
-  tableDims,
   tableFootprint,
   uid,
   snapToGridEdges,
 } from '@/lib/layout';
-import { Key, Lang, STRINGS, dirOf } from '@/lib/i18n';
+import { Key, STRINGS, dirOf } from '@/lib/i18n';
 import { ChairPicker } from './ChairPicker';
 import { ContextMenu, MenuItem } from './ContextMenu';
 import { applyPalette, ChairTip, ElementNode, FONT, IssueState } from './ElementNode';
@@ -45,51 +44,23 @@ import { GuestsView } from './GuestsView';
 import { NumField, round2 } from './NumField';
 import { SeatList } from './SeatList';
 import { TablesView } from './TablesView';
-import { Icon, IconButton } from './Icon';
+import { IconButton } from './Icon';
 import SettingsDialog from './SettingsDialog';
 import type { AccountProps } from './SettingsPanel';
 import { useLang } from './LangProvider';
 import { useTheme } from '@/lib/theme';
 import { GuestEditPopup } from './ChairPicker';
 import { inviteDrafts } from '@/lib/invites';
+import { clamp, DEFAULT_PRESETS, PRESET_SLOTS, USAGE_KEY, parseSpec, specToString, type Spec } from './editor-specs';
+import { QuickTablesBar } from './QuickTablesBar';
+import { PropertiesCard } from './PropertiesCard';
+import { WarningsCard } from './WarningsCard';
 import { coarsePointer, readPayload, TouchPayload } from '@/lib/touchdrag';
 
 const STORAGE_KEY = 'seating-layout-v1';
-const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 const ORDER: Record<Element['kind'], number> = { zone: 0, marker: 1, table: 2, column: 3 };
 
-const USAGE_KEY = 'seating-table-usage-v1';
-/** Shown when nothing has been used yet; usage then reorders them and brings in new sizes. */
-const DEFAULT_PRESETS: { shape: 'round' | 'rect'; seats: number }[] = [
-  { shape: 'round', seats: 20 },
-  { shape: 'round', seats: 10 },
-  { shape: 'round', seats: 8 },
-  { shape: 'round', seats: 12 },
-  { shape: 'rect', seats: 20 },
-  { shape: 'rect', seats: 10 },
-  { shape: 'rect', seats: 8 },
-];
-const PRESET_SLOTS = 7;
-
 type MenuState = { x: number; y: number; wx: number; wy: number; target: { kind: 'blank' } | { kind: 'element'; id: string } | { kind: 'chair'; tableId: string; seat: number } };
-
-type Spec =
-  | { kind: 'table'; shape: 'round' | 'rect'; seats: number }
-  | { kind: 'column'; shape: 'circle' | 'square' }
-  | { kind: 'zone' }
-  | { kind: 'marker'; marker: MarkerKind };
-
-const specToString = (sp: Spec) =>
-  sp.kind === 'table' ? `table:${sp.shape}:${sp.seats}` : sp.kind === 'column' ? `column:${sp.shape}` : sp.kind === 'marker' ? `marker:${sp.marker}` : 'zone';
-
-function parseSpec(str: string): Spec | null {
-  const [kind, a, b] = str.split(':');
-  if (kind === 'table' && (a === 'round' || a === 'rect') && Number.isFinite(Number(b))) return { kind, shape: a, seats: clamp(Math.round(Number(b)), LIMITS.seatsMin, LIMITS.seatsMax) };
-  if (kind === 'column' && (a === 'circle' || a === 'square')) return { kind, shape: a };
-  if (kind === 'zone') return { kind };
-  if (kind === 'marker' && (MARKER_KINDS as readonly string[]).includes(a)) return { kind, marker: a as MarkerKind };
-  return null;
-}
 
 type View = { scale: number; x: number; y: number };
 
@@ -215,7 +186,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   const trRef = useRef<Konva.Transformer>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // ----- load / save -----
   useEffect(() => {
     try {
       try {
@@ -281,7 +251,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     document.fonts.load(`16px ${FONT.split(',')[0]}`).then(() => setFontTick((n) => n + 1)).catch(() => {});
   }, []);
 
-  // ----- canvas size -----
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
@@ -312,7 +281,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     prevSize.current = size;
   }, [size]);
 
-  // ----- editing helpers -----
   const commit = useCallback((next: Layout, key = '') => {
     const now = Date.now();
     const coalesce = key !== '' && lastEdit.current.key === key && now - lastEdit.current.time < 800;
@@ -517,7 +485,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     commit({ ...l, guests: l.guests.map((g) => (g.tableId === tableId ? { ...g, tableId: null, seat: null } : g)) });
   };
 
-  // ----- selecting several -----
   const selectElement = (id: string, toggle: boolean) => {
     setMenu(null);
     const cur = selectionRef.current;
@@ -633,7 +600,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   };
   const marqueeMode = selectTool || shiftHeld || peopleTool;
 
-  // ----- right-click / long-press menu -----
   const targetOf = (node: Konva.Node | null): MenuState['target'] => {
     let n: Konva.Node | null = node;
     while (n && n.getParent()) {
@@ -746,7 +712,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     setSelectedId(made[made.length - 1].id);
   };
 
-  // ----- table metrics view -----
   const removeOne = (id: string) => {
     const run = () => {
       const l = layoutRef.current;
@@ -788,7 +753,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     });
   };
 
-  // ----- picking a guest for a chair (double-click) -----
   const pickGuest = (guestId: string) => {
     if (!picker) return;
     const l = layoutRef.current;
@@ -847,7 +811,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     commit({ ...l, elements, guests: normalizeSeats(elements, l.guests) }, `${id}:seats`);
   };
 
-  // ----- seating guests by drag and drop -----
   /** Which table and chair a drop at this world position means, if any. */
   const resolveDrop = (wx: number, wy: number, ignoreId?: string) => {
     const l = layoutRef.current;
@@ -919,7 +882,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     };
   }, [addOpen]);
 
-  // ----- touch drag (hold an item, then drag it into the hall) -----
   const touchDrop = useRef<(p: TouchPayload, x: number, y: number, over: boolean, final: boolean) => void>(() => {});
   touchDrop.current = (p, x, y, over, final) => {
     const w = worldFromClient(x, y);
@@ -1109,7 +1071,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [marquee !== null]);
 
-  // ----- transformer (rotation handle) -----
   useEffect(() => {
     const tr = trRef.current;
     if (!tr) return;
@@ -1123,7 +1084,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     else nodeRefs.current.delete(id);
   }, []);
 
-  // ----- checks -----
   const issues = useMemo(() => findIssues(layout.elements, layout.settings), [layout.elements, layout.settings]);
   const full = useMemo(() => overfullTables(layout.elements, layout.guests), [layout.elements, layout.guests]);
   const seated = useMemo(() => seatedCounts(layout.guests), [layout.guests]);
@@ -1153,7 +1113,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   }, [tables, layout.guests]);
   const guestsAtSelected = selected && selected.kind === 'table' ? layout.guests.filter((g) => g.tableId === selected.id) : [];
 
-  // ----- view -----
   const fit = () => {
     const els = layout.elements;
     if (els.length === 0) {
@@ -1206,22 +1165,8 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     return lines;
   }, [view, size]);
 
-  // ----- files -----
   const exportFile = async () => {
     const json = JSON.stringify(layout, null, 2);
-    // Inside the hosted demo the page cannot download by itself; its host offers a save dialog instead.
-    const host = (window as unknown as { claude?: { use?: (n: string) => Promise<{ save: (o: { filename: string; data: string }) => Promise<unknown> } | null> } }).claude;
-    if (host?.use) {
-      try {
-        const dl = await host.use('downloads');
-        if (dl) {
-          await dl.save({ filename: 'hall-layout.json', data: json });
-          return;
-        }
-      } catch {
-        return; // the viewer declined the save
-      }
-    }
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1254,9 +1199,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     setAskClear(false);
   };
 
-  const dims = selected && selected.kind === 'table' ? tableDims(selected, layout.settings) : null;
   const canResize = !!selected && !layoutLocked && !peopleTool && selection.length <= 1;
-  const footprint = selected && selected.kind === 'table' ? tableFootprint(selected, layout.settings) : null;
 
   const palette: { key: string; label: string; glyph: string; spec: () => Spec }[] = [
     { key: 'tr', label: t('roundTable'), glyph: 'round', spec: () => ({ kind: 'table', shape: 'round', seats: seatsToAdd }) },
@@ -1305,51 +1248,22 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       </header>
 
       {inHall && (
-      <div className="tablebar" role="toolbar" aria-label={t('quickTables')}>
-        <button
-          ref={addBtnRef}
-          className={`add-new primary${addOpen ? ' on' : ''}`}
-          aria-expanded={addOpen}
-          onClick={() => {
-            const r = addBtnRef.current?.getBoundingClientRect();
-            if (r) setAddPos({ y: r.bottom + 6, x: dirOf(lang) === 'rtl' ? Math.max(8, window.innerWidth - r.right) : Math.max(8, r.left) });
-            setAddOpen(!addOpen);
-          }}
-        >
-          <Icon name="plus" size={18} /> {t('addNew')}
-        </button>
-        <span className="sep" aria-hidden />
-        <span className="tb-label">{t('quickTables')}</span>
-        <span className="chip-group">
-          {presets.map(({ shape, seats: n }) => (
-            <button
-              key={`${shape}${n}`}
-              className="chip"
-              draggable={!coarsePointer()}
-              data-tdrag={`preset:${specToString({ kind: 'table', shape, seats: n })}`}
-              title={`${t(shape === 'round' ? 'roundTable' : 'rectTable')} · ${n} — ${t('dragPreset')}`}
-              aria-label={`${t(shape === 'round' ? 'roundTable' : 'rectTable')} ${n}`}
-              onDragStart={(e) => {
-                e.dataTransfer.setData('text/element-preset', specToString({ kind: 'table', shape, seats: n }));
-                e.dataTransfer.effectAllowed = 'copy';
-              }}
-              onClick={() => addPreset({ kind: 'table', shape, seats: n })}
-            >
-              <span className={`glyph ${shape}`} aria-hidden />
-              {n}
-            </button>
-          ))}
-        </span>
-        <span className="sep" aria-hidden />
-        <label className="copies" title={t('copyHint')}>
-          <span>{t('copies')}</span>
-          <input type="number" min={1} max={20} value={copies} onChange={(e) => setCopies(clamp(Math.round(Number(e.target.value) || 1), 1, 20))} />
-        </label>
-        <button className="copy-table" onClick={copyTable} disabled={!selected || selected.kind !== 'table'} title={t('copyHint')}>
-          <Icon name="copy" size={18} /> {t('copyTable')}
-          {selected && selected.kind === 'table' ? ` (${selected.seats})` : ''}
-        </button>
-      </div>
+      <QuickTablesBar
+        t={t}
+        presets={presets}
+        addOpen={addOpen}
+        addBtnRef={addBtnRef}
+        onToggleAdd={() => {
+          const r = addBtnRef.current?.getBoundingClientRect();
+          if (r) setAddPos({ y: r.bottom + 6, x: dirOf(lang) === 'rtl' ? Math.max(8, window.innerWidth - r.right) : Math.max(8, r.left) });
+          setAddOpen(!addOpen);
+        }}
+        onAddPreset={addPreset}
+        copies={copies}
+        onCopies={setCopies}
+        onCopyTable={copyTable}
+        selected={selected}
+      />
       )}
 
       {addOpen && addPos && (
@@ -1745,117 +1659,27 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
             <span className="arrow" aria-hidden>{sheetOpen ? '▾' : '▴'}</span>
           </button>
 
-          <section className="card" data-props>
-            <h2>{t('properties')}</h2>
-            {selection.length === 0 && <p className="muted">{t('nothingSelected')}</p>}
-            {selection.length > 1 && (
-              <>
-                <p className="totals">{selection.length} {t('selectedItems')}</p>
-                <div className="multi-actions">
-                  <IconButton icon="copy" label={t('duplicate')} onClick={duplicateSelected} />
-                  <button onClick={rotateSelected}>{t('rotate90')}</button>
-                  <IconButton icon="trash" label={t('remove')} danger onClick={removeSelected} />
-                </div>
-              </>
-            )}
-            {selected && (
-              <>
-                <label className="field">
-                  <span>{t('name')}</span>
-                  <input type="text" maxLength={LIMITS.labelMax} value={selected.label} onChange={(e) => patchEl(selected.id, { label: e.target.value }, 'label')} />
-                </label>
-                {selected.kind === 'table' && (
-                  <>
-                    <div className="field">
-                      <span>{t('shape')}</span>
-                      <div className="seg" role="group" aria-label={t('shape')}>
-                        {(['round', 'rect'] as const).map((sh) => (
-                          <button key={sh} className={selected.shape === sh ? 'on' : ''} aria-pressed={selected.shape === sh} onClick={() => setShape([selected.id], sh)}>
-                            <span className={`glyph ${sh}`} aria-hidden /> {t(sh === 'round' ? 'shapeRound' : 'shapeRect')}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {selected.shape === 'rect' && (
-                      <label className="field check">
-                        <input type="checkbox" checked={!!selected.half} onChange={(e) => { const l = layoutRef.current; commit({ ...l, elements: l.elements.map((x) => (x.id === selected.id && x.kind === 'table' ? ({ ...x, half: e.target.checked } as Element) : x)) }); }} />
-                        <span>{t('halfTable')}</span>
-                      </label>
-                    )}
-                    <NumField label={t('chairs')} value={selected.seats} min={LIMITS.seatsMin} max={LIMITS.seatsMax} step={1} int onChange={(v) => changeSeats(selected.id, v)} />
-                    {dims?.shape === 'round' && <p className="muted">{t('diameter')}: {round2(dims.diameter)} m</p>}
-                    {dims?.shape === 'rect' && <p className="muted">{t('length')}: {round2(dims.length)} m × {round2(dims.width)} m</p>}
-                    {footprint && (
-                      <p className="muted">
-                        {t('withChairs')}: {footprint.type === 'circle' ? `${round2(footprint.r * 2)} m` : `${round2(footprint.w)} × ${round2(footprint.h)} m`}
-                      </p>
-                    )}
-                    {guestsAtSelected.length > 0 && (
-                      <div className="at-table">
-                        <p className="muted">{t('guestsAtTable')} ({guestsAtSelected.length}/{selected.seats})</p>
-                        <ul>
-                          {guestsAtSelected.map((g) => (
-                            <li key={g.id}>{g.seat !== null ? `${g.seat + 1}. ` : ''}{g.name}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </>
-                )}
-                {selected.kind === 'column' && (
-                  <NumField label={t('size')} value={selected.size} min={LIMITS.sizeMin} max={LIMITS.sizeMax} onChange={(v) => patchEl(selected.id, { size: v }, 'size')} />
-                )}
-                {(selected.kind === 'zone' || selected.kind === 'marker') && (
-                  <div className="two">
-                    <NumField label={t('width')} value={selected.w} min={LIMITS.sizeMin} max={LIMITS.sizeMax} onChange={(v) => patchEl(selected.id, { w: v }, 'w')} />
-                    <NumField label={t('depth')} value={selected.h} min={LIMITS.sizeMin} max={LIMITS.sizeMax} onChange={(v) => patchEl(selected.id, { h: v }, 'h')} />
-                  </div>
-                )}
-                {selected.kind === 'zone' && (
-                  <NumField label={t('steps')} value={selected.steps} min={0} max={50} step={1} int onChange={(v) => patchEl(selected.id, { steps: v }, 'steps')} />
-                )}
-                <NumField label={t('rotation')} value={selected.rotation} min={-360} max={360} step={5} onChange={(v) => patchEl(selected.id, { rotation: v }, 'rot')} />
-                <div className="two">
-                  <NumField label={t('posX')} value={selected.x} min={-LIMITS.coordMax} max={LIMITS.coordMax} onChange={(v) => patchEl(selected.id, { x: v }, 'x')} />
-                  <NumField label={t('posY')} value={selected.y} min={-LIMITS.coordMax} max={LIMITS.coordMax} onChange={(v) => patchEl(selected.id, { y: v }, 'y')} />
-                </div>
-                <div className="row">
-                  <IconButton icon="copy" label={t('duplicate')} onClick={duplicateSelected} />
-                  <button onClick={rotateSelected}>{t('rotate90')}</button>
-                  <IconButton icon="trash" label={t('remove')} danger onClick={removeSelected} />
-                </div>
-              </>
-            )}
-          </section>
+          <PropertiesCard
+            t={t}
+            selection={selection}
+            selected={selected}
+            settings={layout.settings}
+            guestsAtSelected={guestsAtSelected}
+            onPatch={patchEl}
+            onShape={setShape}
+            onSeats={changeSeats}
+            onHalf={(id, half) => { const l = layoutRef.current; commit({ ...l, elements: l.elements.map((x) => (x.id === id && x.kind === 'table' ? ({ ...x, half } as Element) : x)) }); }}
+            onDuplicate={duplicateSelected}
+            onRotate={rotateSelected}
+            onRemove={removeSelected}
+          />
 
           <section className="card">
             <h2>{t('guestsToSeat')}</h2>
             <SeatList t={t} guests={layout.guests} tables={tables} peopleTool={peopleTool} picked={pickedSet} onToggle={togglePerson} onEdit={(id, x, y) => setGuestEdit({ id, x, y })} />
           </section>
 
-          <section className="card">
-            <h2>{t('warnings')}</h2>
-            <p className="totals">
-              {t('tables')}: {totals.tables} · {t('seatsTotal')}: {totals.seats}
-            </p>
-            {issues.length === 0 && full.length === 0 && <p className="muted">{t('noWarnings')}</p>}
-            <ul className="issues">
-              {issues.map((i, idx) => (
-                <li key={idx} className={i.type}>
-                  <button onClick={() => setSelectedId(i.a)}>
-                    <b>{t(i.type)}</b> {nameById(i.a)} / {nameById(i.b)}
-                  </button>
-                </li>
-              ))}
-              {full.map((tb) => (
-                <li key={`full-${tb.id}`} className="overlap">
-                  <button onClick={() => setSelectedId(tb.id)}>
-                    <b>{t('overfull')}</b> {tb.label} ({seated.get(tb.id) ?? 0}/{tb.seats})
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
+          <WarningsCard t={t} totals={totals} issues={issues} full={full} seated={seated} nameById={nameById} onSelect={setSelectedId} />
 
           {error && <p className="error" role="alert">{error}</p>}
           <p className="muted saved">{t('saved')}</p>
