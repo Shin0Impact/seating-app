@@ -27,6 +27,8 @@ export type Focus = {
 
 const WALK_COST = 0.3;
 const DANCE_COST = 0.3;
+/** Extra cost for each 45 degrees of turn (in cell lengths), so routes stay as straight as they can. */
+const TURN_COST = 0.4;
 const BLOCKING_MARKERS = new Set(['stage', 'buffet', 'other']);
 
 class Heap {
@@ -177,12 +179,25 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
   const gi = goal % cols,
     gj = Math.floor(goal / cols);
 
+  // The search state is a cell plus the direction we arrived in, so changing direction can cost extra.
+  const NONE = 8;
+  const DIRS = [
+    [1, 0],
+    [1, 1],
+    [0, 1],
+    [-1, 1],
+    [-1, 0],
+    [-1, -1],
+    [0, -1],
+    [1, -1],
+  ];
   const astar = (start: number): number[] | null => {
-    // Float64: with Float32 rounding a cell could look improvable forever and the search never ended (ran out of memory)
-    const dist = new Float64Array(cols * rows).fill(Infinity);
-    const closed = new Uint8Array(cols * rows);
-    let budget = cols * rows * 16;
-    const prev = new Int32Array(cols * rows).fill(-1);
+    const states = cols * rows * 9;
+    // Float64: with Float32 rounding a state could look improvable forever and the search never ended (ran out of memory)
+    const dist = new Float64Array(states).fill(Infinity);
+    const closed = new Uint8Array(states);
+    let budget = states * 16;
+    const prev = new Int32Array(states).fill(-1);
     const heap = new Heap();
     const h = (i: number, j: number) => {
       const dx = Math.abs(i - gi),
@@ -191,37 +206,49 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
         (dx + dy + (Math.SQRT2 - 2) * Math.min(dx, dy)) * (walkways.length ? WALK_COST : floors.length ? DANCE_COST : 1)
       );
     };
-    dist[start] = 0;
-    heap.push(h(start % cols, Math.floor(start / cols)), start);
+    const s0 = start * 9 + NONE;
+    dist[s0] = 0;
+    heap.push(h(start % cols, Math.floor(start / cols)), s0);
+    let goalState = -1;
     while (heap.size) {
       if (--budget < 0) return null; // safety net: never spin
-      const [, cur] = heap.pop();
-      if (closed[cur]) continue;
-      closed[cur] = 1;
-      if (cur === goal) break;
+      const [, st] = heap.pop();
+      if (closed[st]) continue;
+      closed[st] = 1;
+      const cur = Math.floor(st / 9);
+      const dir = st % 9;
+      if (cur === goal) {
+        goalState = st;
+        break;
+      }
       const ci = cur % cols,
         cj = Math.floor(cur / cols);
-      for (let dj = -1; dj <= 1; dj++)
-        for (let di = -1; di <= 1; di++) {
-          if (!di && !dj) continue;
-          const ni = ci + di,
-            nj = cj + dj;
-          if (ni < 0 || nj < 0 || ni >= cols || nj >= rows) continue;
-          const n = nj * cols + ni;
-          if (blocked[n]) continue;
-          if (di && dj && (blocked[cj * cols + ni] || blocked[nj * cols + ci])) continue; // no cutting corners
-          const step = ((di && dj ? Math.SQRT2 : 1) * (cost[cur] + cost[n])) / 2;
-          const nd = dist[cur] + step;
-          if (nd < dist[n]) {
-            dist[n] = nd;
-            prev[n] = cur;
-            heap.push(nd + h(ni, nj), n);
-          }
+      for (let d = 0; d < 8; d++) {
+        const [di, dj] = DIRS[d];
+        const ni = ci + di,
+          nj = cj + dj;
+        if (ni < 0 || nj < 0 || ni >= cols || nj >= rows) continue;
+        const n = nj * cols + ni;
+        if (blocked[n]) continue;
+        if (di && dj && (blocked[cj * cols + ni] || blocked[nj * cols + ci])) continue; // no cutting corners
+        const step = ((di && dj ? Math.SQRT2 : 1) * (cost[cur] + cost[n])) / 2;
+        let turn = 0;
+        if (dir !== NONE && dir !== d) {
+          const k = Math.abs(dir - d);
+          turn = TURN_COST * Math.min(k, 8 - k);
         }
+        const ns = n * 9 + d;
+        const nd = dist[st] + step + turn;
+        if (nd < dist[ns]) {
+          dist[ns] = nd;
+          prev[ns] = st;
+          heap.push(nd + h(ni, nj), ns);
+        }
+      }
     }
-    if (!isFinite(dist[goal])) return null;
+    if (goalState < 0) return null;
     const out: number[] = [];
-    for (let c = goal; c !== -1 && out.length <= cols * rows; c = prev[c]) out.push(c);
+    for (let c = goalState; c !== -1 && out.length <= cols * rows; c = prev[c]) out.push(Math.floor(c / 9));
     return out.reverse();
   };
 
@@ -267,7 +294,20 @@ export function findRoute(layout: Layout, chair: Pt): { route: Pt[]; start: Pt }
     if (!best || len < best.len) best = { pts, len, start: { x: en.x, y: en.y } };
   }
   if (!best) return null;
-  return { route: [best.start, ...best.pts, chair], start: best.start };
+  return { route: dropJogs([best.start, ...best.pts, chair]), start: best.start };
+}
+
+/** Removes tiny zig-zags: a point right next to the start, or one only a few centimetres before the next turn. */
+function dropJogs(route: Pt[]): Pt[] {
+  const d = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
+  const out: Pt[] = [route[0]];
+  for (let i = 1; i < route.length - 1; i++) {
+    if (i === 1 && d(route[0], route[1]) < 0.15) continue;
+    if (d(route[i], route[i + 1]) < 0.4) continue;
+    out.push(route[i]);
+  }
+  out.push(route[route.length - 1]);
+  return out;
 }
 
 /** What the "where do I sit" map should highlight for the people on one invite. */
@@ -295,4 +335,28 @@ export function buildFocus(layout: Layout, guestIds: string[]): Focus | null {
     table: table.label,
     seat: head.seat !== null ? head.seat + 1 : null,
   };
+}
+
+/**
+ * SVG path through the route points with the corners rounded off. Each corner is cut back by `radius`
+ * (or half the shorter neighbouring segment) and joined with a curve, so the line bends softly.
+ */
+export function softPath(pts: Pt[], radius = 0.8): string {
+  if (pts.length < 3) return pts.map((p, i) => `${i ? 'L' : 'M'}${p.x} ${p.y}`).join(' ');
+  const f = (n: number) => Math.round(n * 1000) / 1000;
+  let d = `M${f(pts[0].x)} ${f(pts[0].y)}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const a = pts[i - 1],
+      b = pts[i],
+      c = pts[i + 1];
+    const l1 = Math.hypot(b.x - a.x, b.y - a.y),
+      l2 = Math.hypot(c.x - b.x, c.y - b.y);
+    if (l1 < 1e-9 || l2 < 1e-9) continue;
+    const r = Math.min(radius, l1 / 2, l2 / 2);
+    const p1 = { x: b.x - ((b.x - a.x) / l1) * r, y: b.y - ((b.y - a.y) / l1) * r };
+    const p2 = { x: b.x + ((c.x - b.x) / l2) * r, y: b.y + ((c.y - b.y) / l2) * r };
+    d += ` L${f(p1.x)} ${f(p1.y)} Q${f(b.x)} ${f(b.y)} ${f(p2.x)} ${f(p2.y)}`;
+  }
+  const last = pts[pts.length - 1];
+  return `${d} L${f(last.x)} ${f(last.y)}`;
 }

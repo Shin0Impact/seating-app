@@ -1,5 +1,5 @@
 import { chairSlots, tableDims, toWorld, type Layout } from '@/lib/layout';
-import type { Focus } from '@/lib/route';
+import { softPath, type Focus } from '@/lib/route';
 
 /** Read-only picture of the hall, drawn as plain SVG so it needs no client code. */
 export default function HallPreview({ layout, label, focus }: { layout: Layout; label: string; focus?: Focus | null }) {
@@ -140,7 +140,7 @@ export default function HallPreview({ layout, label, focus }: { layout: Layout; 
           </g>
         );
       })}
-      {focus?.route && <polyline points={focus.route.map((p) => `${p.x},${p.y}`).join(' ')} className="hp-route" />}
+      {focus?.route && <path d={softPath(focus.route)} className="hp-route" />}
       {focus?.start && <circle cx={focus.start.x} cy={focus.start.y} r={0.4} className="hp-start" />}
       {focus?.chair && <circle cx={focus.chair.x} cy={focus.chair.y} r={0.5} className="hp-you" />}
     </svg>
