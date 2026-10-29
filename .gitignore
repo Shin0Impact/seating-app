@@ -5,10 +5,4 @@ next-env.d.ts
 .env*.local
 .env
 .vercel
-# demo build output, and the real guest names used only in the demo
-demo/dist
-demo/guests.ts
 *.csv
-
-# stray screenshots from local testing
-/*.png

@@ -7,7 +7,6 @@
     "build": "next build --webpack",
     "start": "next start",
     "test": "vitest run",
-    "build:demo": "node demo/build.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

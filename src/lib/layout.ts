@@ -76,7 +76,6 @@ export function emptyLayout(): Layout {
   return { version: 1, settings: { ...DEFAULT_SETTINGS }, elements: [], guests: [] };
 }
 
-// ---------- sizing ----------
 
 export type TableDims =
   | { shape: 'round'; diameter: number }
@@ -92,7 +91,6 @@ export function tableDims(t: Pick<TableEl, 'shape' | 'seats' | 'half'>, s: Setti
   return { shape: 'rect', length: Math.max(1.2, perSide * s.seatWidth), width: s.rectTableWidth };
 }
 
-// ---------- geometry ----------
 
 type Circle = { type: 'circle'; cx: number; cy: number; r: number };
 type Rect = { type: 'rect'; cx: number; cy: number; w: number; h: number; rot: number };
@@ -183,7 +181,6 @@ export function intersects(a: Shape, b: Shape): boolean {
   return rectRect(a as Rect, b as Rect);
 }
 
-// ---------- checks ----------
 
 export type Issue = {
   type: 'overlap' | 'tight';
@@ -227,7 +224,6 @@ export function summarize(elements: Element[]) {
   return { tables: tables.length, seats: tables.reduce((n, t) => n + t.seats, 0) };
 }
 
-// ---------- guests ----------
 
 export function newGuest(
   name: string,
@@ -246,7 +242,6 @@ export function newGuest(
   };
 }
 
-// ---------- chairs ----------
 
 export type ChairSlot = { x: number; y: number; /** degrees, facing the table */ rot: number };
 
@@ -366,7 +361,6 @@ export function overfullTables(elements: Element[], guests: Guest[]): TableEl[] 
   return elements.filter((e): e is TableEl => e.kind === 'table' && (counts.get(e.id) ?? 0) > e.seats);
 }
 
-// ---------- safe loading ----------
 
 const num = (v: unknown, min: number, max: number, fallback?: number): number => {
   if (typeof v !== 'number' || !Number.isFinite(v)) {
@@ -472,7 +466,6 @@ export function parseLayout(raw: unknown): Layout {
   return { version: 1, settings, elements, guests: normalizeSeats(elements, guests) };
 }
 
-// ---------- element factories ----------
 
 export function newTable(x: number, y: number, shape: 'round' | 'rect', seats: number, n: number): TableEl {
   return { id: uid(), kind: 'table', x, y, rotation: 0, label: `Table ${n}`, shape, seats };
