@@ -777,7 +777,6 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
         leading={leading}
         view={view_}
         onView={setViewTab}
-        tableCount={tables.length}
         canUndo={canUndo}
         canRedo={canRedo}
         onUndo={undo}

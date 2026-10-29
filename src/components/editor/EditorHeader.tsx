@@ -9,7 +9,6 @@ type Props = {
   leading?: ReactNode;
   view: EditorView;
   onView: (v: EditorView) => void;
-  tableCount: number;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
@@ -30,7 +29,6 @@ export function EditorHeader(p: Props) {
           icon="ruler"
           label={t('tabTables')}
           pressed={p.view === 'tables'}
-          count={p.tableCount}
           onClick={() => p.onView(p.view === 'tables' ? 'hall' : 'tables')}
         />
         <span className="sep" aria-hidden />
