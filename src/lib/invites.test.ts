@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inviteDrafts, isToken, locate, makeToken } from './invites';
+import { formatRanges, inviteDrafts, isToken, locate, makeToken, seatRanges } from './invites';
 import { emptyLayout, newGuest, newTable } from './layout';
 
 describe('tokens', () => {
@@ -53,5 +53,15 @@ describe('locate', () => {
       { name: 'A', table: 'Table 7', seat: 4, tableId: t.id },
       { name: 'B', table: null, seat: null, tableId: null },
     ]);
+  });
+});
+
+describe('seat ranges', () => {
+  it('merges runs and words them', () => {
+    expect(seatRanges([8, 1, 2, 3, 4, 5, 6, 7])).toEqual([[1, 8]]);
+    expect(formatRanges(seatRanges([1, 2, 3, 4, 5, 6, 7, 8]), 'and')).toBe('1-8');
+    expect(formatRanges(seatRanges([5, 6, 7, 11, 12, 13, 14]), 'and')).toBe('5-7 and 11-14');
+    expect(formatRanges(seatRanges([3]), 'and')).toBe('3');
+    expect(formatRanges(seatRanges([1, 3, 5]), 'and')).toBe('1, 3 and 5');
   });
 });

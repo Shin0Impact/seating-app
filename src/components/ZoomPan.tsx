@@ -118,17 +118,17 @@ function Surface({ children, label, onClose }: { children: React.ReactNode; labe
 }
 
 /** A button showing where your table is; it opens the hall full screen to pinch, drag and scroll-zoom. */
-export default function ZoomPan({ children, label }: { children: React.ReactNode; label: string }) {
+export default function ZoomPan({ children, label, small }: { children: React.ReactNode; label: string; small?: boolean }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const close = useCallback(() => setOpen(false), []);
   return (
     <>
-      <button type="button" className="btn zp-open" onClick={() => setOpen(true)}>
+      <button type="button" className={small ? 'btn small zp-open zp-small' : 'btn zp-open'} onClick={() => setOpen(true)}>
         <svg viewBox="0 0 24 24" aria-hidden><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
         <span>{label}</span>
-        <span aria-hidden>⤢</span>
+        {!small && <span aria-hidden>⤢</span>}
       </button>
       {open && mounted && createPortal(<Surface label={label} onClose={close}>{children}</Surface>, document.body)}
     </>

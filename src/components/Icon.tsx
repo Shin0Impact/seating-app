@@ -125,6 +125,13 @@ const PATHS = {
       <line x1="21" y1="21" x2="16.65" y2="16.65" />
     </>
   ),
+  // teardrop map pin
+  pin: (
+    <>
+      <path d="M12 21s-7-6.3-7-11.5a7 7 0 0 1 14 0C19 14.7 12 21 12 21z" />
+      <circle cx="12" cy="9.5" r="2.5" />
+    </>
+  ),
   grip: (
     <>
       <circle cx="9" cy="6" r="1" />

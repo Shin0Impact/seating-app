@@ -15,13 +15,15 @@ type Props = {
   onChange: (guests: Guest[], key?: string) => void;
   /** When set, the trash button asks the parent (which shows a confirmation) instead of deleting at once. */
   onAskRemove?: (id: string) => void;
+  /** Teardrop button on seated guests: open the hall zoomed on their chair. */
+  onLocate?: (g: Guest) => void;
   onImportAll?: (added: Guest[], newTables: TableEl[]) => void;
 };
 
 type Filter = 'all' | 'unseated' | 'seated';
 
 /** Full-page guest list: look through it, search, add, edit and import. */
-export function GuestsView({ t, guests, tables, onChange, onAskRemove, onImportAll }: Props) {
+export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate, onImportAll }: Props) {
   const [name, setName] = useState('');
   const [group, setGroup] = useState('');
   const [tableId, setTableId] = useState('');
@@ -208,7 +210,7 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onImportA
           {guests.length > 0 && visible.length === 0 && <p className="muted">{t('noMatches')}</p>}
 
           {visible.length > 0 && (
-            <div className="glist-head grow" aria-hidden>
+            <div className={`glist-head grow${onLocate ? ' pin' : ''}`} aria-hidden>
               <span>#</span>
               <span>{t('guestName')}</span>
               <span>{t('guestGroup')}</span>
@@ -216,13 +218,14 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onImportA
               <span>{t('chair')}</span>
               <span />
               <span />
+              {onLocate && <span />}
             </div>
           )}
           <ul className="guest-list glist">
             {visible.map(({ g, i }) => {
               const tb = g.tableId ? tableById.get(g.tableId) : undefined;
               return (
-                <li key={g.id} className="guest grow">
+                <li key={g.id} className={`guest grow${onLocate ? ' pin' : ''}`}>
                   <span className="c-num muted">{i + 1}</span>
                   <div className="guest-top">
                     <input
@@ -281,6 +284,7 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onImportA
                       <span />
                     )}
                   </div>
+                  {onLocate && (g.tableId ? <IconButton icon="pin" label={t('showOnMap')} onClick={() => onLocate(g)} /> : <span />)}
                   <IconButton icon="access" label={t('stepFree')} pressed={g.stepFree} onClick={() => update(g.id, { stepFree: !g.stepFree }, 'step')} />
                   <IconButton icon="trash" label={t('removeGuest')} danger onClick={() => (onAskRemove ? onAskRemove(g.id) : remove(g.id))} />
                 </li>

@@ -15,7 +15,7 @@ import ChangeRequestButton from '@/components/ChangeRequestButton';
 import HallPreview from '@/components/HallPreview';
 import { parseLayout, type Guest } from '@/lib/layout';
 import { buildFocus } from '@/lib/route';
-import { isToken } from '@/lib/invites';
+import { isToken, seatsSummary } from '@/lib/invites';
 import { serverClient } from '@/lib/supabase/server';
 
 export const metadata = { title: 'طاولتنا · Our Table', robots: { index: false, follow: false } };
@@ -84,20 +84,10 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
     daysLeft === 0 ? s('eventToday') :
     lang === 'en' ? (daysLeft === 1 ? 'Tomorrow' : `${daysLeft} days to go`) :
     daysLeft === 1 ? 'باقي يوم واحد' : daysLeft === 2 ? 'باقي يومان' : daysLeft <= 10 ? `باقي ${daysLeft} أيام` : `باقي ${daysLeft} يومًا`;
-  // "add to calendar": a small .ics file; floating local time, or an all-day entry when no time is set
-  let ics = '';
-  if (d) {
-    const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-    const t = /^(\d{2}):(\d{2})$/.exec(inv.event_time ?? '');
-    const esc = (v: string) => v.replace(/[\\;,]/g, (c) => '\\' + c).replace(/\r?\n/g, ' ');
-    const end = new Date(d.getTime() + 86400000);
-    const endYmd = `${end.getFullYear()}${String(end.getMonth() + 1).padStart(2, '0')}${String(end.getDate()).padStart(2, '0')}`;
-    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Our Table//EN', 'BEGIN:VEVENT', `UID:${token}@our-table`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
-      t ? `DTSTART:${ymd}T${t[1]}${t[2]}00` : `DTSTART;VALUE=DATE:${ymd}`,
-      t ? `DTEND:${ymd}T${String(Math.min(23, Number(t[1]) + 4)).padStart(2, '0')}${t[2]}00` : `DTEND;VALUE=DATE:${endYmd}`,
-      `SUMMARY:${esc(inv.event_name)}`, ...(inv.venue ? [`LOCATION:${esc(inv.venue)}`] : []), 'END:VEVENT', 'END:VCALENDAR'];
-    ics = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(lines.join('\r\n'));
-  }
+  // where this invitation sits: "Table 3 · chairs 1-8", or "chairs 5-7 and 11-14"
+  const seatsText = planLayout
+    ? seatsSummary(planLayout, planLayout.guests.map((g) => g.id), (table, n, chairs) => s('tableChairs', { table, word: n === 1 ? s('chairOne') : s('chairMany'), chairs }), s('andWord'))
+    : '';
 
   return (
     <div className={`site rsvp-wrap${inv.status === 'confirmed' ? ' is-conf' : ''}`}>
@@ -111,16 +101,7 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
           <div className="rc-orn" aria-hidden><i /><b /><i /></div>
           <p className="rc-hello">{s('hello', { name: inv.guest_name })}</p>
         </header>
-        {inv.status === 'confirmed' && (d || inv.event_time || inv.venue) && (
-          <p className="rc-brief">
-            {[d ? `${weekday} ${dayNum} ${monthName}` : '', inv.event_time ?? ''].filter(Boolean).join(' · ')}
-            {inv.venue && <> · <bdi>{inv.venue}</bdi></>}
-            </p>
-        )}
-        {inv.status === 'confirmed' && inv.venue_url && (
-          <p className="rc-brief"><a href={inv.venue_url} target="_blank" rel="noopener noreferrer">{s('openMaps')} ↗</a></p>
-        )}
-        {inv.status !== 'confirmed' && (d || inv.event_time || inv.venue) && (
+        {(d || inv.event_time || inv.venue) && (
           <section className="rc-when" aria-label={s('whenWhere')}>
             {d && (
               <div className="rc-date" aria-label={`${weekday} ${dayNum} ${monthName} ${yearNum}`}>
@@ -138,7 +119,6 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
               )}
               <div className="rc-actions">
                 {inv.venue_url && <a className="rc-map" href={inv.venue_url} target="_blank" rel="noopener noreferrer">{s('openMaps')} ↗</a>}
-                {ics && <a className="rc-map" href={ics} download="invitation.ics">{s('addToCalendar')}</a>}
               </div>
               {countdown && <p className="rc-count">{countdown}</p>}
             </div>
@@ -163,7 +143,7 @@ export default async function Rsvp({ params, searchParams }: { params: Promise<{
             <p style={{ margin: 0 }}>{s('showCode')}</p>
             <div className="qr" role="img" aria-label={s('entryCode')} dangerouslySetInnerHTML={{ __html: qr }} />
             {focus && planLayout && (
-              <ZoomPan label={`${s('yourTable')}: ${focus.seat ? s('tableSeat', { table: focus.table, n: focus.seat }) : s('tableOnly', { table: focus.table })}`}>
+              <ZoomPan label={`${s('yourTable')}: ${seatsText || s('tableOnly', { table: focus.table })}`}>
                 <HallPreview layout={planLayout} label={s('yourTable')} focus={focus} />
               </ZoomPan>
             )}

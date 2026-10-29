@@ -5,7 +5,8 @@ import { fillMessage, inviteState, totals, whatsappUrl, type InviteRow, type Inv
 import { useLang, useS } from './LangProvider';
 import { localeOf, type SKey } from '@/lib/site-i18n';
 import { inviteDrafts, makeToken } from '@/lib/invites';
-import { newGuest, parseLayout, type Guest } from '@/lib/layout';
+import { newGuest, parseLayout, type Guest, type Layout } from '@/lib/layout';
+import InviteMap from './InviteMap';
 import { matches } from '@/lib/search';
 import { browserClient } from '@/lib/supabase/browser';
 
@@ -27,7 +28,7 @@ const WaIcon = () => (
   </svg>
 );
 
-export default function InvitesPanel({ eventId, eventName, initialGuests, initial, siteUrl }: { eventId: string; eventName: string; initialGuests: Guest[]; initial: InviteRow[]; siteUrl: string }) {
+export default function InvitesPanel({ eventId, eventName, initialGuests, initial, siteUrl, plan }: { eventId: string; eventName: string; initialGuests: Guest[]; initial: InviteRow[]; siteUrl: string; plan: Layout }) {
   const { lang } = useLang();
   const s = useS();
   const locale = localeOf(lang);
@@ -385,6 +386,7 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
                 ) : (
                   <button className="btn small danger" onClick={() => setConfirmDel(r.token)}>{s('deleteLink')}</button>
                 ))}
+                <InviteMap layout={plan} ids={[r.guest_id, ...(((r as InviteRow & { member_ids?: string[] }).member_ids) ?? [])]} />
                 <button className="btn small" onClick={() => setSent(r, !r.sent_at)}>{r.sent_at ? s('undoSent') : s('markSent')}</button>
               </div>
             </li>
