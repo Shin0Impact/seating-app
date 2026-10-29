@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
-import { Icon } from './Icon';
+import { Icon, IconButton } from './Icon';
 import { useLang, useS } from './LangProvider';
 import { useTheme } from '@/lib/theme';
 import { updatePassword, updateUsername } from '@/app/actions';
@@ -52,7 +52,7 @@ function UsernameForm() {
     <details className="set-details">
       <summary>
         {s('username')}
-        {current ? <span className="muted"> · {current}</span> : null}
+        {current ? <span className="muted">{current}</span> : null}
       </summary>
       <form onSubmit={submit} className="set-form">
         <small className="muted">{current ? s('usernameHintSet') : s('usernameHintNew')}</small>
@@ -167,7 +167,10 @@ export default function SettingsPanel({
     <>
       <div className="picker-backdrop" onMouseDown={onClose} />
       <div className="import-dialog settings" role="dialog" aria-label={s('settings')}>
-        <h2>{s('settings')}</h2>
+        <div className="set-head">
+          <h2>{s('settings')}</h2>
+          <IconButton icon="close" label={s('done')} onClick={onClose} />
+        </div>
 
         {account && (
           <section className="set-sec">
@@ -181,7 +184,7 @@ export default function SettingsPanel({
                   {s('eventPage')}
                 </Link>
               )}
-              <form action={account.signOut} style={{ display: 'contents' }}>
+              <form action={account.signOut} className="set-wide">
                 <button className="danger">{s('signOut')}</button>
               </form>
             </div>
