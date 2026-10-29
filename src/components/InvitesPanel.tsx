@@ -7,6 +7,7 @@ import { localeOf, type SKey } from '@/lib/site-i18n';
 import { inviteDrafts, makeToken } from '@/lib/invites';
 import { newGuest, parseLayout, type Guest, type Layout } from '@/lib/layout';
 import InviteMap from './InviteMap';
+import { Icon } from './Icon';
 import { matches } from '@/lib/search';
 import { browserClient } from '@/lib/supabase/browser';
 
@@ -315,22 +316,24 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
             <button className="btn small" style={{ alignSelf: 'flex-start' }} onClick={() => saveTpl(null)}>{s('restoreText')}</button>
           </>
         )}
-        <p className="muted" style={{ margin: 0, whiteSpace: 'pre-line' }}>{fillMessage(tpl, { name: sampleName, event: eventName, link: `${siteUrl}/r/…`, people: 4 })}</p>
+        <p className={showTpl ? "muted" : "muted tpl-preview"} style={{ margin: 0, whiteSpace: "pre-line" }}>{fillMessage(tpl, { name: sampleName, event: eventName, link: `${siteUrl}/r/…`, people: 4 })}</p>
       </div>
 
       <div className="toolbar">
         <label className="search">
-          <span aria-hidden>🔍</span>
+          <Icon name="search" size={18} />
           <input type="search" placeholder={s('searchPlaceholder')} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={s('searchAria')} />
         </label>
-        {groups.length > 1 && (
-          <select value={group} onChange={(e) => setGroup(e.target.value)} aria-label={s('groupAria')}>
-            <option value="">{s('allGroups')}</option>
-            {groups.map((g) => <option key={g} value={g}>{g}</option>)}
-          </select>
-        )}
-        <span className={`live${live ? '' : ' off'}`}>{live ? s('liveOn') : s('liveOff')}</span>
-        <button className="btn small" onClick={csv} disabled={rows.length === 0}>{s('downloadLinks')}</button>
+        <div className="toolbar-row">
+          {groups.length > 1 && (
+            <select value={group} onChange={(e) => setGroup(e.target.value)} aria-label={s('groupAria')}>
+              <option value="">{s('allGroups')}</option>
+              {groups.map((g) => <option key={g} value={g}>{g}</option>)}
+            </select>
+          )}
+          <button className="btn small" onClick={csv} disabled={rows.length === 0}>{s('downloadLinks')}</button>
+          <span className={`live${live ? '' : ' off'}`}>{live ? s('liveOn') : s('liveOff')}</span>
+        </div>
       </div>
       <div className="chips">
         {FILTER_KEYS.map((f) => (
@@ -353,13 +356,14 @@ export default function InvitesPanel({ eventId, eventName, initialGuests, initia
                   <span className={`pill ${st}`}>{s(STATE_KEY[st])}{st === 'confirmed' ? ` (${r.confirmed_count ?? r.party_size}/${r.party_size})` : ''}</span>
                   {r.change_requested_at && r.status === 'pending' && <span className="pill waiting">{s('changeRequested')} <button className="linkbtn" style={{ marginInlineStart: 4 }} onClick={() => dismissChange(r)}>{s('dismiss')}</button></span>}
                   {r.count_changed_at && !(r.extra_requested ?? 0) && <span className="pill waiting">{s('countChangedPill', { n: r.count_changed_to ?? 0 })} <button className="linkbtn" style={{ marginInlineStart: 4 }} onClick={() => dismissCount(r)}>{s('dismiss')}</button></span>}
-                  {(r.extra_requested ?? 0) > 0 && (
-                    <span className="pill waiting">{s('moreRequested', { n: r.extra_requested ?? 0 })}
-                      <button className="linkbtn" style={{ marginInlineStart: 6 }} onClick={() => approveMore(r)}>{s('approveAdd')}</button>
-                      <button className="linkbtn" style={{ marginInlineStart: 6 }} onClick={() => dismissMore(r)}>{s('rejectMore')}</button>
-                    </span>
-                  )}
+                  {(r.extra_requested ?? 0) > 0 && <span className="pill waiting">{s('moreRequested', { n: r.extra_requested ?? 0 })}</span>}
                 </div>
+                {(r.extra_requested ?? 0) > 0 && (
+                  <div className="inv-req">
+                    <button className="btn small primary" onClick={() => approveMore(r)}>{s('approveAdd')}</button>
+                    <button className="btn small" onClick={() => dismissMore(r)}>{s('rejectMore')}</button>
+                  </div>
+                )}
                 <div className="inv-sub">
                   {g?.group && <span>{g.group}</span>}
                   {r.sent_at && <span>{s('sentAt', { when: new Date(r.sent_at).toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) })}</span>}
