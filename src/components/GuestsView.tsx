@@ -1,10 +1,11 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-import { roles } from '@/lib/expect';
+import { planned, roles } from '@/lib/expect';
+import { ExpectSteppers } from './ExpectSteppers';
 import { Guest, LIMITS, TableEl, firstFreeSeat, newGuest, seatGuest, seatedCounts } from '@/lib/layout';
 import { Key } from '@/lib/i18n';
-import { PLUS } from '@/lib/invites';
+import { PLUS, inviteDrafts } from '@/lib/invites';
 import { matches } from '@/lib/search';
 import { Icon, IconButton } from './Icon';
 import { ImportGuests } from './ImportGuests';
@@ -37,6 +38,7 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
   const [groupFilter, setGroupFilter] = useState('');
   const [importing, setImporting] = useState(false);
   const roleMap = useMemo(() => roles(guests), [guests]);
+  const partySize = useMemo(() => new Map(inviteDrafts(guests).map((d) => [d.guestId, d.partySize])), [guests]);
   const [adding, setAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(0);
   const [askDeleteAll, setAskDeleteAll] = useState(false);
@@ -278,18 +280,6 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
           {guests.length === 0 && <p className="muted">{t('noGuests')}</p>}
           {guests.length > 0 && visible.length === 0 && <p className="muted">{t('noMatches')}</p>}
 
-          {visible.length > 0 && (
-            <div className={`glist-head grow${onLocate ? ' pin' : ''}`} aria-hidden>
-              <span>#</span>
-              <span>{t('guestName')}</span>
-              <span>{t('guestGroup')}</span>
-              <span>{t('table')}</span>
-              <span>{t('chair')}</span>
-              <span />
-              <span />
-              {onLocate && <span />}
-            </div>
-          )}
           <ul className="guest-list glist">
             {visible.map(({ g, i }) => {
               const tb = g.tableId ? tableById.get(g.tableId) : undefined;
@@ -370,6 +360,20 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
                       </select>
                     ) : (
                       <span className="g-chair" />
+                    )}
+                  </div>
+                  <div className="guest-exp">
+                    {partySize.get(g.id) !== undefined && (
+                      <ExpectSteppers
+                        size={partySize.get(g.id)!}
+                        value={planned(g, partySize.get(g.id)!)}
+                        labels={{ sure: t('expSure'), maybe: t('expMaybe'), court: t('expCourt') }}
+                        onChange={(sure, maybe) => {
+                          const size = partySize.get(g.id)!;
+                          const s0 = Math.max(0, Math.min(size, sure));
+                          update(g.id, { expect: { sure: s0, maybe: Math.max(0, Math.min(size - s0, maybe)) } }, 'exp');
+                        }}
+                      />
                     )}
                   </div>
                   <div className="guest-acts">
