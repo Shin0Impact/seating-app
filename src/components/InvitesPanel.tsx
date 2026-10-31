@@ -202,6 +202,34 @@ export default function InvitesPanel({
     }
   }
 
+  /**
+   * Manual check-in at the entrance, for guests who never used the app: one tap marks the invite as sent, confirmed
+   * (everyone, unless they had already confirmed a number) and arrived. Undoing only clears the arrival.
+   */
+  async function setArrived(r: InviteRow, arrived: boolean) {
+    if (!arrived && !window.confirm(s('undoArrivedConfirm'))) return;
+    const now = new Date().toISOString();
+    const patch: Partial<InviteRow> & { responded_at?: string } = arrived
+      ? {
+          checked_in_at: r.checked_in_at ?? now,
+          sent_at: r.sent_at ?? now,
+          status: 'confirmed',
+          confirmed_count: r.status === 'confirmed' ? (r.confirmed_count ?? r.party_size) : r.party_size,
+          change_requested_at: null,
+          ...(r.status === 'confirmed' ? {} : { responded_at: now }),
+        }
+      : { checked_in_at: null };
+    const before = { ...r };
+    pending.current.add(r.token);
+    setRows((cur) => cur.map((x) => (x.token === r.token ? { ...x, ...patch } : x)));
+    const { error } = await browserClient().from('invites').update(patch).eq('token', r.token);
+    pending.current.delete(r.token);
+    if (error) {
+      setRows((cur) => cur.map((x) => (x.token === r.token ? { ...x, ...before } : x)));
+      setMsg({ kind: 'err', text: s('arrivedFailed') + error.message });
+    }
+  }
+
   async function copy(text: string, done: string) {
     try {
       await navigator.clipboard.writeText(text);
@@ -804,6 +832,13 @@ export default function InvitesPanel({
                 />
                 <button className="btn small" onClick={() => setSent(r, !r.sent_at)}>
                   {r.sent_at ? s('undoSent') : s('markSent')}
+                </button>
+                <button
+                  className={`btn small${r.checked_in_at ? ' arrived-on' : ''}`}
+                  aria-pressed={!!r.checked_in_at}
+                  onClick={() => setArrived(r, !r.checked_in_at)}
+                >
+                  {r.checked_in_at ? s('undoArrived') : s('markArrived')}
                 </button>
               </div>
             </li>
