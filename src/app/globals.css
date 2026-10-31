@@ -4178,3 +4178,51 @@ button.primary.danger-fill {
   color: var(--good-ink);
   font-weight: 600;
 }
+
+/* guest list: make each person's card stand out from the next one */
+.glist {
+  gap: 12px;
+}
+.glist .guest {
+  position: relative;
+  border: 1px solid var(--line-strong, var(--line));
+  border-inline-start: 6px solid var(--line-strong, var(--line));
+  border-radius: 14px;
+  background: var(--panel, var(--surface));
+  box-shadow: 0 1px 3px rgba(60, 45, 10, 0.1);
+  padding: 12px 14px;
+}
+.glist .guest.seated {
+  border-inline-start-color: var(--good-ink);
+}
+.glist .guest.unseated {
+  border-inline-start-color: #d9a441;
+}
+/* the "+1" people of a household sit under their named guest, indented and lighter */
+.glist .guest.member {
+  margin-inline-start: 22px;
+  margin-top: -6px;
+  background: var(--surface-2, var(--surface));
+  box-shadow: none;
+  padding: 8px 12px;
+}
+.glist .guest .c-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  min-width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  background: var(--surface-2, #efe9d6);
+  font-size: 0.85em;
+  font-weight: 700;
+  color: var(--ink);
+}
+.glist .guest .guest-name {
+  font-size: 1.05em;
+}
+.glist .guest.member .guest-name {
+  font-size: 1em;
+  font-weight: 500;
+}
