@@ -100,6 +100,9 @@ export default async function Rsvp({
     }
   }
   const loc = localeOf(lang);
+  // from the day of the event the answers are closed (same day as the database check, Israel time)
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(new Date());
+  const locked = !!inv.event_date && inv.event_date <= today;
   const d = inv.event_date ? new Date(inv.event_date + 'T00:00:00') : null;
   const dayNum = d ? d.getDate() : null;
   const monthName = d ? d.toLocaleDateString(loc, { month: 'long' }) : '';
@@ -232,6 +235,7 @@ export default async function Rsvp({
               action={changeCount}
               waitingExtra={inv.extra_requested ?? 0}
               saved={q.saved === '1'}
+              locked={locked}
             />
             <p style={{ margin: 0 }}>{s('showCode')}</p>
             <div className="qr" role="img" aria-label={s('entryCode')} dangerouslySetInnerHTML={{ __html: qr }} />
@@ -241,23 +245,39 @@ export default async function Rsvp({
                 map={{ layout: planLayout, focus }}
               />
             )}
-            {q.blocked === '1' && (
-              <p className="notice err" role="alert" style={{ margin: 0 }}>
-                {s('changeBlocked')}
+            {locked ? (
+              <p className="muted" style={{ margin: 0 }}>
+                {s('answerClosed')}
               </p>
+            ) : (
+              <>
+                {q.blocked === '1' && (
+                  <p className="notice err" role="alert" style={{ margin: 0 }}>
+                    {s('changeBlocked')}
+                  </p>
+                )}
+                <ChangeRequestButton action={answer} token={token} />
+              </>
             )}
-            <ChangeRequestButton action={answer} token={token} />
           </section>
         )}
         {inv.status === 'declined' && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <p style={{ margin: 0 }}>{s('declinedNote')}</p>
-            {q.blocked === '1' && (
-              <p className="notice err" role="alert" style={{ margin: 0 }}>
-                {s('changeBlocked')}
+            {locked ? (
+              <p className="muted" style={{ margin: 0 }}>
+                {s('answerClosed')}
               </p>
+            ) : (
+              <>
+                {q.blocked === '1' && (
+                  <p className="notice err" role="alert" style={{ margin: 0 }}>
+                    {s('changeBlocked')}
+                  </p>
+                )}
+                <ChangeRequestButton action={answer} token={token} />
+              </>
             )}
-            <ChangeRequestButton action={answer} token={token} />
           </section>
         )}
       </main>

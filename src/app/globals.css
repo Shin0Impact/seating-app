@@ -3381,10 +3381,11 @@ button.primary.danger-fill {
     0 0 0 6px var(--panel),
     0 0 0 7px color-mix(in srgb, var(--gold) 35%, transparent),
     0 24px 60px rgba(60, 45, 15, 0.16);
-  animation: rc-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: rc-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 .rsvp-card > * {
-  animation: rc-up 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  /* backwards, not both: a lingering transform would trap the position:fixed popup inside its section */
+  animation: rc-up 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 .rsvp-card > *:nth-child(6) {
   animation-delay: 0.05s;
