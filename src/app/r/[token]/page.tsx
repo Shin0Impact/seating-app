@@ -28,7 +28,9 @@ async function answer(form: FormData) {
   const count = Number.parseInt(String(form.get('count') ?? '1'), 10);
   const supabase = await serverClient();
   const n = Number.isFinite(count) ? Math.min(Math.max(count, 1), 70) : 1;
-  await supabase.rpc('rsvp_set', { p_token: token, p_status: status, p_count: n });
+  const { data: done } = await supabase.rpc('rsvp_set', { p_token: token, p_status: status, p_count: n });
+  // going back to "unanswered" is refused once someone has been checked in; say so instead of doing nothing
+  if (status === 'pending' && done !== true) redirect(`/r/${token}?blocked=1`);
   // more people than the invitation: the extras wait for the host's approval (the function ignores a count that matches)
   const party = Number.parseInt(String(form.get('party') ?? '0'), 10);
   if (status === 'confirmed' && n > (Number.isFinite(party) ? party : 0))
@@ -52,7 +54,7 @@ export default async function Rsvp({
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ saved?: string }>;
+  searchParams: Promise<{ saved?: string; blocked?: string }>;
 }) {
   const { token } = await params;
   const q = await searchParams;
@@ -239,12 +241,22 @@ export default async function Rsvp({
                 map={{ layout: planLayout, focus }}
               />
             )}
+            {q.blocked === '1' && (
+              <p className="notice err" role="alert" style={{ margin: 0 }}>
+                {s('changeBlocked')}
+              </p>
+            )}
             <ChangeRequestButton action={answer} token={token} />
           </section>
         )}
         {inv.status === 'declined' && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <p style={{ margin: 0 }}>{s('declinedNote')}</p>
+            {q.blocked === '1' && (
+              <p className="notice err" role="alert" style={{ margin: 0 }}>
+                {s('changeBlocked')}
+              </p>
+            )}
             <ChangeRequestButton action={answer} token={token} />
           </section>
         )}
