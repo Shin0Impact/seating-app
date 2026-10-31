@@ -2193,7 +2193,7 @@ button.primary.danger-fill {
 }
 .inv {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px 14px;
   align-items: center;
   background: var(--panel);
@@ -2264,10 +2264,13 @@ button.primary.danger-fill {
   color: #1c5e5e;
 }
 .inv-actions {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: 8px;
+}
+.inv-actions .btn {
+  justify-content: center;
+  text-align: center;
 }
 .empty {
   text-align: center;
@@ -4119,4 +4122,51 @@ button.primary.danger-fill {
 }
 .hp-overlay {
   pointer-events: none;
+}
+
+/* "change our answer" asks first in a popup. Built on <details> so it opens even before scripts have loaded. */
+.change-details summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-block;
+}
+.change-details summary::-webkit-details-marker {
+  display: none;
+}
+.change-details[open]::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 24, 10, 0.45);
+  z-index: 90;
+}
+.change-pop {
+  position: fixed;
+  z-index: 91;
+  inset-inline: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: 380px;
+  margin-inline: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+.change-pop p {
+  margin: 0;
+  font-weight: 600;
+}
+.change-pop .row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.change-pop .row > * {
+  flex: 1 1 8rem;
+  justify-content: center;
 }

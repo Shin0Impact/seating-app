@@ -1,8 +1,13 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 import { useS } from './LangProvider';
+import SubmitButton from './SubmitButton';
 
-/** Asks twice before sending the family back to "unanswered", so a stray tap can't undo their reply. */
+/**
+ * "We want to change our answer": opens a popup that says the invitation was already answered and asks
+ * whether to change it. Built on <details> so it opens even before the page's scripts have loaded (slow
+ * connections); the confirm button is a real submit button that shows a spinner while it works.
+ */
 export default function ChangeRequestButton({
   action,
   token,
@@ -11,32 +16,22 @@ export default function ChangeRequestButton({
   token: string;
 }) {
   const s = useS();
-  const [armed, setArmed] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current);
-    },
-    [],
-  );
+  const box = useRef<HTMLDetailsElement>(null);
   return (
-    <form action={action}>
-      <input type="hidden" name="token" value={token} />
-      <input type="hidden" name="status" value="pending" />
-      <button
-        type="button"
-        className={armed ? 'btn' : 'linkbtn'}
-        onClick={(e) => {
-          if (armed) {
-            e.currentTarget.form?.requestSubmit();
-            return;
-          }
-          setArmed(true);
-          timer.current = setTimeout(() => setArmed(false), 6000);
-        }}
-      >
-        {armed ? s('tapAgain') : s('wantChange')}
-      </button>
-    </form>
+    <details className="change-details" ref={box}>
+      <summary className="linkbtn">{s('wantChange')}</summary>
+      <form action={action} className="change-pop" role="alertdialog" aria-label={s('changeAsk')}>
+        <input type="hidden" name="token" value={token} />
+        <p>{s('changeAsk')}</p>
+        <div className="row">
+          <SubmitButton name="status" value="pending" className="btn primary">
+            {s('changeYes')}
+          </SubmitButton>
+          <button type="button" className="btn" onClick={() => box.current?.removeAttribute('open')}>
+            {s('changeNo')}
+          </button>
+        </div>
+      </form>
+    </details>
   );
 }
