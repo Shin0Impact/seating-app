@@ -1,6 +1,7 @@
 'use client';
 
 import { coarsePointer } from '@/lib/touchdrag';
+import { kindOf, planned } from '@/lib/expect';
 import { useMemo, useState } from 'react';
 import { Guest, TableEl } from '@/lib/layout';
 import { inviteDrafts } from '@/lib/invites';
@@ -146,6 +147,11 @@ export function SeatList({
               <span className="sl-name" dir="auto">
                 {g.name}
               </span>
+              {kindOf(planned(g, ids.length)) !== 'sure' && (
+                <span className={`exp-tag small ${kindOf(planned(g, ids.length))}`}>
+                  {t(kindOf(planned(g, ids.length)) === 'maybe' ? 'expMaybe' : 'expCourt')}
+                </span>
+              )}
               {extra.length > 0 && (
                 <span className="gcount" title={extra.map((m) => m.name).join(', ')}>
                   +{extra.length}

@@ -44,9 +44,31 @@ export type Guest = {
   seat: number | null;
   /** Needs step-free access (stays on the lower level). */
   stepFree: boolean;
+  /**
+   * Planner-only guess of how many on this guest's invite will come (set on the invite's named guest, never shown
+   * to guests): `sure` are definitely coming, `maybe` might; the rest of the invite is a courtesy invite.
+   * Missing means everyone on the invite is sure.
+   */
+  expect?: Expect;
 };
 
-export type Layout = { version: 1; settings: Settings; elements: Element[]; guests: Guest[] };
+/** How many people on one invitation the planner expects: sure + maybe never exceeds the invite's size. */
+export type Expect = { sure: number; maybe: number };
+
+/** Event-wide choices that are not about the hall's geometry (kept out of `settings`, which guests' maps receive). */
+export type PlanOptions = {
+  /** Count "maybe" people as needing a chair (the default: a spare chair beats a missing one). */
+  maybeSeats: boolean;
+};
+export const DEFAULT_OPTIONS: PlanOptions = { maybeSeats: true };
+
+export type Layout = {
+  version: 1;
+  settings: Settings;
+  elements: Element[];
+  guests: Guest[];
+  options?: PlanOptions;
+};
 
 export const MARKER_KINDS: MarkerKind[] = ['stage', 'dancefloor', 'entrance', 'buffet', 'other', 'walkway', 'exit'];
 export const MARKER_NAMES: Record<MarkerKind, string> = {
@@ -70,6 +92,8 @@ export const LIMITS = {
   maxGuests: 2000,
   nameMax: 60,
   groupMax: 40,
+  /** Largest invitation (the head plus everyone with them). */
+  maxParty: 50,
 };
 
 export function uid(): string {
@@ -381,6 +405,17 @@ const num = (v: unknown, min: number, max: number, fallback?: number): number =>
 const text = (v: unknown, max: number = LIMITS.labelMax): string => (typeof v === 'string' ? v.slice(0, max) : '');
 
 /** Validates untrusted JSON (an uploaded file or saved data) and returns a clean layout. */
+/** A saved `expect`, or nothing when it is missing or malformed (whole numbers, 0..LIMITS.maxParty each). */
+function parseExpect(v: unknown): { expect?: Expect } {
+  if (!v || typeof v !== 'object') return {};
+  const e = v as Record<string, unknown>;
+  const n = (x: unknown) =>
+    typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.min(LIMITS.maxParty, Math.round(x))) : 0;
+  const sure = n(e.sure);
+  const maybe = Math.min(n(e.maybe), LIMITS.maxParty - sure);
+  return { expect: { sure, maybe } };
+}
+
 export function parseLayout(raw: unknown): Layout {
   if (!raw || typeof raw !== 'object') throw new Error('Not a layout file');
   const r = raw as Record<string, unknown>;
@@ -468,10 +503,13 @@ export function parseLayout(raw: unknown): Layout {
       tableId: typeof g.tableId === 'string' && tableIds.has(g.tableId) ? g.tableId : null,
       seat: typeof g.seat === 'number' && Number.isInteger(g.seat) ? g.seat : null,
       stepFree: g.stepFree === true,
+      ...parseExpect(g.expect),
     });
   }
 
-  return { version: 1, settings, elements, guests: normalizeSeats(elements, guests) };
+  const oIn = (r.options && typeof r.options === 'object' ? r.options : {}) as Record<string, unknown>;
+  const options: PlanOptions = { maybeSeats: oIn.maybeSeats !== false };
+  return { version: 1, settings, elements, guests: normalizeSeats(elements, guests), options };
 }
 
 export function newTable(x: number, y: number, shape: 'round' | 'rect', seats: number, n: number): TableEl {

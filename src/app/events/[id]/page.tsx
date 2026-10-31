@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { SiteHeader, StepBar } from '@/components/Site';
-import { parseLayout } from '@/lib/layout';
+import { DEFAULT_OPTIONS, parseLayout } from '@/lib/layout';
+import { chairsInHall, chairsNeeded, expectTotals } from '@/lib/expect';
 import { totals, type InviteRow } from '@/lib/inviteview';
 import DeleteEvent from '@/components/DeleteEvent';
 import { renameEvent } from '@/app/actions';
@@ -31,6 +32,10 @@ export default async function EventHome({
   const tables = layout.elements.filter((e) => e.kind === 'table').length;
   const seated = layout.guests.filter((g) => g.tableId).length;
   const t = totals((invites ?? []) as InviteRow[]);
+  const maybeSeats = layout.options?.maybeSeats ?? DEFAULT_OPTIONS.maybeSeats;
+  const exp = expectTotals(layout.guests, (invites ?? []) as InviteRow[]);
+  const hallChairs = chairsInHall(layout);
+  const need = chairsNeeded(exp, maybeSeats);
   const changeCount = ((invites ?? []) as InviteRow[]).filter(
     (r) => r.change_requested_at && r.status === 'pending',
   ).length;
@@ -72,6 +77,12 @@ export default async function EventHome({
             <p className="muted" style={{ margin: 0 }}>
               {tables ? s('tablesLine', { seated, total: layout.guests.length }) : s('drawHint')}
             </p>
+            {tables > 0 && layout.guests.length > 0 && (
+              <p className={`exp-line${need > hallChairs ? ' over' : ''}`}>
+                {s('chairsLine', { n: need, total: hallChairs })}
+                {need > hallChairs ? ` · ${s('chairsShort', { k: need - hallChairs })}` : ''}
+              </p>
+            )}
             <Link className="btn" href={`/events/${id}/preview`}>
               {s('viewPlan')}
             </Link>
@@ -85,6 +96,9 @@ export default async function EventHome({
             <p className="muted" style={{ margin: 0 }}>
               {t.families ? s('sentLine', { yes: t.confirmedFamilies }) : s('oneLinkHint')}
             </p>
+            {layout.guests.length > 0 && (
+              <p className="exp-line">{s('expLine', { s: exp.sure, m: exp.maybe, c: exp.court })}</p>
+            )}
             {changeCount > 0 && (
               <p className="notice info" style={{ margin: 0 }}>
                 {s('changeBanner', { n: changeCount })}
@@ -159,6 +173,14 @@ export default async function EventHome({
                 defaultValue={ev.venue_url ?? ''}
                 maxLength={500}
               />
+            </label>
+            <input type="hidden" name="has_maybe_seats" value="1" />
+            <label className="check-row">
+              <input type="checkbox" name="maybe_seats" defaultChecked={maybeSeats} />
+              <span>
+                <b>{s('maybeSeats')}</b>
+                <small className="muted">{s('maybeSeatsHint')}</small>
+              </span>
             </label>
             <button className="btn">{s('save')}</button>
           </form>

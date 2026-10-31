@@ -52,6 +52,7 @@ import { AddPopover } from './editor/AddPopover';
 import { useElementActions } from './editor/useElementActions';
 import { useSeatingActions } from './editor/useSeatingActions';
 import { useTouchDrag } from './editor/useTouchDrag';
+import { roles } from '@/lib/expect';
 
 const STORAGE_KEY = 'seating-layout-v1';
 const ORDER: Record<Element['kind'], number> = { zone: 0, marker: 1, table: 2, column: 3 };
@@ -662,6 +663,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   const totals = useMemo(() => summarize(layout.elements), [layout.elements]);
   const nameById = (id: string) => layout.elements.find((e) => e.id === id)?.label || '?';
   const tables = useMemo(() => layout.elements.filter((e): e is TableEl => e.kind === 'table'), [layout.elements]);
+  const roleMap = useMemo(() => roles(layout.guests), [layout.guests]);
   const seatMap = useMemo(() => {
     const m = new Map<string, (Guest | undefined)[]>();
     for (const tb of tables) m.set(tb.id, new Array<Guest | undefined>(tb.seats).fill(undefined));
@@ -989,6 +991,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
                     issue={issueById.get(el.id)}
                     seated={el.kind === 'table' && layout.guests.length > 0 ? (seated.get(el.id) ?? 0) : undefined}
                     seatGuests={el.kind === 'table' ? seatMap.get(el.id) : undefined}
+                    roles={roleMap}
                     highlightSeat={dropHint && dropHint.tableId === el.id ? dropHint.seat : null}
                     onChairDrop={dropGuest}
                     onChairTip={setTip}

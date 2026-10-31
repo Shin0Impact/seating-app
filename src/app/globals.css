@@ -29,6 +29,13 @@
   --mk-dance: #d6ecec;
   --mk-ent: #f6d9d0;
   --mk-other: #e8e4dc;
+  /* who is expected: sure / maybe / courtesy (planner-only) */
+  --sure-ink: #1d6b3a;
+  --sure-bg: #dff3e6;
+  --maybe-ink: #8a5a00;
+  --maybe-bg: #fbefd6;
+  --court-ink: #6b6349;
+  --court-bg: #ece7d8;
   color-scheme: light;
   --font: 'Noto Sans Arabic Variable', system-ui, -apple-system, 'Segoe UI', Tahoma, sans-serif;
 }
@@ -39,6 +46,14 @@ html,
 body {
   height: 100%;
   margin: 0;
+}
+/* Nothing may make the page wider than the screen: a phone then opens it slightly zoomed in, with the edge cut off.
+   `clip` on body does not create a scroll container, so sticky headers keep working. */
+html {
+  overflow-x: hidden;
+}
+body {
+  overflow-x: clip;
 }
 body {
   background: var(--bg);
@@ -1546,11 +1561,17 @@ button.primary.danger-fill {
 .crumbs a {
   color: var(--muted);
   text-decoration: none;
+  min-width: 0;
+}
+.crumbs a.brand {
+  flex: none;
 }
 .crumbs a:hover {
   color: var(--accent);
 }
 .crumbs b {
+  /* a block, so the width limit and the "…" actually apply (they are ignored on inline text) */
+  display: block;
   color: var(--ink);
   font-weight: 600;
   white-space: nowrap;
@@ -1577,6 +1598,7 @@ button.primary.danger-fill {
 }
 .scan-grid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
@@ -1757,7 +1779,7 @@ button.primary.danger-fill {
 /* events list */
 .event-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
   gap: 14px;
 }
 .event-card {
@@ -1958,6 +1980,125 @@ button.primary.danger-fill {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+  align-items: center;
+}
+.chips + .chips {
+  margin-top: 6px;
+}
+.chips-label {
+  font-size: 13.5px;
+  color: var(--muted);
+  margin-inline-end: 2px;
+}
+
+/* sure / maybe / courtesy on the invites page */
+.exp-stats {
+  margin-top: 12px;
+}
+.stat.exp-sure b {
+  color: var(--sure-ink);
+}
+.stat.exp-maybe b {
+  color: var(--maybe-ink);
+}
+.stat.exp-court b {
+  color: var(--court-ink);
+}
+.stat.over b,
+.stat.over span {
+  color: var(--danger);
+}
+.exp-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 10px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.exp-tag.sure {
+  background: var(--sure-bg);
+  color: var(--sure-ink);
+}
+.exp-tag.maybe {
+  background: var(--maybe-bg);
+  color: var(--maybe-ink);
+}
+.exp-tag.court {
+  background: var(--court-bg);
+  color: var(--court-ink);
+}
+.exp-tag.small {
+  font-size: 12px;
+  padding: 0 7px;
+  line-height: 1.6;
+  flex: none;
+}
+.exp-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.stepper .lbl {
+  padding: 0 10px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.stepper button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  min-height: 0;
+}
+.stepper button:hover:not(:disabled) {
+  background: var(--hover);
+}
+.stepper button:disabled {
+  color: var(--line-strong);
+  cursor: default;
+}
+.stepper output {
+  min-width: 24px;
+  text-align: center;
+  font-weight: 700;
+}
+.stepper.sure output {
+  color: var(--sure-ink);
+}
+.stepper.maybe output {
+  color: var(--maybe-ink);
+}
+.exp-rest {
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.exp-answer {
+  margin: 0;
+  font-size: 14px;
+  color: var(--good-ink);
+  background: var(--good-bg);
+  border-radius: 10px;
+  padding: 5px 10px;
+}
+.exp-private {
+  font-size: 13.5px;
+  margin: 10px 0 0;
 }
 .chip {
   min-height: 36px;
@@ -2266,6 +2407,12 @@ button.primary.danger-fill {
 }
 
 :root[data-theme='dark'] {
+  --sure-ink: #7fd3a0;
+  --sure-bg: #1f3a2a;
+  --maybe-ink: #f0c36d;
+  --maybe-bg: #3d3018;
+  --court-ink: #c9c2ad;
+  --court-bg: #34322c;
   --bg: #17181b;
   --panel: #1f2125;
   --ink: #ecebe7;
@@ -2695,6 +2842,41 @@ button.primary.danger-fill {
 .rename-form .btn {
   min-height: 46px;
 }
+.rename-form .check-row {
+  grid-column: 1 / -1;
+}
+.check-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  cursor: pointer;
+  font-size: 15.5px;
+}
+.check-row input {
+  width: 19px;
+  height: 19px;
+  margin: 4px 0 0;
+  flex: none;
+  accent-color: var(--accent);
+}
+.check-row span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.check-row small {
+  font-size: 14px;
+  line-height: 1.45;
+}
+.step-card .exp-line {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.step-card .exp-line.over {
+  color: var(--danger);
+}
 .event-settings .danger-zone {
   margin-top: 18px;
 }
@@ -2747,6 +2929,10 @@ button.primary.danger-fill {
     padding: 10px 8px;
   }
   .stats .stat:nth-child(-n + 2) {
+    grid-column: span 3;
+  }
+  .exp-stats .stat,
+  .exp-stats .stat:nth-child(-n + 2) {
     grid-column: span 3;
   }
   .stats .stat b {
@@ -2939,6 +3125,16 @@ button.primary.danger-fill {
 .hp-chair.on {
   fill: var(--accent);
   stroke: var(--accent);
+}
+/* planner's plan only: maybe chairs dashed, courtesy chairs faded */
+.hp-chair.on.maybe {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+  stroke-width: 0.07;
+  stroke-dasharray: 0.09 0.07;
+}
+.hp-chair.on.court {
+  opacity: 0.4;
 }
 .hp-col {
   fill: var(--line-strong);

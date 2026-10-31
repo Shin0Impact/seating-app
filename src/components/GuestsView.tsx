@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
+import { roles } from '@/lib/expect';
 import { Guest, LIMITS, TableEl, firstFreeSeat, newGuest, seatGuest, seatedCounts } from '@/lib/layout';
 import { Key } from '@/lib/i18n';
 import { PLUS } from '@/lib/invites';
@@ -35,6 +36,7 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
   const [filter, setFilter] = useState<Filter>('all');
   const [groupFilter, setGroupFilter] = useState('');
   const [importing, setImporting] = useState(false);
+  const roleMap = useMemo(() => roles(guests), [guests]);
   const [adding, setAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(0);
   const [askDeleteAll, setAskDeleteAll] = useState(false);
@@ -306,6 +308,11 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
                         if (!e.target.value.trim()) remove(g.id);
                       }}
                     />
+                    {roleMap.get(g.id) && roleMap.get(g.id) !== 'sure' && (
+                      <span className={`exp-tag small ${roleMap.get(g.id)}`}>
+                        {t(roleMap.get(g.id) === 'maybe' ? 'expMaybe' : 'expCourt')}
+                      </span>
+                    )}
                   </div>
                   <div className="guest-bottom">
                     <input

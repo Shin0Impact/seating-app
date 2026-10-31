@@ -3,6 +3,7 @@
 
 import { Guest, LIMITS, TableEl, firstFreeSeat, newGuest, newTable } from './layout';
 import { normalize } from './search';
+import { readExpectCell } from './expect';
 
 export const IMPORT_LIMITS = { bytes: 2_000_000, rows: 5000, cols: 60, extraPeople: 20 };
 
@@ -86,7 +87,15 @@ export function parseCsv(text: string, delimiter = detectDelimiter(text)): strin
   return rows;
 }
 
-export type Mapping = { name: number; surname: number; group: number; count: number; table: number };
+export type Mapping = {
+  name: number;
+  surname: number;
+  group: number;
+  count: number;
+  table: number;
+  /** Optional: who is expected to come (أكيد / ممكن / واجب, or numbers); planner-only. */
+  expect?: number;
+};
 export const NO_COLUMN = -1;
 
 const RE = {
@@ -95,14 +104,23 @@ const RE = {
   group: /(group|famil|side|relation|category|مجموعه|عايله|قرابه|فئه|קבוצה|משפחה|צד)/,
   count: /(count|number|people|persons|pax|qty|quantity|guests|عدد|כמות|מספר|אנשים)/,
   table: /(table|طاوله|שולחן)/,
+  expect: /(expect|likel|chance|probab|احتمال|متوقع|توقع|סבירות|צפי)/,
 };
 
 /** Looks at the header row to guess which column holds what. */
 export function guessMapping(headers: string[]): { mapping: Mapping; foundHeader: boolean } {
-  const m: Mapping = { name: NO_COLUMN, surname: NO_COLUMN, group: NO_COLUMN, count: NO_COLUMN, table: NO_COLUMN };
+  const m: Mapping = {
+    name: NO_COLUMN,
+    surname: NO_COLUMN,
+    group: NO_COLUMN,
+    count: NO_COLUMN,
+    table: NO_COLUMN,
+    expect: NO_COLUMN,
+  };
   const h = headers.map(normalize);
   h.forEach((x, i) => {
     if (m.table === NO_COLUMN && RE.table.test(x)) m.table = i;
+    else if (m.expect === NO_COLUMN && RE.expect.test(x)) m.expect = i;
     else if (m.surname === NO_COLUMN && RE.surname.test(x)) m.surname = i;
     else if (m.count === NO_COLUMN && RE.count.test(x) && !/(name|اسم|שם)/.test(x)) m.count = i;
     else if (
@@ -246,6 +264,10 @@ export function buildGuests(
       const name = k === 0 ? base : clean(`${base} +${k}`, LIMITS.nameMax);
       const seat = tb ? firstFreeSeat(tb, working) : null;
       const g = newGuest(name, group, tb && seat !== null ? tb.id : null, false, tb && seat !== null ? seat : null);
+      if (k === 0 && map.expect !== undefined && map.expect !== NO_COLUMN) {
+        const e = readExpectCell(cell(r, map.expect), extra + 1);
+        if (e) g.expect = e;
+      }
       out.push(g);
       working.push(g);
       res.people++;

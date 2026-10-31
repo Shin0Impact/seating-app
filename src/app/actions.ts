@@ -2,6 +2,7 @@
 import { redirect } from 'next/navigation';
 import { serverClient } from '@/lib/supabase/server';
 import { isValidUsername, normalizeUsername } from '@/lib/username';
+import { DEFAULT_OPTIONS, parseLayout } from '@/lib/layout';
 
 export async function signOut() {
   await (await serverClient()).auth.signOut();
@@ -67,7 +68,36 @@ export async function renameEvent(form: FormData) {
       updated_at: new Date().toISOString(),
     })
     .eq('id', id);
-  redirect(`/events/${id}?rename=${error ? 'error' : 'saved'}`);
+  const optErr = form.get('has_maybe_seats')
+    ? await saveMaybeSeats(supabase, id, form.get('maybe_seats') === 'on')
+    : null;
+  redirect(`/events/${id}?rename=${error || optErr ? 'error' : 'saved'}`);
+}
+
+/**
+ * Stores "maybe guests get a chair" inside the plan. The plan is re-read and only this option is changed, with the
+ * same version check the editor uses, so nothing saved meanwhile is overwritten.
+ */
+async function saveMaybeSeats(supabase: Awaited<ReturnType<typeof serverClient>>, id: string, on: boolean) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data: ev } = await supabase.from('events').select('layout,version').eq('id', id).maybeSingle();
+    if (!ev) return 'missing';
+    const layout = parseLayout(ev.layout);
+    if ((layout.options?.maybeSeats ?? DEFAULT_OPTIONS.maybeSeats) === on) return null;
+    const { data, error } = await supabase
+      .from('events')
+      .update({
+        layout: { ...layout, options: { ...DEFAULT_OPTIONS, ...layout.options, maybeSeats: on } },
+        version: ev.version + 1,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('version', ev.version)
+      .select('version');
+    if (error) return error.message;
+    if (data && data.length > 0) return null;
+  }
+  return 'conflict';
 }
 
 export type PasswordResult = 'saved' | 'wrong' | 'short' | 'mismatch' | 'error';

@@ -40,6 +40,7 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
     group: NO_COLUMN,
     count: NO_COLUMN,
     table: NO_COLUMN,
+    expect: NO_COLUMN,
   });
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -54,7 +55,14 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
     setMap(
       g.foundHeader
         ? g.mapping
-        : { name: guessNameColumn(rows), surname: NO_COLUMN, group: NO_COLUMN, count: NO_COLUMN, table: NO_COLUMN },
+        : {
+            name: guessNameColumn(rows),
+            surname: NO_COLUMN,
+            group: NO_COLUMN,
+            count: NO_COLUMN,
+            table: NO_COLUMN,
+            expect: NO_COLUMN,
+          },
     );
   }, [rows]);
 
@@ -81,9 +89,9 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
   const select = (key: keyof Mapping, optional: boolean, label: string) => (
     <label className="field">
       <span>{label}</span>
-      <select value={map[key]} onChange={(e) => setMap({ ...map, [key]: Number(e.target.value) })}>
+      <select value={map[key] ?? NO_COLUMN} onChange={(e) => setMap({ ...map, [key]: Number(e.target.value) })}>
         {optional && <option value={NO_COLUMN}>{t('importNone')}</option>}
-        {!optional && map[key] === NO_COLUMN && <option value={NO_COLUMN}>{t('importNone')}</option>}
+        {!optional && (map[key] ?? NO_COLUMN) === NO_COLUMN && <option value={NO_COLUMN}>{t('importNone')}</option>}
         {Array.from({ length: cols }, (_, i) => (
           <option key={i} value={i}>
             {colLabel(i)}
@@ -170,6 +178,7 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
             )}
             {select('count', true, t('importColCount'))}
             {map.count !== NO_COLUMN && <p className="muted">{t('importCountHint')}</p>}
+            {select('expect', true, t('importExpect'))}
 
             {map.name === NO_COLUMN && <p className="muted">{t('importNeedName')}</p>}
             {result && (

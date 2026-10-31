@@ -1,14 +1,26 @@
 import { chairSlots, tableDims, toWorld, type Layout } from '@/lib/layout';
 import { softPath, type Focus } from '@/lib/route';
+import type { ExpectKind } from '@/lib/expect';
 
 /** Read-only picture of the hall, drawn as plain SVG so it needs no client code. */
-export default function HallPreview({ layout, label, focus }: { layout: Layout; label: string; focus?: Focus | null }) {
+export default function HallPreview({
+  layout,
+  label,
+  focus,
+  roles,
+}: {
+  layout: Layout;
+  label: string;
+  focus?: Focus | null;
+  /** Planner-only: each guest's part of their invite's guess, so maybe chairs show dashed and courtesy faded. */
+  roles?: Map<string, ExpectKind>;
+}) {
   const { elements, guests, settings } = layout;
   if (!elements.length) return null;
-  const seatedAt = new Map<string, Set<number>>();
+  const seatedAt = new Map<string, Map<number, string>>();
   for (const g of guests)
     if (g.tableId && g.seat != null)
-      (seatedAt.get(g.tableId) ?? seatedAt.set(g.tableId, new Set()).get(g.tableId)!).add(g.seat);
+      (seatedAt.get(g.tableId) ?? seatedAt.set(g.tableId, new Map()).get(g.tableId)!).set(g.seat, g.id);
 
   let x0 = Infinity,
     y0 = Infinity,
@@ -49,13 +61,15 @@ export default function HallPreview({ layout, label, focus }: { layout: Layout; 
               <g key={e.id} className={dim && !marked.has(e.id) ? 'hp-dim' : undefined}>
                 {chairSlots(e, settings).map((c, i) => {
                   const p = toWorld(e, c.x, c.y);
+                  const who = taken?.get(i);
+                  const role = who ? roles?.get(who) : undefined;
                   return (
                     <circle
                       key={i}
                       cx={p.x}
                       cy={p.y}
                       r={settings.seatWidth * 0.36}
-                      className={taken?.has(i) ? 'hp-chair on' : 'hp-chair'}
+                      className={who ? `hp-chair on${role && role !== 'sure' ? ` ${role}` : ''}` : 'hp-chair'}
                     />
                   );
                 })}
