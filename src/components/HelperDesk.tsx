@@ -6,7 +6,7 @@ import { parseLayout, type Layout } from '@/lib/layout';
 import { locate } from '@/lib/invites';
 import { buildFocus } from '@/lib/route';
 import { useS } from './LangProvider';
-import Scanner, { type ScanResult } from './Scanner';
+import Scanner, { ScanResultView, type ScanResult } from './Scanner';
 
 type Inv = {
   token: string;
@@ -31,6 +31,7 @@ export default function HelperDesk({ token }: { token: string }) {
   const [walk, setWalk] = useState({ name: '', n: 1 });
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  const [where, setWhere] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const { data: d, error } = await sb.rpc('helper_get', { p_token: token });
@@ -54,6 +55,30 @@ export default function HelperDesk({ token }: { token: string }) {
   const dataRef = useRef<{ data: Data | null; layout: Layout | null }>({ data: null, layout: null });
   dataRef.current = { data, layout };
 
+  /** Where to take an invite's people: the same result the scanner shows, built from the hall we already hold. */
+  const describe = useCallback(
+    (
+      i: Pick<Inv, 'guest_id' | 'member_ids' | 'party_size' | 'status' | 'confirmed_count'>,
+      already: string | null = null,
+    ): ScanResult => {
+      const lay = dataRef.current.layout;
+      const ids = [i.guest_id, ...i.member_ids];
+      return {
+        ok: true,
+        already,
+        status: i.status,
+        partySize: i.party_size,
+        confirmedCount: i.confirmed_count,
+        placements: lay ? locate(lay, ids) : [],
+        plan: lay
+          ? { settings: lay.settings, elements: lay.elements }
+          : ({ settings: undefined, elements: [] } as never),
+        focus: lay ? buildFocus(lay, ids) : null,
+      };
+    },
+    [],
+  );
+
   // stable, so the camera does not restart on every refresh
   const check = useCallback(
     async (code: string): Promise<ScanResult> => {
@@ -71,22 +96,18 @@ export default function HelperDesk({ token }: { token: string }) {
       if (out.error) return { error: out.error === 'helper' ? 'login' : out.error };
       // pick up the new arrival right away, then draw where to take them from the hall shapes we already have
       void load();
-      const lay = dataRef.current.layout;
-      const ids = [out.guest_id, ...out.member_ids];
-      return {
-        ok: true,
-        already: out.already ?? null,
-        status: out.status,
-        partySize: out.party_size,
-        confirmedCount: out.confirmed_count,
-        placements: lay ? locate(lay, ids) : [],
-        plan: lay
-          ? { settings: lay.settings, elements: lay.elements }
-          : ({ settings: undefined, elements: [] } as never),
-        focus: lay ? buildFocus(lay, ids) : null,
-      };
+      return describe(
+        {
+          guest_id: out.guest_id,
+          member_ids: out.member_ids,
+          party_size: out.party_size,
+          status: out.status,
+          confirmed_count: out.confirmed_count,
+        },
+        out.already ?? null,
+      );
     },
-    [sb, token, load],
+    [sb, token, load, describe],
   );
 
   async function mark(i: Inv, n: number, undo = false) {
@@ -154,6 +175,13 @@ export default function HelperDesk({ token }: { token: string }) {
                   <b>{name}</b>
                   <span className="muted"> · {i.party_size}</span>
                   <button
+                    className="btn small"
+                    aria-expanded={where === i.token}
+                    onClick={() => setWhere(where === i.token ? null : i.token)}
+                  >
+                    {s('helperWhere')}
+                  </button>
+                  <button
                     className={`btn small${i.checked_in_at ? ' arrived-on' : ''}`}
                     aria-expanded={open?.token === i.token}
                     onClick={() =>
@@ -165,6 +193,7 @@ export default function HelperDesk({ token }: { token: string }) {
                       : s('markArrived')}
                   </button>
                 </div>
+                {where === i.token && <ScanResultView res={describe(i)} />}
                 {open?.token === i.token && (
                   <div className="arr-panel" role="group" aria-label={s('arrivedHowMany')}>
                     <span>{s('arrivedHowMany')}</span>

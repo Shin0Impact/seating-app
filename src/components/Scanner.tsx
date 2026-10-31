@@ -24,9 +24,66 @@ export type ScanResult =
 
 const tokenFrom = (text: string) => text.trim().split(/[/?#]/).filter(Boolean).pop() ?? '';
 
-export default function Scanner({ check }: { check?: (token: string) => Promise<ScanResult> }) {
+/** The card shown after a scan (or a lookup): flags, who, where, and the walking route on the hall map. */
+export function ScanResultView({ res, onNext }: { res: ScanResult | null; onNext?: () => void }) {
   const s = useS();
   const { lang } = useLang();
+  const ok = res && 'ok' in res ? res : null;
+  const err = res && 'error' in res ? res.error : null;
+  return (
+    <>
+      {err && (
+        <div className="scan-result bad" role="alert">
+          {err === 'not_found' ? s('unknownCode') : err === 'login' ? s('signInAgain') : s('genericError')}
+        </div>
+      )}
+      {ok && (
+        <div
+          className={`scan-result ${ok.already ? 'warn' : ok.status === 'confirmed' ? 'good' : 'warn'}`}
+          role="status"
+        >
+          {ok.already && (
+            <p className="scan-flag">
+              {s('alreadyIn', { time: new Date(ok.already).toLocaleTimeString(localeOf(lang)) })}
+            </p>
+          )}
+          {!ok.already && ok.status !== 'confirmed' && <p className="scan-flag">{s('notConfirmed')}</p>}
+          <p className="muted">{s('countLine', { n: ok.confirmedCount ?? ok.partySize, size: ok.partySize })}</p>
+          <ul>
+            {ok.placements.map((p, i) => (
+              <li key={i}>
+                <b>{p.name}</b>
+                <span className="where">
+                  {p.table ? `${p.table}${p.seat ? s('chairN', { n: p.seat }) : ''}` : s('noTableYet')}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {ok.focus && (
+            <div className="where-map">
+              <HallPreview
+                layout={{ version: 1, settings: ok.plan.settings, elements: ok.plan.elements, guests: [] }}
+                label={s('whereTitle')}
+                focus={ok.focus}
+              />
+              <p className="muted" style={{ margin: '6px 0 0' }}>
+                {ok.focus.route ? s('routeLegend') : s('noRouteHint')}
+              </p>
+            </div>
+          )}
+          {onNext && (
+            <button className="btn primary" onClick={onNext}>
+              {s('next')}
+            </button>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+export default function Scanner({ check }: { check?: (token: string) => Promise<ScanResult> }) {
+  const s = useS();
   const video = useRef<HTMLVideoElement>(null);
   const [res, setRes] = useState<ScanResult | null>(null);
   const [cam, setCam] = useState<'starting' | 'on' | 'off'>('starting');
@@ -103,8 +160,6 @@ export default function Scanner({ check }: { check?: (token: string) => Promise<
     };
   }, [submit]);
 
-  const ok = res && 'ok' in res ? res : null;
-  const err = res && 'error' in res ? res.error : null;
   return (
     <div className="scan-grid">
       <div className="card-box">
@@ -137,50 +192,7 @@ export default function Scanner({ check }: { check?: (token: string) => Promise<
         </form>
       </div>
       <div className="scan-side">
-        {err && (
-          <div className="scan-result bad" role="alert">
-            {err === 'not_found' ? s('unknownCode') : err === 'login' ? s('signInAgain') : s('genericError')}
-          </div>
-        )}
-        {ok && (
-          <div
-            className={`scan-result ${ok.already ? 'warn' : ok.status === 'confirmed' ? 'good' : 'warn'}`}
-            role="status"
-          >
-            {ok.already && (
-              <p className="scan-flag">
-                {s('alreadyIn', { time: new Date(ok.already).toLocaleTimeString(localeOf(lang)) })}
-              </p>
-            )}
-            {!ok.already && ok.status !== 'confirmed' && <p className="scan-flag">{s('notConfirmed')}</p>}
-            <p className="muted">{s('countLine', { n: ok.confirmedCount ?? ok.partySize, size: ok.partySize })}</p>
-            <ul>
-              {ok.placements.map((p, i) => (
-                <li key={i}>
-                  <b>{p.name}</b>
-                  <span className="where">
-                    {p.table ? `${p.table}${p.seat ? s('chairN', { n: p.seat }) : ''}` : s('noTableYet')}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {ok.focus && (
-              <div className="where-map">
-                <HallPreview
-                  layout={{ version: 1, settings: ok.plan.settings, elements: ok.plan.elements, guests: [] }}
-                  label={s('whereTitle')}
-                  focus={ok.focus}
-                />
-                <p className="muted" style={{ margin: '6px 0 0' }}>
-                  {ok.focus.route ? s('routeLegend') : s('noRouteHint')}
-                </p>
-              </div>
-            )}
-            <button className="btn primary" onClick={() => setRes(null)}>
-              {s('next')}
-            </button>
-          </div>
-        )}
+        <ScanResultView res={res} onNext={() => setRes(null)} />
       </div>
     </div>
   );
