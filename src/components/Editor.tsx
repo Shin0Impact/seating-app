@@ -99,6 +99,32 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   );
   const [measured, setMeasured] = useState(false);
   const pinch = useRef<{ dist: number } | null>(null);
+  /** Touch: a chair lifts only after a short hold; pinching, panning or a quick second finger never moves anyone. */
+  const chairHold = useRef<{ timer: number; x: number; y: number } | null>(null);
+  const cancelChairHold = () => {
+    if (chairHold.current) window.clearTimeout(chairHold.current.timer);
+    chairHold.current = null;
+  };
+  const startChairHold = (e: Konva.KonvaEventObject<TouchEvent>) => {
+    cancelChairHold();
+    if (e.evt.touches.length !== 1) return;
+    let chair: Konva.Node | null = e.target;
+    while (chair && !(chair.name() || '').startsWith('chair|')) chair = chair.getParent();
+    if (!chair || !chair.getAttr('guestChair')) return;
+    const node = chair;
+    const stage = e.target.getStage();
+    chairHold.current = {
+      x: e.evt.touches[0].clientX,
+      y: e.evt.touches[0].clientY,
+      timer: window.setTimeout(() => {
+        chairHold.current = null;
+        stage?.stopDrag();
+        node.draggable(true);
+        navigator.vibrate?.(10);
+        node.startDrag();
+      }, 260),
+    };
+  };
   const inHallRef = useRef(true);
   inHallRef.current = inHall;
   const [selectTool, setSelectTool] = useState(false);
@@ -394,6 +420,11 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   /** Two fingers: zoom around their midpoint and follow them (pan). Returns true while pinching. */
   const handlePinch = (e: Konva.KonvaEventObject<TouchEvent>): boolean => {
     const t2 = e.evt.touches;
+    if (t2.length > 1) cancelChairHold();
+    else if (chairHold.current) {
+      const h = chairHold.current;
+      if (t2[0] && Math.hypot(t2[0].clientX - h.x, t2[0].clientY - h.y) > 6) cancelChairHold();
+    }
     if (t2.length !== 2) {
       pinch.current = null;
       return false;
@@ -949,6 +980,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
             }}
             onTouchStart={(e) => {
               lastTouchAt.current = Date.now();
+              startChairHold(e);
               if (e.target !== e.target.getStage()) return;
               const p = e.target.getStage()?.getPointerPosition();
               if (marqueeMode && p) setMarquee({ x0: p.x, y0: p.y, x1: p.x, y1: p.y });
@@ -966,6 +998,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
             onMouseUp={finishMarquee}
             onTouchEnd={(e) => {
               if (e.evt.touches.length < 2) pinch.current = null;
+              cancelChairHold();
               finishMarquee();
             }}
             onWheel={(e) => {

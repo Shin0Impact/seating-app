@@ -1,5 +1,9 @@
 /** True on phones/tablets, where HTML5 drag-and-drop is unreliable and we use our own touch drag. */
-export const coarsePointer = () => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+let coarse: boolean | undefined;
+export const coarsePointer = () => {
+  if (typeof window === 'undefined') return false;
+  return (coarse ??= window.matchMedia('(pointer: coarse)').matches);
+};
 
 /** preset: an element spec; guest: one guest id; guests: comma-separated ids; group: a group name (its unseated members). */
 export type TouchPayload = { kind: 'preset' | 'guest' | 'guests' | 'group'; value: string; label: string };
