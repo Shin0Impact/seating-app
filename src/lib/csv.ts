@@ -182,6 +182,8 @@ export type ImportResult = {
   /** Rectangular tables made for table names in the file that did not exist yet (only when asked to). */
   newTables: TableEl[];
   capped: boolean;
+  /** For names already in the list: the group the file gives them (id -> group), when it differs from today's. */
+  groupUpdates: Map<string, string>;
 };
 
 /** Turns table rows into guests. A count above 1 adds "Name +1", "Name +2" ... in the same group. */
@@ -194,6 +196,13 @@ export function buildGuests(
 ): ImportResult {
   const cell = (r: string[], i: number) => (i === NO_COLUMN ? '' : (r[i] ?? ''));
   const seenNames = new Set(existing.map((g) => normalize(g.name)));
+  // existing people by the name of their invite ("Sami" and "Sami +1" share one key), to update their group
+  const byInvite = new Map<string, Guest[]>();
+  for (const g of existing) {
+    const m = /^(.*\S)\s*\+(\d{1,2})$/.exec(g.name);
+    const k = normalize(m ? m[1] : g.name);
+    byInvite.set(k, [...(byInvite.get(k) ?? []), g]);
+  }
   const byKey = new Map<string, TableEl>();
   for (const tb of tables) {
     byKey.set(tableKey(tb.label), tb);
@@ -211,6 +220,7 @@ export function buildGuests(
     tablesUnmatched: 0,
     newTables: [],
     capped: false,
+    groupUpdates: new Map(),
   };
   // People per unknown table name, so a table made from the file gets enough chairs.
   const demand = new Map<string, number>();
@@ -238,6 +248,10 @@ export function buildGuests(
     const key = normalize(base);
     if (seenNames.has(key)) {
       res.skippedDuplicates++;
+      const fileGroup = clean(cell(r, map.group), LIMITS.groupMax);
+      if (fileGroup)
+        for (const g of byInvite.get(key) ?? [])
+          if (g.group !== fileGroup && !res.groupUpdates.has(g.id)) res.groupUpdates.set(g.id, fileGroup);
       continue;
     }
     seenNames.add(key);
