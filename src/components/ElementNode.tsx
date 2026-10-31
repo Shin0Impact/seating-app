@@ -1,9 +1,10 @@
 'use client';
 
 import type Konva from 'konva';
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { Circle, Group, Line, Rect, Text } from 'react-konva';
 import { canvasMeasure, fitChairLabel } from '@/lib/chairlabel';
+import { coarsePointer } from '@/lib/touchdrag';
 import type { ExpectKind } from '@/lib/expect';
 import {
   ChairSlot,
@@ -188,13 +189,6 @@ function Chair({
   const availM = extX * 1.04;
   const measure = useMemo(() => canvasMeasure(FONT), []);
   const fitted = guest && big ? fitChairLabel(guest.name, availM * scale, extY * scale, fontPx, measure) : null;
-  // On touch a chair only lifts after a short hold, so pinching or panning over chairs never moves anyone.
-  const hold = useRef<{ timer: number; x: number; y: number } | null>(null);
-  const clearHold = (node?: Konva.Node | null) => {
-    if (hold.current) window.clearTimeout(hold.current.timer);
-    hold.current = null;
-    if (node && guest) node.draggable(true);
-  };
   const setCursor = (e: Konva.KonvaEventObject<Event>, value: string) => {
     const c = e.target.getStage()?.container();
     if (c) c.style.cursor = value;
@@ -211,35 +205,11 @@ function Chair({
       name={name}
       x={slot.x}
       y={slot.y}
-      draggable={!!guest}
+      // On touch screens a chair lifts only after a hold, started once for the whole stage (see Editor).
+      draggable={!!guest && !coarsePointer()}
+      {...({ guestChair: !!guest } as object)}
       onDblClick={open}
       onDblTap={open}
-      onTouchStart={(e) => {
-        if (!guest) return;
-        const node = e.currentTarget;
-        clearHold();
-        if (e.evt.touches.length !== 1) return;
-        node.draggable(false);
-        hold.current = {
-          x: e.evt.touches[0].clientX,
-          y: e.evt.touches[0].clientY,
-          timer: window.setTimeout(() => {
-            hold.current = null;
-            node.draggable(true);
-            navigator.vibrate?.(10);
-            node.startDrag();
-          }, 260),
-        };
-      }}
-      onTouchMove={(e) => {
-        const h = hold.current;
-        if (!h) return;
-        const t = e.evt.touches[0];
-        if (e.evt.touches.length > 1 || !t || Math.hypot(t.clientX - h.x, t.clientY - h.y) > 8)
-          clearHold(e.currentTarget);
-      }}
-      onTouchEnd={(e) => clearHold(e.currentTarget)}
-      onTouchCancel={(e) => clearHold(e.currentTarget)}
       onClick={() => onPick?.()}
       onTap={() => onPick?.()}
       onMouseEnter={(e) => {
@@ -268,6 +238,7 @@ function Chair({
         const p = layer
           ? layer.getAbsoluteTransform().copy().invert().point(node.getAbsolutePosition())
           : { x: 0, y: 0 };
+        if (coarsePointer()) node.draggable(false);
         node.position({ x: slot.x, y: slot.y }); // snap back; the seating change redraws it
         setCursor(e, '');
         if (guest) onDrop?.(guest.id, p.x, p.y);
