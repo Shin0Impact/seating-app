@@ -246,8 +246,7 @@ const en = {
   changeYes: 'Yes, change it',
   changeNo: 'Keep my answer',
   tapAgain: 'Tap again to confirm',
-  changeBlocked:
-    'We couldn’t change the answer. Please try again in a moment.',
+  changeBlocked: 'We couldn’t change the answer. Please try again in a moment.',
   changeRequested: 'change requested',
   changeBanner: '{n} families asked to change their answer',
   rsvpConfirmedShort: 'Thank you for confirming your arrival!',
