@@ -1,6 +1,7 @@
 // Standard line icons (24x24 grid), drawn inline so no icon library is needed.
 
 const PATHS = {
+  filter: <path d="M3 5h18l-7 8.5V20l-4-2v-4.5z" />,
   logout: (
     <>
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
