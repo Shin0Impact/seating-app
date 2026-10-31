@@ -1059,9 +1059,6 @@ textarea {
     grid-column: 1 / 4;
     grid-row: 3;
   }
-  .grow .guest-exp:empty {
-    display: none;
-  }
   .grow .guest-acts {
     grid-column: 4;
     grid-row: 3;
@@ -2139,7 +2136,7 @@ button.primary.danger-fill {
   font-weight: 700;
 }
 .stepper.sure output {
-  color: var(--sure-ink);
+  color: var(--accent-ink);
 }
 .stepper.maybe output {
   color: var(--maybe-ink);
@@ -3016,6 +3013,29 @@ button.primary.danger-fill {
     overflow: hidden;
     text-overflow: ellipsis;
     justify-content: center;
+  }
+  .exp-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+  .exp-row .stepper {
+    display: flex;
+    min-height: 42px;
+    border-radius: 12px;
+  }
+  .exp-row .stepper .lbl {
+    flex: 1;
+    padding: 0 8px;
+    font-size: 14.5px;
+  }
+  .exp-row .stepper button {
+    width: 42px;
+    height: 42px;
+  }
+  .exp-row .exp-rest {
+    grid-column: 1 / -1;
   }
   .inv-actions .zp-open {
     width: 100%;
@@ -4237,4 +4257,96 @@ button.primary.danger-fill {
   border-radius: 12px;
   background: var(--good-bg);
   font-weight: 600;
+}
+
+/* one sure / maybe / courtesy choice per person in the guest list */
+.role-seg {
+  display: inline-flex;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.role-seg button {
+  flex: 1 1 0;
+  min-height: 38px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14.5px;
+  cursor: pointer;
+  padding: 0 6px;
+}
+.role-seg button + button {
+  border-inline-start: 1px solid var(--line);
+}
+.role-seg button.on.sure {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+.role-seg button.on.maybe {
+  background: var(--maybe-bg);
+  color: var(--maybe-ink);
+  font-weight: 700;
+}
+.role-seg button.on.court {
+  background: var(--court-bg);
+  color: var(--court-ink);
+  font-weight: 700;
+}
+
+/* "+1" people fold into a dropdown under their household */
+.glist .kids-wrap {
+  list-style: none;
+  margin-top: -6px;
+  margin-inline-start: 22px;
+}
+.kids > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 6px 14px;
+  border: 1px dashed var(--line-strong, var(--line));
+  border-radius: 12px;
+  background: var(--surface-2, var(--surface));
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+.kids > summary::-webkit-details-marker {
+  display: none;
+}
+.kids > summary::after {
+  content: '▾';
+  margin-inline-start: auto;
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+.kids[open] > summary::after {
+  transform: rotate(180deg);
+}
+.kids .kids-sum {
+  font-weight: 500;
+  font-size: 0.9em;
+  color: var(--muted);
+}
+.kids-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.kids-list .guest.member {
+  margin: 0;
+}
+
+/* blue edge on invite cards, same as the guest list */
+.inv {
+  border-inline-start: 6px solid var(--accent);
 }

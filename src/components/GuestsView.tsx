@@ -1,8 +1,7 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
-import { planned, roles } from '@/lib/expect';
-import { ExpectSteppers } from './ExpectSteppers';
+import { Fragment, useMemo, useRef, useState } from 'react';
+import { roles, setRole, type ExpectKind } from '@/lib/expect';
 import { Guest, LIMITS, TableEl, firstFreeSeat, newGuest, seatGuest, seatedCounts } from '@/lib/layout';
 import { Key } from '@/lib/i18n';
 import { PLUS, inviteDrafts } from '@/lib/invites';
@@ -50,7 +49,6 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
   const [groupFilter, setGroupFilter] = useState('');
   const [importing, setImporting] = useState(false);
   const roleMap = useMemo(() => roles(guests), [guests]);
-  const partySize = useMemo(() => new Map(inviteDrafts(guests).map((d) => [d.guestId, d.partySize])), [guests]);
   const [adding, setAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(0);
   const [askDeleteAll, setAskDeleteAll] = useState(false);
@@ -121,6 +119,138 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
       {tb.label} ({counts.get(tb.id) ?? 0}/{tb.seats})
     </option>
   );
+
+  const rows = useMemo(() => {
+    const out: { head: { g: Guest; i: number }; kids: { g: Guest; i: number }[] }[] = [];
+    for (const v of visible) {
+      const last = out[out.length - 1];
+      if (PLUS.test(v.g.name) && last) last.kids.push(v);
+      else out.push({ head: v, kids: [] });
+    }
+    return out;
+  }, [visible]);
+
+  const kidsSummary = (rs: ExpectKind[]) => {
+    const n = (k: ExpectKind) => rs.filter((x) => x === k).length;
+    return [
+      n('sure') ? `${t('expSure')} ${n('sure')}` : '',
+      n('maybe') ? `${t('expMaybe')} ${n('maybe')}` : '',
+      n('court') ? `${t('expCourt')} ${n('court')}` : '',
+    ]
+      .filter(Boolean)
+      .join(' · ');
+  };
+
+  const renderCard = (g: Guest, i: number) => {
+    const tb = g.tableId ? tableById.get(g.tableId) : undefined;
+    return (
+      <li
+        key={g.id}
+        className={`guest grow${onLocate ? ' pin' : ''}${tb ? ' seated' : ' unseated'}${PLUS.test(g.name) ? ' member' : ''}`}
+      >
+        <span className="c-num muted">{i + 1}</span>
+        <div className="guest-top">
+          <input
+            type="text"
+            className="guest-name"
+            maxLength={LIMITS.nameMax}
+            value={g.name}
+            aria-label={t('guestName')}
+            onChange={(e) => update(g.id, { name: e.target.value }, 'name')}
+            onBlur={(e) => {
+              if (!e.target.value.trim()) remove(g.id);
+            }}
+          />
+        </div>
+        <div className="guest-bottom">
+          <input
+            className="g-group"
+            type="text"
+            list="group-list"
+            maxLength={LIMITS.groupMax}
+            value={g.group}
+            placeholder={t('guestGroup')}
+            aria-label={t('guestGroup')}
+            onChange={(e) => update(g.id, { group: e.target.value }, 'group')}
+          />
+          <select
+            className="g-table"
+            value={g.tableId ?? ''}
+            aria-label={t('table')}
+            onChange={(e) => {
+              const id = e.target.value;
+              const target = id ? tableById.get(id) : undefined;
+              onChange(
+                seatGuest(guests, g.id, target ? target.id : null, target ? firstFreeSeat(target, guests, g.id) : null),
+              );
+            }}
+          >
+            <option value="">{t('unseated')}</option>
+            {tables.map(tableOption)}
+          </select>
+          {tb ? (
+            <select
+              className="g-chair"
+              value={g.seat ?? ''}
+              aria-label={t('chair')}
+              title={t('chair')}
+              onChange={(e) =>
+                onChange(seatGuest(guests, g.id, g.tableId, e.target.value === '' ? null : Number(e.target.value)))
+              }
+            >
+              <option value="">–</option>
+              {Array.from({ length: tb.seats }, (_, k) => {
+                const other = guests.find((o) => o.id !== g.id && o.tableId === g.tableId && o.seat === k);
+                return (
+                  <option key={k} value={k}>
+                    {k + 1}
+                    {other ? ` · ${other.name}` : ''}
+                  </option>
+                );
+              })}
+            </select>
+          ) : (
+            <span className="g-chair" />
+          )}
+        </div>
+        <div className="guest-exp">
+          <span className="role-seg" role="group" aria-label={`${t('expSure')} / ${t('expMaybe')}`}>
+            {(['sure', 'maybe', 'court'] as ExpectKind[]).map((k) => (
+              <button
+                key={k}
+                type="button"
+                className={`${k}${(roleMap.get(g.id) ?? 'sure') === k ? ' on' : ''}`}
+                aria-pressed={(roleMap.get(g.id) ?? 'sure') === k}
+                onClick={() => onChange(setRole(guests, g.id, k), `guest:${g.id}:exp`)}
+              >
+                {t(k === 'sure' ? 'expSure' : k === 'maybe' ? 'expMaybe' : 'expCourt')}
+              </button>
+            ))}
+          </span>
+        </div>
+        <div className="guest-acts">
+          {onLocate &&
+            (g.tableId ? (
+              <IconButton icon="pin" label={t('showOnMap')} onClick={() => onLocate(g)} />
+            ) : (
+              <span className="acts-gap" />
+            ))}
+          <IconButton
+            icon="access"
+            label={t('stepFree')}
+            pressed={g.stepFree}
+            onClick={() => update(g.id, { stepFree: !g.stepFree }, 'step')}
+          />
+          <IconButton
+            icon="trash"
+            label={t('removeGuest')}
+            danger
+            onClick={() => (onAskRemove ? onAskRemove(g.id) : remove(g.id))}
+          />
+        </div>
+      </li>
+    );
+  };
 
   return (
     <div className="page">
@@ -295,127 +425,22 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
           {guests.length > 0 && visible.length === 0 && <p className="muted">{t('noMatches')}</p>}
 
           <ul className="guest-list glist">
-            {visible.map(({ g, i }) => {
-              const tb = g.tableId ? tableById.get(g.tableId) : undefined;
-              return (
-                <li
-                  key={g.id}
-                  className={`guest grow${onLocate ? ' pin' : ''}${tb ? ' seated' : ' unseated'}${PLUS.test(g.name) ? ' member' : ''}`}
-                >
-                  <span className="c-num muted">{i + 1}</span>
-                  <div className="guest-top">
-                    <input
-                      type="text"
-                      className="guest-name"
-                      maxLength={LIMITS.nameMax}
-                      value={g.name}
-                      aria-label={t('guestName')}
-                      onChange={(e) => update(g.id, { name: e.target.value }, 'name')}
-                      onBlur={(e) => {
-                        if (!e.target.value.trim()) remove(g.id);
-                      }}
-                    />
-                    {roleMap.get(g.id) && roleMap.get(g.id) !== 'sure' && (
-                      <span className={`exp-tag small ${roleMap.get(g.id)}`}>
-                        {t(roleMap.get(g.id) === 'maybe' ? 'expMaybe' : 'expCourt')}
-                      </span>
-                    )}
-                  </div>
-                  <div className="guest-bottom">
-                    <input
-                      className="g-group"
-                      type="text"
-                      list="group-list"
-                      maxLength={LIMITS.groupMax}
-                      value={g.group}
-                      placeholder={t('guestGroup')}
-                      aria-label={t('guestGroup')}
-                      onChange={(e) => update(g.id, { group: e.target.value }, 'group')}
-                    />
-                    <select
-                      className="g-table"
-                      value={g.tableId ?? ''}
-                      aria-label={t('table')}
-                      onChange={(e) => {
-                        const id = e.target.value;
-                        const target = id ? tableById.get(id) : undefined;
-                        onChange(
-                          seatGuest(
-                            guests,
-                            g.id,
-                            target ? target.id : null,
-                            target ? firstFreeSeat(target, guests, g.id) : null,
-                          ),
-                        );
-                      }}
-                    >
-                      <option value="">{t('unseated')}</option>
-                      {tables.map(tableOption)}
-                    </select>
-                    {tb ? (
-                      <select
-                        className="g-chair"
-                        value={g.seat ?? ''}
-                        aria-label={t('chair')}
-                        title={t('chair')}
-                        onChange={(e) =>
-                          onChange(
-                            seatGuest(guests, g.id, g.tableId, e.target.value === '' ? null : Number(e.target.value)),
-                          )
-                        }
-                      >
-                        <option value="">–</option>
-                        {Array.from({ length: tb.seats }, (_, k) => {
-                          const other = guests.find((o) => o.id !== g.id && o.tableId === g.tableId && o.seat === k);
-                          return (
-                            <option key={k} value={k}>
-                              {k + 1}
-                              {other ? ` · ${other.name}` : ''}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    ) : (
-                      <span className="g-chair" />
-                    )}
-                  </div>
-                  <div className="guest-exp">
-                    {partySize.get(g.id) !== undefined && (
-                      <ExpectSteppers
-                        size={partySize.get(g.id)!}
-                        value={planned(g, partySize.get(g.id)!)}
-                        labels={{ sure: t('expSure'), maybe: t('expMaybe'), court: t('expCourt') }}
-                        onChange={(sure, maybe) => {
-                          const size = partySize.get(g.id)!;
-                          const s0 = Math.max(0, Math.min(size, sure));
-                          update(g.id, { expect: { sure: s0, maybe: Math.max(0, Math.min(size - s0, maybe)) } }, 'exp');
-                        }}
-                      />
-                    )}
-                  </div>
-                  <div className="guest-acts">
-                    {onLocate &&
-                      (g.tableId ? (
-                        <IconButton icon="pin" label={t('showOnMap')} onClick={() => onLocate(g)} />
-                      ) : (
-                        <span className="acts-gap" />
-                      ))}
-                    <IconButton
-                      icon="access"
-                      label={t('stepFree')}
-                      pressed={g.stepFree}
-                      onClick={() => update(g.id, { stepFree: !g.stepFree }, 'step')}
-                    />
-                    <IconButton
-                      icon="trash"
-                      label={t('removeGuest')}
-                      danger
-                      onClick={() => (onAskRemove ? onAskRemove(g.id) : remove(g.id))}
-                    />
-                  </div>
-                </li>
-              );
-            })}
+            {rows.map(({ head, kids }) => (
+              <Fragment key={head.g.id}>
+                {renderCard(head.g, head.i)}
+                {kids.length > 0 && (
+                  <li className="kids-wrap">
+                    <details className="kids">
+                      <summary>
+                        <span dir="ltr">+{kids.length}</span>
+                        <span className="kids-sum">{kidsSummary(kids.map((k) => roleMap.get(k.g.id) ?? 'sure'))}</span>
+                      </summary>
+                      <ul className="kids-list">{kids.map((k) => renderCard(k.g, k.i))}</ul>
+                    </details>
+                  </li>
+                )}
+              </Fragment>
+            ))}
           </ul>
           {guests.length > 0 && (
             <details
