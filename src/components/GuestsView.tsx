@@ -49,6 +49,16 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
   const [filter, setFilter] = useState<Filter>('all');
   const [expFilter, setExpFilter] = useState<'all' | ExpectKind>('all');
   const [groupFilter, setGroupFilter] = useState('');
+  const [tableFilter, setTableFilter] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const activeFilters =
+    (filter !== 'all' ? 1 : 0) + (expFilter !== 'all' ? 1 : 0) + (tableFilter ? 1 : 0) + (groupFilter ? 1 : 0);
+  const clearFilters = () => {
+    setFilter('all');
+    setExpFilter('all');
+    setTableFilter('');
+    setGroupFilter('');
+  };
   const [importing, setImporting] = useState(false);
   const roleMap = useMemo(() => roles(guests), [guests]);
   const [adding, setAdding] = useState(false);
@@ -72,8 +82,9 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
         .map((g, i) => ({ g, i }))
         .filter(({ g }) => (filter === 'all' ? true : filter === 'seated' ? !!g.tableId : !g.tableId))
         .filter(({ g }) => !groupFilter || g.group === groupFilter)
+        .filter(({ g }) => !tableFilter || g.tableId === tableFilter)
         .filter(({ g }) => matches(query, g.name, g.group, g.tableId ? (tableById.get(g.tableId)?.label ?? '') : '')),
-    [guests, filter, groupFilter, query, tableById],
+    [guests, filter, groupFilter, tableFilter, query, tableById],
   );
 
   const addGuests = (names: string[]) => {
@@ -227,19 +238,19 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
         </div>
         <div className="guest-exp">
           {PLUS.test(g.name) ? (
-          <span className="role-seg" role="group" aria-label={`${t('expSure')} / ${t('expMaybe')}`}>
-            {(['sure', 'maybe', 'court'] as ExpectKind[]).map((k) => (
-              <button
-                key={k}
-                type="button"
-                className={`${k}${(roleMap.get(g.id) ?? 'sure') === k ? ' on' : ''}`}
-                aria-pressed={(roleMap.get(g.id) ?? 'sure') === k}
-                onClick={() => onChange(setRole(guests, g.id, k), `guest:${g.id}:exp`)}
-              >
-                {t(k === 'sure' ? 'expSure' : k === 'maybe' ? 'expMaybe' : 'expCourt')}
-              </button>
-            ))}
-          </span>
+            <span className="role-seg" role="group" aria-label={`${t('expSure')} / ${t('expMaybe')}`}>
+              {(['sure', 'maybe', 'court'] as ExpectKind[]).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={`${k}${(roleMap.get(g.id) ?? 'sure') === k ? ' on' : ''}`}
+                  aria-pressed={(roleMap.get(g.id) ?? 'sure') === k}
+                  onClick={() => onChange(setRole(guests, g.id, k), `guest:${g.id}:exp`)}
+                >
+                  {t(k === 'sure' ? 'expSure' : k === 'maybe' ? 'expMaybe' : 'expCourt')}
+                </button>
+              ))}
+            </span>
           ) : (
             <ExpectSteppers
               size={sizeOf.get(g.id) ?? 1}
@@ -431,36 +442,59 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
                 aria-label={t('searchGuests')}
               />
             </label>
-            <select value={filter} onChange={(e) => setFilter(e.target.value as Filter)} aria-label={t('filterAll')}>
-              <option value="all">{t('filterAll')}</option>
-              <option value="unseated">{t('filterUnseated')}</option>
-              <option value="seated">{t('filterSeated')}</option>
-            </select>
-            <select
-              value={expFilter}
-              onChange={(e) => setExpFilter(e.target.value as 'all' | ExpectKind)}
-              aria-label={t('filterExpAll')}
+            <button
+              type="button"
+              className={`btn filter-btn${activeFilters ? ' on' : ''}`}
+              aria-expanded={filtersOpen}
+              onClick={() => setFiltersOpen((o) => !o)}
             >
-              <option value="all">{t('filterExpAll')}</option>
-              <option value="sure">
-                {t('expSure')} ({roleCount.sure})
-              </option>
-              <option value="maybe">
-                {t('expMaybe')} ({roleCount.maybe})
-              </option>
-              <option value="court">
-                {t('expCourt')} ({roleCount.court})
-              </option>
-            </select>
-            <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} aria-label={t('groupAll')}>
-              <option value="">{t('groupAll')}</option>
-              {groups.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </select>
+              <Icon name="filter" size={18} />
+              {t('filters')}
+              {activeFilters > 0 && <span className="filter-n">{activeFilters}</span>}
+            </button>
           </div>
+          {filtersOpen && (
+            <div className="filter-panel">
+              <select value={filter} onChange={(e) => setFilter(e.target.value as Filter)} aria-label={t('filterAll')}>
+                <option value="all">{t('filterAll')}</option>
+                <option value="unseated">{t('filterUnseated')}</option>
+                <option value="seated">{t('filterSeated')}</option>
+              </select>
+              <select
+                value={expFilter}
+                onChange={(e) => setExpFilter(e.target.value as 'all' | ExpectKind)}
+                aria-label={t('filterExpAll')}
+              >
+                <option value="all">{t('filterExpAll')}</option>
+                <option value="sure">
+                  {t('expSure')} ({roleCount.sure})
+                </option>
+                <option value="maybe">
+                  {t('expMaybe')} ({roleCount.maybe})
+                </option>
+                <option value="court">
+                  {t('expCourt')} ({roleCount.court})
+                </option>
+              </select>
+              <select value={tableFilter} onChange={(e) => setTableFilter(e.target.value)} aria-label={t('tableAll')}>
+                <option value="">{t('tableAll')}</option>
+                {tables.map(tableOption)}
+              </select>
+              <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} aria-label={t('groupAll')}>
+                <option value="">{t('groupAll')}</option>
+                {groups.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+              {activeFilters > 0 && (
+                <button type="button" className="btn" onClick={clearFilters}>
+                  {t('clearFilters')}
+                </button>
+              )}
+            </div>
+          )}
 
           {guests.length === 0 && <p className="muted">{t('noGuests')}</p>}
           {guests.length > 0 && visible.length === 0 && <p className="muted">{t('noMatches')}</p>}

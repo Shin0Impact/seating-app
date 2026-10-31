@@ -891,9 +891,42 @@ textarea {
 }
 .filters {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   margin-bottom: 12px;
+}
+.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.filter-btn.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.filter-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.8em;
+  font-weight: 700;
+}
+.filter-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2, var(--surface));
 }
 .filters .search {
   margin: 0;
@@ -1016,9 +1049,6 @@ textarea {
 
 @media (max-width: 900px) {
   .add-form {
-    grid-template-columns: 1fr;
-  }
-  .filters {
     grid-template-columns: 1fr;
   }
 }
