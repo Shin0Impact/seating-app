@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Guest, TableEl } from '@/lib/layout';
+import { Expect, Guest, TableEl } from '@/lib/layout';
 import { Icon } from './Icon';
 import { Key } from '@/lib/i18n';
 import { looksLikeXlsx, xlsxToText } from '@/lib/xlsx';
@@ -17,12 +17,15 @@ import {
   parseCsv,
 } from '@/lib/csv';
 
+export type ImportChanges = { group: Map<string, string>; expect: Map<string, Expect> };
+const NO_CHANGES = (): ImportChanges => ({ group: new Map(), expect: new Map() });
+
 type Props = {
   t: (k: Key) => string;
   guests: Guest[];
   tables: TableEl[];
-  /** `regroup` (id -> group) is only given when the person chose to update groups of names already in the list. */
-  onImport: (added: Guest[], newTables: TableEl[], regroup: Map<string, string>) => void;
+  /** `changes` is only filled when the person chose to update the group / sure-maybe of names already in the list. */
+  onImport: (added: Guest[], newTables: TableEl[], changes: ImportChanges) => void;
   onClose: () => void;
   /** Render as part of the page instead of a pop-up. */
   inline?: boolean;
@@ -216,11 +219,11 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
                   )}
                   {result.capped && <li>{t('importCapped')}</li>}
                 </ul>
-                {result.groupUpdates.size > 0 && (
+                {result.groupUpdates.size + result.expectUpdates.size > 0 && (
                   <label className="check">
                     <input type="checkbox" checked={updateGroups} onChange={(e) => setUpdateGroups(e.target.checked)} />
                     <span>
-                      {t('importRegroup')} ({result.groupUpdates.size})
+                      {t('importRegroup')} ({result.groupUpdates.size + result.expectUpdates.size})
                     </span>
                   </label>
                 )}
@@ -241,10 +244,18 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
         <div className="row">
           <button
             className="primary"
-            disabled={!result || (result.people === 0 && !(updateGroups && result.groupUpdates.size > 0))}
+            disabled={
+              !result ||
+              (result.people === 0 && !(updateGroups && result.groupUpdates.size + result.expectUpdates.size > 0))
+            }
             onClick={() =>
               result &&
-              (onImport(result.guests, result.newTables, updateGroups ? result.groupUpdates : new Map()), onClose())
+              (onImport(
+                result.guests,
+                result.newTables,
+                updateGroups ? { group: result.groupUpdates, expect: result.expectUpdates } : NO_CHANGES(),
+              ),
+              onClose())
             }
           >
             {t('importDo')}

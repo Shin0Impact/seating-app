@@ -1,7 +1,7 @@
 // Reading a guest list from a CSV file or pasted spreadsheet cells. Everything here treats the
 // input as untrusted: sizes are capped and text is cleaned before it becomes a guest.
 
-import { Guest, LIMITS, TableEl, firstFreeSeat, newGuest, newTable } from './layout';
+import { Expect, Guest, LIMITS, TableEl, firstFreeSeat, newGuest, newTable } from './layout';
 import { normalize } from './search';
 import { readExpectCell } from './expect';
 
@@ -184,6 +184,8 @@ export type ImportResult = {
   capped: boolean;
   /** For names already in the list: the group the file gives them (id -> group), when it differs from today's. */
   groupUpdates: Map<string, string>;
+  /** For invites already in the list: the expectation the file gives (head's id -> guess), when it differs from today's. */
+  expectUpdates: Map<string, Expect>;
 };
 
 /** Turns table rows into guests. A count above 1 adds "Name +1", "Name +2" ... in the same group. */
@@ -221,6 +223,7 @@ export function buildGuests(
     newTables: [],
     capped: false,
     groupUpdates: new Map(),
+    expectUpdates: new Map(),
   };
   // People per unknown table name, so a table made from the file gets enough chairs.
   const demand = new Map<string, number>();
@@ -252,6 +255,16 @@ export function buildGuests(
       if (fileGroup)
         for (const g of byInvite.get(key) ?? [])
           if (g.group !== fileGroup && !res.groupUpdates.has(g.id)) res.groupUpdates.set(g.id, fileGroup);
+      // the file's sure/maybe for an invite already in the list goes on its named guest (never on a "+k" person)
+      if (map.expect !== undefined && map.expect !== NO_COLUMN) {
+        const people = byInvite.get(key) ?? [];
+        const head = people.find((g) => normalize(g.name) === key);
+        if (head && !res.expectUpdates.has(head.id)) {
+          const e = readExpectCell(cell(r, map.expect), people.length);
+          const cur = head.expect;
+          if (e && (!cur || cur.sure !== e.sure || cur.maybe !== e.maybe)) res.expectUpdates.set(head.id, e);
+        }
+      }
       continue;
     }
     seenNames.add(key);
