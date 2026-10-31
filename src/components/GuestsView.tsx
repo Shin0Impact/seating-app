@@ -19,8 +19,12 @@ type Props = {
   onAskRemove?: (id: string) => void;
   /** Teardrop button on seated guests: open the hall zoomed on their chair. */
   onLocate?: (g: Guest) => void;
-  onImportAll?: (added: Guest[], newTables: TableEl[]) => void;
+  onImportAll?: (added: Guest[], newTables: TableEl[], regroup: Map<string, string>) => void;
 };
+
+/** Gives the people in `regroup` (id -> group) their new group. */
+export const regroupGuests = (guests: Guest[], regroup: Map<string, string>) =>
+  regroup.size ? guests.map((g) => (regroup.has(g.id) ? { ...g, group: regroup.get(g.id)! } : g)) : guests;
 
 type Filter = 'all' | 'unseated' | 'seated';
 
@@ -133,8 +137,10 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
               t={t}
               guests={guests}
               tables={tables}
-              onImport={(added, made) =>
-                onImportAll && made.length ? onImportAll(added, made) : onChange([...guests, ...added])
+              onImport={(added, made, regroup) =>
+                onImportAll && made.length
+                  ? onImportAll(added, made, regroup)
+                  : onChange([...regroupGuests(guests, regroup), ...added])
               }
               onClose={() => setImporting(false)}
             />

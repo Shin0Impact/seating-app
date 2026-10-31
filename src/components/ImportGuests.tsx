@@ -21,7 +21,8 @@ type Props = {
   t: (k: Key) => string;
   guests: Guest[];
   tables: TableEl[];
-  onImport: (added: Guest[], newTables: TableEl[]) => void;
+  /** `regroup` (id -> group) is only given when the person chose to update groups of names already in the list. */
+  onImport: (added: Guest[], newTables: TableEl[], regroup: Map<string, string>) => void;
   onClose: () => void;
   /** Render as part of the page instead of a pop-up. */
   inline?: boolean;
@@ -34,6 +35,7 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
   const [header, setHeader] = useState(true);
   const [over, setOver] = useState(false);
   const [createTables, setCreateTables] = useState(true);
+  const [updateGroups, setUpdateGroups] = useState(true);
   const [map, setMap] = useState<Mapping>({
     name: NO_COLUMN,
     surname: NO_COLUMN,
@@ -214,6 +216,14 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
                   )}
                   {result.capped && <li>{t('importCapped')}</li>}
                 </ul>
+                {result.groupUpdates.size > 0 && (
+                  <label className="check">
+                    <input type="checkbox" checked={updateGroups} onChange={(e) => setUpdateGroups(e.target.checked)} />
+                    <span>
+                      {t('importRegroup')} ({result.groupUpdates.size})
+                    </span>
+                  </label>
+                )}
                 <p className="muted">{t('importPreview')}</p>
                 <ul className="import-preview" dir="auto">
                   {result.guests.slice(0, 8).map((g) => (
@@ -231,8 +241,11 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
         <div className="row">
           <button
             className="primary"
-            disabled={!result || result.people === 0}
-            onClick={() => result && (onImport(result.guests, result.newTables), onClose())}
+            disabled={!result || (result.people === 0 && !(updateGroups && result.groupUpdates.size > 0))}
+            onClick={() =>
+              result &&
+              (onImport(result.guests, result.newTables, updateGroups ? result.groupUpdates : new Map()), onClose())
+            }
           >
             {t('importDo')}
           </button>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildGuests, decodeBytes, detectDelimiter, guessMapping, guessNameColumn, parseCsv } from './csv';
+import { NO_COLUMN, buildGuests, decodeBytes, detectDelimiter, guessMapping, guessNameColumn, parseCsv } from './csv';
 import { newGuest, newTable } from './layout';
 
 describe('csv', () => {
@@ -129,5 +129,44 @@ describe('expected column', () => {
   it('does not mistake the usual columns for it', () => {
     const { mapping } = guessMapping(['Name', 'Group', 'Count', 'Table']);
     expect(mapping.expect).toBe(-1);
+  });
+});
+
+describe('group updates for names already in the list', () => {
+  const existing = [
+    newGuest('سامي عيلبوني', '', null),
+    newGuest('سامي عيلبوني +1', '', null),
+    newGuest('منى خوري', 'قديم', null),
+  ];
+  const map = { name: 0, surname: NO_COLUMN, group: 1, count: NO_COLUMN, table: NO_COLUMN };
+  it('collects the new group for the name and its "+k" people, and keeps other names alone', () => {
+    const r = buildGuests(
+      [
+        ['سامي عيلبوني', 'شفاعمرو'],
+        ['منى خوري', 'قديم'],
+        ['جديد', 'الناصره'],
+      ],
+      map,
+      existing,
+      [],
+    );
+    expect(r.skippedDuplicates).toBe(2);
+    expect([...r.groupUpdates.values()]).toEqual(['شفاعمرو', 'شفاعمرو']);
+    expect(r.groupUpdates.has(existing[2].id)).toBe(false); // same group already
+    expect(r.guests.map((g) => g.group)).toEqual(['الناصره']);
+  });
+  it('an empty group cell never clears a group, and the first row for a name wins', () => {
+    const r = buildGuests(
+      [
+        ['منى خوري', ''],
+        ['سامي عيلبوني', 'أ'],
+        ['سامي عيلبوني', 'ب'],
+      ],
+      map,
+      existing,
+      [],
+    );
+    expect(r.groupUpdates.has(existing[2].id)).toBe(false);
+    expect(r.groupUpdates.get(existing[0].id)).toBe('أ');
   });
 });

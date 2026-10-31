@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { STRINGS } from '@/lib/i18n';
 import { useLang, useS } from './LangProvider';
-import { GuestsView } from './GuestsView';
+import { GuestsView, regroupGuests } from './GuestsView';
 import { Guest, Layout, TableEl, placeNewTables } from '@/lib/layout';
 import { browserClient } from '@/lib/supabase/browser';
 
@@ -76,12 +76,12 @@ export default function GuestsStep({ id, initial, version }: { id: string; initi
         guests={layout.guests}
         tables={tables}
         onChange={(guests: Guest[]) => commit({ ...layoutRef.current, guests })}
-        onImportAll={(added, made) => {
+        onImportAll={(added, made, regroup) => {
           const l = layoutRef.current;
           commit({
             ...l,
             elements: [...l.elements, ...placeNewTables(l.elements, l.settings, made)],
-            guests: [...l.guests, ...added],
+            guests: [...regroupGuests(l.guests, regroup), ...added],
           });
         }}
         onLocate={(g) => {
