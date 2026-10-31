@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import HelperLink from '@/components/HelperLink';
 import Scanner from '@/components/Scanner';
 import { SiteHeader, StepBar } from '@/components/Site';
 import { serverClient } from '@/lib/supabase/server';
@@ -13,7 +14,13 @@ export default async function ScanPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const { s } = await getS();
-  const { data: ev } = await (await serverClient()).from('events').select('id,name').eq('id', id).maybeSingle();
+  const { data: ev } = await (
+    await serverClient()
+  )
+    .from('events')
+    .select('id,name,helper_token')
+    .eq('id', id)
+    .maybeSingle();
   if (!ev) notFound();
   return (
     <div className="site">
@@ -24,6 +31,7 @@ export default async function ScanPage({ params }: { params: Promise<{ id: strin
         </div>
         <StepBar id={id} active="scan" />
         <Scanner />
+        <HelperLink eventId={id} initial={(ev.helper_token as string | null) ?? null} />
       </main>
     </div>
   );
