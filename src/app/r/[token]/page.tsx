@@ -100,9 +100,16 @@ export default async function Rsvp({
     }
   }
   const loc = localeOf(lang);
-  // from the day of the event the answers are closed (same day as the database check, Israel time)
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(new Date());
-  const locked = !!inv.event_date && inv.event_date <= today;
+  // answers close when the event starts (its date and time, Israel time; midnight when no valid time is set)
+  const nowIL = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Jerusalem',
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date());
+  const startsAt = inv.event_date
+    ? `${inv.event_date} ${/^([01]?\d|2[0-3]):[0-5]\d$/.test(inv.event_time ?? '') ? String(inv.event_time).padStart(5, '0') : '00:00'}`
+    : null;
+  const locked = !!startsAt && startsAt <= nowIL;
   const d = inv.event_date ? new Date(inv.event_date + 'T00:00:00') : null;
   const dayNum = d ? d.getDate() : null;
   const monthName = d ? d.toLocaleDateString(loc, { month: 'long' }) : '';
