@@ -2961,11 +2961,6 @@ button.primary.danger-fill {
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .inv-actions .btn.wa {
-    grid-column: 1 / -1;
-    min-height: 46px;
-    font-size: 16px;
-  }
   .inv-actions .btn.danger,
   .inv-actions .btn.danger-fill {
     grid-column: 1 / -1;
