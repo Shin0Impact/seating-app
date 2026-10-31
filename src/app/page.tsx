@@ -4,6 +4,7 @@ import { Logo } from '@/components/Site';
 import LangToggle from '@/components/LangToggle';
 import SiteSettings from '@/components/SiteSettings';
 import { getS } from '@/lib/lang-server';
+import { adminClient } from '@/lib/supabase/admin';
 import { serverClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/supabase/env';
 import { signOut } from '@/app/actions';
@@ -22,7 +23,8 @@ async function signIn(form: FormData) {
   const supabase = await serverClient();
   let email = typed;
   if (typed && !typed.includes('@')) {
-    const { data } = await supabase.rpc('login_email', { p_username: typed });
+    // The lookup runs with the server's secret key, so visitors cannot call it themselves (see migration 0011).
+    const { data } = await (adminClient() ?? supabase).rpc('login_email', { p_username: typed });
     email = typeof data === 'string' && data ? data : `${typed}@invalid.local`;
   }
   const { error } = await supabase.auth.signInWithPassword({ email, password });
