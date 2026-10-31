@@ -170,3 +170,26 @@ describe('group updates for names already in the list', () => {
     expect(r.groupUpdates.get(existing[0].id)).toBe('أ');
   });
 });
+
+describe('sure/maybe for names already in the list', () => {
+  const existing = [
+    newGuest('سامي عيلبوني', '', null),
+    newGuest('سامي عيلبوني +1', '', null),
+    newGuest('منى خوري', '', null),
+  ];
+  const map = { name: 0, surname: NO_COLUMN, group: NO_COLUMN, count: NO_COLUMN, table: NO_COLUMN, expect: 1 };
+  it("puts the file's guess on the named guest, sized to the invite, and ignores empty cells", () => {
+    const r = buildGuests(
+      [
+        ['سامي عيلبوني', '1 أكيد 1 ممكن'],
+        ['منى خوري', ''],
+      ],
+      map,
+      existing,
+      [],
+    );
+    expect(r.expectUpdates.get(existing[0].id)).toEqual({ sure: 1, maybe: 1 });
+    expect(r.expectUpdates.has(existing[1].id)).toBe(false);
+    expect(r.expectUpdates.has(existing[2].id)).toBe(false);
+  });
+});

@@ -8,7 +8,7 @@ import { Key } from '@/lib/i18n';
 import { PLUS, inviteDrafts } from '@/lib/invites';
 import { matches } from '@/lib/search';
 import { Icon, IconButton } from './Icon';
-import { ImportGuests } from './ImportGuests';
+import { ImportGuests, type ImportChanges } from './ImportGuests';
 
 type Props = {
   t: (k: Key) => string;
@@ -19,12 +19,20 @@ type Props = {
   onAskRemove?: (id: string) => void;
   /** Teardrop button on seated guests: open the hall zoomed on their chair. */
   onLocate?: (g: Guest) => void;
-  onImportAll?: (added: Guest[], newTables: TableEl[], regroup: Map<string, string>) => void;
+  onImportAll?: (added: Guest[], newTables: TableEl[], changes: ImportChanges) => void;
 };
 
-/** Gives the people in `regroup` (id -> group) their new group. */
-export const regroupGuests = (guests: Guest[], regroup: Map<string, string>) =>
-  regroup.size ? guests.map((g) => (regroup.has(g.id) ? { ...g, group: regroup.get(g.id)! } : g)) : guests;
+/** Applies the group / sure-maybe changes an import asked for to people already in the list. */
+export const applyChanges = (guests: Guest[], c: ImportChanges) =>
+  c.group.size + c.expect.size === 0
+    ? guests
+    : guests.map((g) => {
+        const group = c.group.get(g.id);
+        const expect = c.expect.get(g.id);
+        return group === undefined && expect === undefined
+          ? g
+          : { ...g, ...(group === undefined ? {} : { group }), ...(expect === undefined ? {} : { expect }) };
+      });
 
 type Filter = 'all' | 'unseated' | 'seated';
 
@@ -137,10 +145,10 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
               t={t}
               guests={guests}
               tables={tables}
-              onImport={(added, made, regroup) =>
+              onImport={(added, made, changes) =>
                 onImportAll && made.length
-                  ? onImportAll(added, made, regroup)
-                  : onChange([...regroupGuests(guests, regroup), ...added])
+                  ? onImportAll(added, made, changes)
+                  : onChange([...applyChanges(guests, changes), ...added])
               }
               onClose={() => setImporting(false)}
             />
