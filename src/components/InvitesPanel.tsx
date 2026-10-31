@@ -8,6 +8,8 @@ import { inviteDrafts, makeToken } from '@/lib/invites';
 import { DEFAULT_OPTIONS, newGuest, parseLayout, type Expect, type Guest, type Layout } from '@/lib/layout';
 import { chairsInHall, chairsNeeded, expectTotals, expected, kindOf, type ExpectKind } from '@/lib/expect';
 import InviteMap from './InviteMap';
+import { ConfirmDialog } from './editor/ConfirmDialog';
+import { Select } from './Select';
 import { Icon } from './Icon';
 import { matches } from '@/lib/search';
 import { browserClient } from '@/lib/supabase/browser';
@@ -238,14 +240,18 @@ export default function InvitesPanel({
    * arrival) goes back to empty; an answer the family gave itself earlier is kept.
    */
   function resetArrival(r: InviteRow) {
-    if (!window.confirm(s('undoArrivedConfirm'))) return;
     const same = (t?: string | null) => !!t && t === r.checked_in_at;
-    void patchInvite(r, {
-      checked_in_at: null,
-      ...(same(r.responded_at) ? { status: 'pending', confirmed_count: null, responded_at: null } : {}),
-      ...(same(r.sent_at) ? { sent_at: null } : {}),
+    setAsk({
+      text: s('undoArrivedConfirm'),
+      onYes: () => {
+        void patchInvite(r, {
+          checked_in_at: null,
+          ...(same(r.responded_at) ? { status: 'pending', confirmed_count: null, responded_at: null } : {}),
+          ...(same(r.sent_at) ? { sent_at: null } : {}),
+        });
+        setArriving(null);
+      },
     });
-    setArriving(null);
   }
 
   async function copy(text: string, done: string) {
@@ -431,6 +437,7 @@ export default function InvitesPanel({
       pending.current.delete(r.token);
     }
   }
+  const [ask, setAsk] = useState<{ text: string; onYes: () => void } | null>(null);
   const [arriving, setArriving] = useState<{ token: string; n: number } | null>(null);
   const [confirmDel, setConfirmDel] = useState<string | null>(null); // token, or 'all'
 
@@ -470,6 +477,21 @@ export default function InvitesPanel({
 
   return (
     <>
+      {ask && (
+        <ConfirmDialog
+          label={s('confirmYes')}
+          text={ask.text}
+          confirmLabel={s('confirmYes')}
+          cancelLabel={s('cancel')}
+          danger={false}
+          onConfirm={() => {
+            const go = ask.onYes;
+            setAsk(null);
+            go();
+          }}
+          onCancel={() => setAsk(null)}
+        />
+      )}
       <div className="stats">
         <div className="stat">
           <b>{tot.families}</b>
@@ -635,14 +657,14 @@ export default function InvitesPanel({
         </label>
         <div className="toolbar-row">
           {groups.length > 1 && (
-            <select value={group} onChange={(e) => setGroup(e.target.value)} aria-label={s('groupAria')}>
+            <Select value={group} onChange={(e) => setGroup(e.target.value)} aria-label={s('groupAria')}>
               <option value="">{s('allGroups')}</option>
               {groups.map((g) => (
                 <option key={g} value={g}>
                   {g}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
           <button className="btn small" onClick={csv} disabled={rows.length === 0}>
             {s('downloadLinks')}
@@ -815,7 +837,12 @@ export default function InvitesPanel({
                         hour: '2-digit',
                         minute: '2-digit',
                       });
-                      if (!window.confirm(s('alreadySentConfirm', { when }))) e.preventDefault();
+                      e.preventDefault();
+                      const href = e.currentTarget.href;
+                      setAsk({
+                        text: s('alreadySentConfirm', { when }),
+                        onYes: () => window.open(href, '_blank', 'noopener,noreferrer'),
+                      });
                       return;
                     }
                     void setSent(r, true);

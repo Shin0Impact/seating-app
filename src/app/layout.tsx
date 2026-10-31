@@ -6,6 +6,7 @@ import { LangProvider } from '@/components/LangProvider';
 import { getLang } from '@/lib/lang-server';
 import { dirOf } from '@/lib/i18n';
 import PwaRegister from '@/components/PwaRegister';
+import { NativeUi } from '@/components/NativeUi';
 
 export const metadata: Metadata = {
   title: 'طاولتنا · Our Table',
@@ -24,7 +25,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
       </head>
       <body>
-        <LangProvider initial={lang}>{children}</LangProvider>
+        <LangProvider initial={lang}>
+          {children}
+          <NativeUi />
+        </LangProvider>
         <PwaRegister />
       </body>
     </html>

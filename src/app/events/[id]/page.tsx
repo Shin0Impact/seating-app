@@ -1,3 +1,4 @@
+import { DateField, TimeField } from '@/components/PickerFields';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { SiteHeader, StepBar } from '@/components/Site';
@@ -153,11 +154,11 @@ export default async function EventHome({
             </label>
             <label className="field-col">
               {s('dateLabel')}
-              <input name="date" type="date" defaultValue={ev.event_date ?? ''} />
+              <DateField name="date" defaultValue={ev.event_date ?? ''} />
             </label>
             <label className="field-col">
               {s('timeLabel')}
-              <input name="time" type="time" defaultValue={ev.event_time ?? ''} />
+              <TimeField name="time" defaultValue={ev.event_time ?? ''} />
             </label>
             <label className="field-col">
               {s('venueLabel')}
