@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { browserClient } from '@/lib/supabase/browser';
 import { parseLayout, type Layout } from '@/lib/layout';
-import { locate } from '@/lib/invites';
+import { locate, seatsSummary } from '@/lib/invites';
 import { buildFocus } from '@/lib/route';
 import { useS } from './LangProvider';
+import ZoomPan from './ZoomPan';
 import Scanner, { ScanResultView, type ScanResult } from './Scanner';
 
 type Inv = {
@@ -31,7 +32,6 @@ export default function HelperDesk({ token }: { token: string }) {
   const [walk, setWalk] = useState({ name: '', n: 1 });
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
-  const [where, setWhere] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const { data: d, error } = await sb.rpc('helper_get', { p_token: token });
@@ -171,29 +171,44 @@ export default function HelperDesk({ token }: { token: string }) {
           <ul className="inv-list">
             {rows.slice(0, 60).map(({ i, name }) => (
               <li key={i.token} className="inv">
-                <div className="inv-main">
+                <div className="helper-top">
+                  <span className="num-sq">{i.confirmed_count ?? i.party_size}</span>
                   <b>{name}</b>
-                  <span className="muted"> · {i.party_size}</span>
+                </div>
+                <div className="helper-btns">
+                  {(() => {
+                    const ids = [i.guest_id, ...i.member_ids];
+                    const f = layout ? buildFocus(layout, ids) : null;
+                    const text = layout
+                      ? seatsSummary(
+                          layout,
+                          ids,
+                          (table, n, chairs) =>
+                            s('tableChairs', { table, word: n === 1 ? s('chairOne') : s('chairMany'), chairs }),
+                          s('andWord'),
+                        )
+                      : '';
+                    return f && layout ? (
+                      <ZoomPan
+                        label={text || s('tableOnly', { table: f.table })}
+                        map={{ layout: { ...layout, guests: [] }, focus: f }}
+                      />
+                    ) : (
+                      <span className="btn zp-open" aria-disabled>
+                        {s('noTableYet')}
+                      </span>
+                    );
+                  })()}
                   <button
-                    className="btn small"
-                    aria-expanded={where === i.token}
-                    onClick={() => setWhere(where === i.token ? null : i.token)}
-                  >
-                    {s('helperWhere')}
-                  </button>
-                  <button
-                    className={`btn small${i.checked_in_at ? ' arrived-on' : ''}`}
+                    className={`btn${i.checked_in_at ? ' arrived-on' : ''}`}
                     aria-expanded={open?.token === i.token}
                     onClick={() =>
                       setOpen(open?.token === i.token ? null : { token: i.token, n: i.confirmed_count ?? i.party_size })
                     }
                   >
-                    {i.checked_in_at
-                      ? s('helperArrivedMark', { n: i.confirmed_count ?? i.party_size })
-                      : s('markArrived')}
+                    {s('markArrived')}
                   </button>
                 </div>
-                {where === i.token && <ScanResultView res={describe(i)} />}
                 {open?.token === i.token && (
                   <div className="arr-panel" role="group" aria-label={s('arrivedHowMany')}>
                     <span>{s('arrivedHowMany')}</span>
@@ -238,38 +253,30 @@ export default function HelperDesk({ token }: { token: string }) {
 
       <form className="card-box helper-walk" onSubmit={addWalkin}>
         <h2>{s('helperWalkin')}</h2>
-        <input
-          className="field-input"
-          value={walk.name}
-          maxLength={56}
-          onChange={(e) => {
-            setMsg('');
-            setWalk({ ...walk, name: e.target.value });
-          }}
-          placeholder={s('helperWalkinName')}
-          aria-label={s('helperWalkinName')}
-        />
-        <div className="arr-panel">
-          <span>{s('helperHowMany')}</span>
-          <span className="stepper">
-            <button
-              type="button"
-              aria-label="−"
-              disabled={walk.n <= 1}
-              onClick={() => setWalk({ ...walk, n: walk.n - 1 })}
-            >
-              −
-            </button>
-            <output>{walk.n}</output>
-            <button
-              type="button"
-              aria-label="+"
-              disabled={walk.n >= 50}
-              onClick={() => setWalk({ ...walk, n: walk.n + 1 })}
-            >
-              +
-            </button>
-          </span>
+        <div className="walk-row">
+          <input
+            className="num-sq-input"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={50}
+            value={walk.n}
+            onChange={(e) =>
+              setWalk({ ...walk, n: Math.min(50, Math.max(1, Number.parseInt(e.target.value, 10) || 1)) })
+            }
+            aria-label={s('helperHowMany')}
+          />
+          <input
+            className="field-input"
+            value={walk.name}
+            maxLength={56}
+            onChange={(e) => {
+              setMsg('');
+              setWalk({ ...walk, name: e.target.value });
+            }}
+            placeholder={s('helperWalkinName')}
+            aria-label={s('helperWalkinName')}
+          />
         </div>
         <button className="btn primary" disabled={busy || !walk.name.trim()}>
           {s('helperWalkinAdd')}

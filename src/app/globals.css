@@ -4707,3 +4707,79 @@ input[type='number'] {
   border: 1px solid var(--line);
   border-radius: 10px;
 }
+.helper .inv {
+  display: grid;
+  gap: 10px;
+}
+.helper-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.helper-top b {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.num-sq {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line-strong, var(--line));
+  border-radius: 10px;
+  background: var(--surface);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.helper-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.helper-btns .btn {
+  justify-content: center;
+  min-height: 44px;
+  min-width: 0;
+  text-align: center;
+}
+/* arrived is shown in the app's blue, not green */
+.helper .btn.arrived-on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.walk-row {
+  display: flex;
+  gap: 8px;
+}
+.walk-row .field-input {
+  flex: 1;
+  min-width: 0;
+}
+.num-sq-input {
+  flex: none;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  text-align: center;
+  font: inherit;
+  font-weight: 700;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.num-sq-input::-webkit-outer-spin-button,
+.num-sq-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.walk-row .num-sq-input {
+  flex: 0 0 44px;
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+}
