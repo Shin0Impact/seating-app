@@ -7,6 +7,7 @@ import { useLang, useS } from './LangProvider';
 import { GuestsView, applyChanges } from './GuestsView';
 import { Guest, Layout, TableEl, placeNewTables } from '@/lib/layout';
 import { browserClient } from '@/lib/supabase/browser';
+import { ConfirmDialog } from './editor/ConfirmDialog';
 
 type Status = 'saved' | 'saving' | 'error' | 'conflict';
 
@@ -18,6 +19,7 @@ export default function GuestsStep({ id, initial, version }: { id: string; initi
   const t = useCallback((k: keyof typeof STRINGS.ar) => STRINGS[lang][k], [lang]);
   const [layout, setLayout] = useState(initial);
   const [status, setStatus] = useState<Status>('saved');
+  const [askRemove, setAskRemove] = useState<string | null>(null);
   const ver = useRef(version);
   const pending = useRef<Layout | null>(null);
   const busy = useRef(false);
@@ -76,6 +78,7 @@ export default function GuestsStep({ id, initial, version }: { id: string; initi
         guests={layout.guests}
         tables={tables}
         onChange={(guests: Guest[]) => commit({ ...layoutRef.current, guests })}
+        onAskRemove={setAskRemove}
         onImportAll={(added, made, changes) => {
           const l = layoutRef.current;
           commit({
@@ -88,6 +91,21 @@ export default function GuestsStep({ id, initial, version }: { id: string; initi
           void flush().then(() => router.push(`/events/${id}/hall?focus=${g.id}`));
         }}
       />
+      {askRemove && (
+        <ConfirmDialog
+          label={t('removeGuest')}
+          text={t('confirmRemoveGuest').replace('{name}', layout.guests.find((g) => g.id === askRemove)?.name ?? '')}
+          confirmLabel={t('removeGuest')}
+          cancelLabel={t('importCancel')}
+          onConfirm={() => {
+            const gid = askRemove;
+            setAskRemove(null);
+            const l = layoutRef.current;
+            commit({ ...l, guests: l.guests.filter((g) => g.id !== gid) });
+          }}
+          onCancel={() => setAskRemove(null)}
+        />
+      )}
     </div>
   );
 }

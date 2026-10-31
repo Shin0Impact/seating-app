@@ -52,6 +52,7 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
   const [expFilter, setExpFilter] = useState<'all' | ExpectKind>('all');
   const [groupFilter, setGroupFilter] = useState('');
   const [tableFilter, setTableFilter] = useState('');
+  const nameBefore = useRef<Record<string, string>>({});
   const [filtersOpen, setFiltersOpen] = useState(false);
   const activeFilters =
     (filter !== 'all' ? 1 : 0) + (expFilter !== 'all' ? 1 : 0) + (tableFilter ? 1 : 0) + (groupFilter ? 1 : 0);
@@ -181,9 +182,15 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
             maxLength={LIMITS.nameMax}
             value={g.name}
             aria-label={t('guestName')}
+            onFocus={() => (nameBefore.current[g.id] = g.name)}
             onChange={(e) => update(g.id, { name: e.target.value }, 'name')}
             onBlur={(e) => {
-              if (!e.target.value.trim()) remove(g.id);
+              // An emptied name does not silently delete the guest: put the name back and ask first.
+              if (e.target.value.trim()) return;
+              const before = nameBefore.current[g.id];
+              if (before) update(g.id, { name: before }, 'name');
+              if (onAskRemove) onAskRemove(g.id);
+              else if (!before) remove(g.id);
             }}
           />
         </div>
