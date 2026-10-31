@@ -14,6 +14,7 @@ export default function GuestCount({
   action,
   waitingExtra = 0,
   saved = false,
+  locked = false,
 }: {
   count: number;
   pending?: boolean;
@@ -21,6 +22,8 @@ export default function GuestCount({
   action?: (form: FormData) => void | Promise<void>;
   waitingExtra?: number;
   saved?: boolean;
+  /** The answer is closed (scanned at the door, or the day of the event has come): no Change button. */
+  locked?: boolean;
 }) {
   const s = useS();
   const [open, setOpen] = useState(false);
@@ -43,7 +46,7 @@ export default function GuestCount({
     <div className="guest-count">
       <div className="gc-row">
         <b>{s('guestsRegistered', { n: pending ? value : count })}</b>
-        {!open && (
+        {!open && !(locked && !pending) && (
           <button type="button" className="btn small" onClick={() => setOpen(true)}>
             {s('changeCount')}
           </button>
