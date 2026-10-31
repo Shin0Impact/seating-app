@@ -21,7 +21,7 @@ const nextConfig = {
       { source: '/:path*', headers: security },
       // An invite link carries a secret: never pass it on to the sites it links to (the venue map, etc.).
       {
-        source: '/r/:token*',
+        source: '/:p(r|h)/:token*',
         headers: [
           { key: 'Referrer-Policy', value: 'no-referrer' },
           { key: 'Cache-Control', value: 'no-store' },

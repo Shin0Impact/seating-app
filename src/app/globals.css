@@ -4677,3 +4677,33 @@ input[type='number'] {
   -moz-appearance: textfield;
   appearance: textfield;
 }
+
+/* door helpers */
+.helper {
+  display: grid;
+  gap: 12px;
+}
+.helper-search {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.helper-walk,
+.helper-link {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+.helper-walk h2,
+.helper-link h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.helper-walk .field-input,
+.helper-link .field-input {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}

@@ -9,7 +9,7 @@ import HallPreview from './HallPreview';
 import type { Focus } from '@/lib/route';
 import type { Layout } from '@/lib/layout';
 
-type Result =
+export type ScanResult =
   | {
       ok: true;
       already: string | null;
@@ -24,36 +24,45 @@ type Result =
 
 const tokenFrom = (text: string) => text.trim().split(/[/?#]/).filter(Boolean).pop() ?? '';
 
-export default function Scanner() {
+export default function Scanner({ check }: { check?: (token: string) => Promise<ScanResult> }) {
   const s = useS();
   const { lang } = useLang();
   const video = useRef<HTMLVideoElement>(null);
-  const [res, setRes] = useState<Result | null>(null);
+  const [res, setRes] = useState<ScanResult | null>(null);
   const [cam, setCam] = useState<'starting' | 'on' | 'off'>('starting');
   const [manual, setManual] = useState('');
   const lock = useRef(false);
   const lastTok = useRef({ t: '', at: 0 });
 
-  const submit = useCallback(async (raw: string) => {
-    const token = tokenFrom(raw);
-    if (!isToken(token)) return;
-    const now = Date.now();
-    if (lock.current || (lastTok.current.t === token && now - lastTok.current.at < 4000)) return;
-    lock.current = true;
-    lastTok.current = { t: token, at: now };
-    try {
-      const r = await fetch('/api/checkin', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ token }),
-      });
-      setRes((await r.json()) as Result);
-      navigator.vibrate?.(r.ok ? 80 : [60, 60, 60]);
-    } catch {
-      setRes({ error: 'network' });
-    }
-    lock.current = false;
-  }, []);
+  const submit = useCallback(
+    async (raw: string) => {
+      const token = tokenFrom(raw);
+      if (!isToken(token)) return;
+      const now = Date.now();
+      if (lock.current || (lastTok.current.t === token && now - lastTok.current.at < 4000)) return;
+      lock.current = true;
+      lastTok.current = { t: token, at: now };
+      try {
+        if (check) {
+          const out = await check(token);
+          setRes(out);
+          navigator.vibrate?.('ok' in out ? 80 : [60, 60, 60]);
+        } else {
+          const r = await fetch('/api/checkin', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ token }),
+          });
+          setRes((await r.json()) as ScanResult);
+          navigator.vibrate?.(r.ok ? 80 : [60, 60, 60]);
+        }
+      } catch {
+        setRes({ error: 'network' });
+      }
+      lock.current = false;
+    },
+    [check],
+  );
 
   useEffect(() => {
     let stop = false;
