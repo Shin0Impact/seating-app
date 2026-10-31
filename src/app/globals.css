@@ -4213,7 +4213,7 @@ button.primary.danger-fill {
   padding: 12px 14px;
 }
 .glist .guest.seated {
-  border-inline-start-color: var(--good-ink);
+  border-inline-start-color: var(--accent);
 }
 .glist .guest.unseated {
   border-inline-start-color: #d9a441;

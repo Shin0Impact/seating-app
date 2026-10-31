@@ -1,7 +1,8 @@
 'use client';
 
 import { Fragment, useMemo, useRef, useState } from 'react';
-import { roles, setRole, type ExpectKind } from '@/lib/expect';
+import { planned, roles, setRole, type ExpectKind } from '@/lib/expect';
+import { ExpectSteppers } from './ExpectSteppers';
 import { Guest, LIMITS, TableEl, firstFreeSeat, newGuest, seatGuest, seatedCounts } from '@/lib/layout';
 import { Key } from '@/lib/i18n';
 import { PLUS, inviteDrafts } from '@/lib/invites';
@@ -46,6 +47,7 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
   const [bulk, setBulk] = useState('');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
+  const [expFilter, setExpFilter] = useState<'all' | ExpectKind>('all');
   const [groupFilter, setGroupFilter] = useState('');
   const [importing, setImporting] = useState(false);
   const roleMap = useMemo(() => roles(guests), [guests]);
@@ -120,6 +122,12 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
     </option>
   );
 
+  const sizeOf = useMemo(() => new Map(inviteDrafts(guests).map((d) => [d.guestId, d.partySize])), [guests]);
+  const roleCount = useMemo(() => {
+    const n = { sure: 0, maybe: 0, court: 0 };
+    for (const k of roleMap.values()) n[k] += 1;
+    return n;
+  }, [roleMap]);
   const rows = useMemo(() => {
     const out: { head: { g: Guest; i: number }; kids: { g: Guest; i: number }[] }[] = [];
     for (const v of visible) {
@@ -127,8 +135,12 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
       if (PLUS.test(v.g.name) && last) last.kids.push(v);
       else out.push({ head: v, kids: [] });
     }
-    return out;
-  }, [visible]);
+    if (expFilter === 'all') return out;
+    const is = (id: string) => (roleMap.get(id) ?? 'sure') === expFilter;
+    return out
+      .map((r) => ({ head: r.head, kids: r.kids.filter((k) => is(k.g.id)) }))
+      .filter((r) => is(r.head.g.id) || r.kids.length > 0);
+  }, [visible, expFilter, roleMap]);
 
   const kidsSummary = (rs: ExpectKind[]) => {
     const n = (k: ExpectKind) => rs.filter((x) => x === k).length;
@@ -214,6 +226,7 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
           )}
         </div>
         <div className="guest-exp">
+          {PLUS.test(g.name) ? (
           <span className="role-seg" role="group" aria-label={`${t('expSure')} / ${t('expMaybe')}`}>
             {(['sure', 'maybe', 'court'] as ExpectKind[]).map((k) => (
               <button
@@ -227,6 +240,18 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
               </button>
             ))}
           </span>
+          ) : (
+            <ExpectSteppers
+              size={sizeOf.get(g.id) ?? 1}
+              value={planned(g, sizeOf.get(g.id) ?? 1)}
+              labels={{ sure: t('expSure'), maybe: t('expMaybe'), court: t('expCourt') }}
+              onChange={(sure, maybe) => {
+                const size = sizeOf.get(g.id) ?? 1;
+                const s0 = Math.max(0, Math.min(size, sure));
+                update(g.id, { expect: { sure: s0, maybe: Math.max(0, Math.min(size - s0, maybe)) } }, 'exp');
+              }}
+            />
+          )}
         </div>
         <div className="guest-acts">
           {onLocate &&
@@ -411,6 +436,22 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
               <option value="unseated">{t('filterUnseated')}</option>
               <option value="seated">{t('filterSeated')}</option>
             </select>
+            <select
+              value={expFilter}
+              onChange={(e) => setExpFilter(e.target.value as 'all' | ExpectKind)}
+              aria-label={t('filterExpAll')}
+            >
+              <option value="all">{t('filterExpAll')}</option>
+              <option value="sure">
+                {t('expSure')} ({roleCount.sure})
+              </option>
+              <option value="maybe">
+                {t('expMaybe')} ({roleCount.maybe})
+              </option>
+              <option value="court">
+                {t('expCourt')} ({roleCount.court})
+              </option>
+            </select>
             <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} aria-label={t('groupAll')}>
               <option value="">{t('groupAll')}</option>
               {groups.map((g) => (
@@ -430,7 +471,7 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
                 {renderCard(head.g, head.i)}
                 {kids.length > 0 && (
                   <li className="kids-wrap">
-                    <details className="kids">
+                    <details className="kids" open={expFilter !== 'all'} key={expFilter}>
                       <summary>
                         <span dir="ltr">+{kids.length}</span>
                         <span className="kids-sum">{kidsSummary(kids.map((k) => roleMap.get(k.g.id) ?? 'sure'))}</span>
