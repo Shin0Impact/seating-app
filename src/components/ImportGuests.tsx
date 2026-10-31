@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Expect, Guest, TableEl } from '@/lib/layout';
+import { Select } from './Select';
 import { Icon } from './Icon';
 import { Key } from '@/lib/i18n';
 import { looksLikeXlsx, xlsxToText } from '@/lib/xlsx';
@@ -94,7 +95,7 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
   const select = (key: keyof Mapping, optional: boolean, label: string) => (
     <label className="field">
       <span>{label}</span>
-      <select value={map[key] ?? NO_COLUMN} onChange={(e) => setMap({ ...map, [key]: Number(e.target.value) })}>
+      <Select value={map[key] ?? NO_COLUMN} onChange={(e) => setMap({ ...map, [key]: Number(e.target.value) })}>
         {optional && <option value={NO_COLUMN}>{t('importNone')}</option>}
         {!optional && (map[key] ?? NO_COLUMN) === NO_COLUMN && <option value={NO_COLUMN}>{t('importNone')}</option>}
         {Array.from({ length: cols }, (_, i) => (
@@ -102,7 +103,7 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
             {colLabel(i)}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   );
 

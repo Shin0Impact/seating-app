@@ -7,6 +7,8 @@ import { Guest, LIMITS, TableEl, firstFreeSeat, newGuest, seatGuest, seatedCount
 import { Key } from '@/lib/i18n';
 import { PLUS, inviteDrafts } from '@/lib/invites';
 import { matches } from '@/lib/search';
+import { GroupInput } from './GroupInput';
+import { Select } from './Select';
 import { Icon, IconButton } from './Icon';
 import { ImportGuests, type ImportChanges } from './ImportGuests';
 
@@ -186,17 +188,16 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
           />
         </div>
         <div className="guest-bottom">
-          <input
+          <GroupInput
             className="g-group"
-            type="text"
-            list="group-list"
             maxLength={LIMITS.groupMax}
             value={g.group}
+            suggestions={groups}
             placeholder={t('guestGroup')}
             aria-label={t('guestGroup')}
-            onChange={(e) => update(g.id, { group: e.target.value }, 'group')}
+            onValue={(v) => update(g.id, { group: v }, 'group')}
           />
-          <select
+          <Select
             className="g-table"
             value={g.tableId ?? ''}
             aria-label={t('table')}
@@ -210,9 +211,9 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
           >
             <option value="">{t('unseated')}</option>
             {tables.map(tableOption)}
-          </select>
+          </Select>
           {tb ? (
-            <select
+            <Select
               className="g-chair"
               value={g.seat ?? ''}
               aria-label={t('chair')}
@@ -231,7 +232,7 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
                   </option>
                 );
               })}
-            </select>
+            </Select>
           ) : (
             <span className="g-chair" />
           )}
@@ -373,26 +374,20 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
                 )}
                 <label className="field af-group">
                   <span>{t('guestGroup')}</span>
-                  <input
-                    type="text"
-                    list="group-list"
+                  <GroupInput
                     maxLength={LIMITS.groupMax}
                     value={group}
-                    onChange={(e) => setGroup(e.target.value)}
-                    autoComplete="off"
+                    suggestions={groups}
+                    aria-label={t('guestGroup')}
+                    onValue={setGroup}
                   />
-                  <datalist id="group-list">
-                    {groups.map((g) => (
-                      <option key={g} value={g} />
-                    ))}
-                  </datalist>
                 </label>
                 <label className="field af-table">
                   <span>{t('table')}</span>
-                  <select value={tableId} onChange={(e) => setTableId(e.target.value)}>
+                  <Select value={tableId} onChange={(e) => setTableId(e.target.value)}>
                     <option value="">{t('unseated')}</option>
                     {tables.map(tableOption)}
-                  </select>
+                  </Select>
                 </label>
                 <label className="check af-step">
                   <input type="checkbox" checked={stepFree} onChange={(e) => setStepFree(e.target.checked)} />
@@ -455,12 +450,12 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
           </div>
           {filtersOpen && (
             <div className="filter-panel">
-              <select value={filter} onChange={(e) => setFilter(e.target.value as Filter)} aria-label={t('filterAll')}>
+              <Select value={filter} onChange={(e) => setFilter(e.target.value as Filter)} aria-label={t('filterAll')}>
                 <option value="all">{t('filterAll')}</option>
                 <option value="unseated">{t('filterUnseated')}</option>
                 <option value="seated">{t('filterSeated')}</option>
-              </select>
-              <select
+              </Select>
+              <Select
                 value={expFilter}
                 onChange={(e) => setExpFilter(e.target.value as 'all' | ExpectKind)}
                 aria-label={t('filterExpAll')}
@@ -475,19 +470,19 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
                 <option value="court">
                   {t('expCourt')} ({roleCount.court})
                 </option>
-              </select>
-              <select value={tableFilter} onChange={(e) => setTableFilter(e.target.value)} aria-label={t('tableAll')}>
+              </Select>
+              <Select value={tableFilter} onChange={(e) => setTableFilter(e.target.value)} aria-label={t('tableAll')}>
                 <option value="">{t('tableAll')}</option>
                 {tables.map(tableOption)}
-              </select>
-              <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} aria-label={t('groupAll')}>
+              </Select>
+              <Select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} aria-label={t('groupAll')}>
                 <option value="">{t('groupAll')}</option>
                 {groups.map((g) => (
                   <option key={g} value={g}>
                     {g}
                   </option>
                 ))}
-              </select>
+              </Select>
               {activeFilters > 0 && (
                 <button type="button" className="btn" onClick={clearFilters}>
                   {t('clearFilters')}

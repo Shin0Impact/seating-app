@@ -1,3 +1,4 @@
+import { DateField } from '@/components/PickerFields';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { SiteHeader } from '@/components/Site';
@@ -91,7 +92,7 @@ export default async function Events({
             </label>
             <label className="field-col">
               {s('dateOptional')}
-              <input name="date" type="date" />
+              <DateField name="date" />
             </label>
             <div className="row" style={{ display: 'flex', gap: 10 }}>
               <button className="btn">{s('createContinue')}</button>

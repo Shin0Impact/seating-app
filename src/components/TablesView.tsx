@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { LIMITS, Settings, TableEl, tableDims, tableFootprint } from '@/lib/layout';
 import { Key } from '@/lib/i18n';
+import { Select } from './Select';
 import { IconButton } from './Icon';
 import { NumField, round2 } from './NumField';
 
@@ -155,14 +156,14 @@ export function TablesView({
                         aria-label={t('name')}
                         onChange={(e) => onPatchTable(tb.id, { label: e.target.value }, 'label')}
                       />
-                      <select
+                      <Select
                         value={tb.shape}
                         aria-label={t('shape')}
                         onChange={(e) => onPatchTable(tb.id, { shape: e.target.value as 'round' | 'rect' }, 'shape')}
                       >
                         <option value="round">{t('shapeRound')}</option>
                         <option value="rect">{t('shapeRect')}</option>
-                      </select>
+                      </Select>
                       <NumField
                         label={t('chairs')}
                         hideLabel

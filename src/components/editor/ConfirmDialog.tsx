@@ -5,9 +5,10 @@ type Props = {
   cancelLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
+  danger?: boolean;
 };
 
-export function ConfirmDialog({ label, text, confirmLabel, cancelLabel, onConfirm, onCancel }: Props) {
+export function ConfirmDialog({ label, text, confirmLabel, cancelLabel, onConfirm, onCancel, danger = true }: Props) {
   return (
     <>
       <div className="picker-backdrop" onMouseDown={onCancel} />
@@ -19,7 +20,7 @@ export function ConfirmDialog({ label, text, confirmLabel, cancelLabel, onConfir
       >
         <p>{text}</p>
         <div className="row">
-          <button className="primary danger-fill" onClick={onConfirm} autoFocus>
+          <button className={danger ? 'primary danger-fill' : 'primary'} onClick={onConfirm} autoFocus>
             {confirmLabel}
           </button>
           <button onClick={onCancel}>{cancelLabel}</button>
