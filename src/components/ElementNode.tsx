@@ -4,6 +4,7 @@ import type Konva from 'konva';
 import { useMemo } from 'react';
 import { Circle, Group, Line, Rect, Text } from 'react-konva';
 import { canvasMeasure, fitChairLabel } from '@/lib/chairlabel';
+import type { ExpectKind } from '@/lib/expect';
 import {
   ChairSlot,
   Element,
@@ -51,6 +52,8 @@ type Props = {
   onChairPick?: (guestId: string) => void;
   /** While true elements cannot be dragged (people-picking mode). */
   locked?: boolean;
+  /** Each guest's part of their invite's guess: maybe chairs are drawn dashed, courtesy chairs faded. */
+  roles?: Map<string, ExpectKind>;
 };
 
 /** Chair name size in screen pixels: readable, growing a little with zoom. */
@@ -154,6 +157,7 @@ type ChairProps = {
   onOpen?: (clientX: number, clientY: number) => void;
   scale: number;
   name: string;
+  role?: ExpectKind;
 };
 
 function Chair({
@@ -171,6 +175,7 @@ function Chair({
   onTip,
   onOpen,
   scale,
+  role,
 }: ChairProps) {
   const shown = guest ? chairText(guest.name, scale) : null;
   const big = !!shown && scale >= 55;
@@ -261,7 +266,9 @@ function Chair({
         cornerRadius={Math.min(w, d) * 0.3}
         fill={guest ? groupColor(guest.group) : fill}
         stroke={guest ? COLORS.ink : COLORS.line}
-        strokeWidth={guest ? 1.25 : 0.75}
+        strokeWidth={guest ? (role === 'maybe' ? 1.6 : 1.25) : 0.75}
+        dash={guest && role === 'maybe' ? [4, 3] : undefined}
+        opacity={guest && role === 'court' ? 0.5 : 1}
         strokeScaleEnabled={false}
         listening={false}
       />
@@ -347,6 +354,7 @@ function Chairs(props: {
   pickedIds?: Set<string>;
   onChairPick?: (guestId: string) => void;
   scale: number;
+  roles?: Map<string, ExpectKind>;
 }) {
   const {
     el,
@@ -360,6 +368,7 @@ function Chairs(props: {
     pickedIds,
     onChairPick,
     scale,
+    roles,
   } = props;
   const cw = settings.seatWidth * 0.75;
   const cd = settings.chairDepth * 0.8;
@@ -382,6 +391,7 @@ function Chairs(props: {
           onOpen={(cx, cy) => onChairOpen?.(el.id, i, cx, cy)}
           scale={scale}
           name={`chair|${el.id}|${i}`}
+          role={seatGuests?.[i] ? roles?.get(seatGuests[i]!.id) : undefined}
         />
       ))}
     </>
@@ -443,6 +453,7 @@ export function ElementNode({
   pickedIds,
   onChairPick,
   locked,
+  roles,
 }: Props) {
   const stroke = issue === 'overlap' ? COLORS.overlap : issue === 'tight' ? COLORS.tight : COLORS.line;
   const chairFill = issue === 'overlap' ? COLORS.chairOverlap : issue === 'tight' ? COLORS.chairTight : COLORS.chair;
@@ -466,6 +477,7 @@ export function ElementNode({
             onChairTip={onChairTip}
             onChairOpen={onChairOpen}
             scale={scale}
+            roles={roles}
           />
           <Circle
             radius={d.diameter / 2}
@@ -496,6 +508,7 @@ export function ElementNode({
             onChairTip={onChairTip}
             onChairOpen={onChairOpen}
             scale={scale}
+            roles={roles}
           />
           <Rect
             x={-d.length / 2}

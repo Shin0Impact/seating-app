@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { SiteHeader, StepBar } from '@/components/Site';
 import HallPreview from '@/components/HallPreview';
+import { roles } from '@/lib/expect';
 import HallFileImport from '@/components/HallFileImport';
 import { getS } from '@/lib/lang-server';
 import { parseLayout } from '@/lib/layout';
@@ -30,7 +31,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ id: st
         <StepBar id={id} active="hall" />
         <Link href={hall} className="preview-card" aria-label={s('openDesignerAria')}>
           {layout.elements.length ? (
-            <HallPreview layout={layout} label={s('planTitle')} />
+            <HallPreview layout={layout} label={s('planTitle')} roles={roles(layout.guests)} />
           ) : (
             <p className="muted">{s('emptyHall')}</p>
           )}

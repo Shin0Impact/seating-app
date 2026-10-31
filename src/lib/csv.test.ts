@@ -108,3 +108,26 @@ describe('csv', () => {
     expect(off.guests.every((g) => g.tableId === null)).toBe(true);
   });
 });
+
+describe('expected column', () => {
+  it('finds an expected column by its header and stores the guess on the named guest', () => {
+    const rows = [
+      ['الاسم', 'العدد', 'احتمال'],
+      ['عائلة نصار', '6', '3 أكيد 3 ممكن'],
+      ['أبو جورج', '4', 'واجب'],
+      ['مها', '2', ''],
+    ];
+    const { mapping } = guessMapping(rows[0]);
+    expect(mapping.expect).toBe(2);
+    const res = buildGuests(rows.slice(1), mapping, [], []);
+    const head = (n: string) => res.guests.find((g) => g.name === n)!;
+    expect(head('عائلة نصار').expect).toEqual({ sure: 3, maybe: 3 });
+    expect(head('عائلة نصار +1').expect).toBeUndefined();
+    expect(head('أبو جورج').expect).toEqual({ sure: 0, maybe: 0 });
+    expect(head('مها').expect).toBeUndefined();
+  });
+  it('does not mistake the usual columns for it', () => {
+    const { mapping } = guessMapping(['Name', 'Group', 'Count', 'Table']);
+    expect(mapping.expect).toBe(-1);
+  });
+});

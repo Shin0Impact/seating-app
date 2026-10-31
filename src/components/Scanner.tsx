@@ -111,7 +111,14 @@ export default function Scanner() {
         >
           <input
             className="field-input"
-            style={{ flex: 1, minHeight: 44, padding: '0 12px', border: '1px solid var(--line)', borderRadius: 10 }}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              minHeight: 44,
+              padding: '0 12px',
+              border: '1px solid var(--line)',
+              borderRadius: 10,
+            }}
             value={manual}
             onChange={(e) => setManual(e.target.value)}
             placeholder={s('pasteCode')}

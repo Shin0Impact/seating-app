@@ -26,6 +26,7 @@ Stack: Next.js 16, React 19, TypeScript, Konva (canvas), Supabase (Postgres, Aut
 - One secret link per named guest ("Name +1" entries are folded into the invite). Share by WhatsApp or download a CSV.
 - Guests open the link without logging in, confirm how many are coming, request changes, and get a QR code and a map to their seat. They never see other guests.
 - Planners approve or reject change requests.
+- Planner-only guess per invite of who will come: how many are sure (أكيد), how many maybe (ممكن), the rest a courtesy invite (واجب). The family's own answer replaces the guess. Totals, chairs needed against the hall's chairs, filters, dashed "maybe" chairs on the plan, and an optional import column. Guests and the door scanner never see it.
 
 **Door check-in**
 

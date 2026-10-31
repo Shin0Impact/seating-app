@@ -5,7 +5,8 @@ import { fillMessage, inviteState, totals, whatsappUrl, type InviteRow, type Inv
 import { useLang, useS } from './LangProvider';
 import { localeOf, type SKey } from '@/lib/site-i18n';
 import { inviteDrafts, makeToken } from '@/lib/invites';
-import { newGuest, parseLayout, type Guest, type Layout } from '@/lib/layout';
+import { DEFAULT_OPTIONS, newGuest, parseLayout, type Expect, type Guest, type Layout } from '@/lib/layout';
+import { chairsInHall, chairsNeeded, expectTotals, expected, kindOf, type ExpectKind } from '@/lib/expect';
 import InviteMap from './InviteMap';
 import { Icon } from './Icon';
 import { matches } from '@/lib/search';
@@ -28,6 +29,13 @@ const STATE_KEY: Record<InviteState, SKey> = {
   arrived: 'stArrived',
 };
 const SHOWN = 150;
+const EXP_KEYS: { key: ExpectKind | 'all'; label: SKey }[] = [
+  { key: 'all', label: 'all' },
+  { key: 'sure', label: 'expSure' },
+  { key: 'maybe', label: 'expMaybe' },
+  { key: 'court', label: 'expCourt' },
+];
+const EXP_LABEL: Record<ExpectKind, SKey> = { sure: 'expSure', maybe: 'expMaybe', court: 'expCourt' };
 
 const WaIcon = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -67,6 +75,11 @@ export default function InvitesPanel({
   const [live, setLive] = useState(true);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<InviteState | 'all'>('all');
+  const [expFilter, setExpFilter] = useState<ExpectKind | 'all'>('all');
+  const [maybeSeats, setMaybeSeats] = useState(plan.options?.maybeSeats ?? DEFAULT_OPTIONS.maybeSeats);
+  /** Guesses changed here and not saved yet (head guest id -> guess); a refresh must not undo them. */
+  const pendingExp = useRef(new Map<string, Expect>());
+  const expTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [group, setGroup] = useState('');
   const [showTpl, setShowTpl] = useState(false);
   const [savedTpl, setSavedTpl] = useState<string | null>(null);
@@ -118,7 +131,15 @@ export default function InvitesPanel({
       });
       if (withGuests) {
         const ev = await sb.from('events').select('layout').eq('id', eventId).maybeSingle();
-        if (ev.data) setGuests(parseLayout(ev.data.layout).guests);
+        if (ev.data) {
+          const fresh = parseLayout(ev.data.layout);
+          setGuests(
+            fresh.guests.map((g) =>
+              pendingExp.current.has(g.id) ? { ...g, expect: pendingExp.current.get(g.id) } : g,
+            ),
+          );
+          setMaybeSeats(fresh.options?.maybeSeats ?? DEFAULT_OPTIONS.maybeSeats);
+        }
       }
     },
     [eventId],
@@ -214,6 +235,15 @@ export default function InvitesPanel({
   }
 
   const tot = totals(rows);
+  const expOf = useCallback((r: InviteRow) => expected(byGuest.get(r.guest_id), r.party_size, r), [byGuest]);
+  const expTot = useMemo(() => expectTotals(guests, rows), [guests, rows]);
+  const hallChairs = useMemo(() => chairsInHall(plan), [plan]);
+  const need = chairsNeeded(expTot, maybeSeats);
+  const expCounts = useMemo(() => {
+    const c: Record<string, number> = { all: rows.length };
+    for (const r of rows) c[kindOf(expOf(r))] = (c[kindOf(expOf(r))] ?? 0) + 1;
+    return c;
+  }, [rows, expOf]);
   const groups = useMemo(
     () =>
       [...new Set(rows.map((r) => byGuest.get(r.guest_id)?.group ?? '').filter(Boolean))].sort((a, b) =>
@@ -231,10 +261,11 @@ export default function InvitesPanel({
       rows.filter((r) => {
         const g = byGuest.get(r.guest_id);
         if (filter !== 'all' && inviteState(r) !== filter) return false;
+        if (expFilter !== 'all' && kindOf(expOf(r)) !== expFilter) return false;
         if (group && g?.group !== group) return false;
         return matches(query, g?.name ?? '', g?.group ?? '');
       }),
-    [rows, byGuest, filter, group, query],
+    [rows, byGuest, filter, expFilter, expOf, group, query],
   );
   const orphans = useMemo(() => rows.filter((r) => !byGuest.has(r.guest_id)), [rows, byGuest]);
   const changeReqs = useMemo(() => rows.filter((r) => r.change_requested_at && r.status === 'pending'), [rows]);
@@ -258,6 +289,53 @@ export default function InvitesPanel({
     await browserClient().from('invites').update({ extra_requested: 0, count_changed_at: null }).eq('token', r.token);
     pending.current.delete(r.token);
   }
+  /**
+   * Saves the sure / maybe guesses changed here into the plan. The saved plan is re-read first and only these guesses
+   * are written into it, so nothing else that changed meanwhile (another tab, the hall editor) is overwritten.
+   */
+  const saveGuesses = useCallback(async () => {
+    if (pendingExp.current.size === 0) return;
+    const batch = new Map(pendingExp.current);
+    const sb = browserClient();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const ev = await sb.from('events').select('layout,version').eq('id', eventId).maybeSingle();
+      if (!ev.data) break;
+      const layout = parseLayout(ev.data.layout);
+      const next = {
+        ...layout,
+        guests: layout.guests.map((g) => (batch.has(g.id) ? { ...g, expect: batch.get(g.id) } : g)),
+      };
+      const saved = await sb
+        .from('events')
+        .update({ layout: next, version: ev.data.version + 1, updated_at: new Date().toISOString() })
+        .eq('id', eventId)
+        .eq('version', ev.data.version)
+        .select('version');
+      if (saved.error) {
+        setMsg({ kind: 'err', text: s('expSaveFailed') + saved.error.message });
+        return;
+      }
+      if (saved.data && saved.data.length > 0) {
+        // keep anything changed again while this save was running
+        for (const [id, e] of batch) if (pendingExp.current.get(id) === e) pendingExp.current.delete(id);
+        if (pendingExp.current.size) void saveGuesses();
+        return;
+      }
+      // someone saved in between: read again and retry
+    }
+    setMsg({ kind: 'err', text: s('expSaveFailed') + s('planCheckFailed') });
+  }, [eventId, s]);
+
+  /** Changes one invite's guess right away on screen and saves it shortly after (several taps become one save). */
+  function setGuess(headId: string, size: number, sure: number, maybe: number) {
+    const e: Expect = { sure: Math.max(0, Math.min(size, sure)), maybe: 0 };
+    e.maybe = Math.max(0, Math.min(size - e.sure, maybe));
+    pendingExp.current.set(headId, e);
+    setGuests((cur) => cur.map((g) => (g.id === headId ? { ...g, expect: e } : g)));
+    if (expTimer.current) clearTimeout(expTimer.current);
+    expTimer.current = setTimeout(() => void saveGuesses(), 500);
+  }
+
   /** Adds the extra people to the plan ("Name +k", unseated, same group), grows the invite, and clears the request. */
   async function approveMore(r: InviteRow) {
     const n = r.extra_requested ?? 0;
@@ -374,6 +452,27 @@ export default function InvitesPanel({
           className="p-sent"
           style={{ width: `${pct(Math.max(0, tot.sent - tot.confirmedFamilies - tot.declined))}%` }}
         />
+      </div>
+      <div className="stats exp-stats">
+        <div className="stat exp-sure">
+          <b>{expTot.sure}</b>
+          <span>{s('expSure')}</span>
+        </div>
+        <div className="stat exp-maybe">
+          <b>{expTot.maybe}</b>
+          <span>{s('expMaybe')}</span>
+        </div>
+        <div className="stat exp-court">
+          <b>{expTot.court}</b>
+          <span>{s('expCourt')}</span>
+        </div>
+        <div className={`stat${need > hallChairs ? ' over' : ''}`}>
+          <b>{need}</b>
+          <span>
+            {s('chairsStat', { total: hallChairs })}
+            {need > hallChairs ? ` · ${s('chairsShort', { k: need - hallChairs })}` : ''}
+          </span>
+        </div>
       </div>
 
       {missing.length > 0 && (
@@ -505,9 +604,18 @@ export default function InvitesPanel({
         </div>
       </div>
       <div className="chips">
+        <span className="chips-label">{s('statusFilter')}</span>
         {FILTER_KEYS.map((f) => (
           <button key={f.key} className={`chip${filter === f.key ? ' on' : ''}`} onClick={() => setFilter(f.key)}>
             {s(f.label)} <em>{counts[f.key] ?? 0}</em>
+          </button>
+        ))}
+      </div>
+      <div className="chips">
+        <span className="chips-label">{s('expFilter')}</span>
+        {EXP_KEYS.map((f) => (
+          <button key={f.key} className={`chip${expFilter === f.key ? ' on' : ''}`} onClick={() => setExpFilter(f.key)}>
+            {s(f.label)} <em>{expCounts[f.key] ?? 0}</em>
           </button>
         ))}
       </div>
@@ -516,6 +624,8 @@ export default function InvitesPanel({
         {list.slice(0, SHOWN).map((r) => {
           const g = byGuest.get(r.guest_id);
           const st = inviteState(r);
+          const ex = expOf(r);
+          const kind = kindOf(ex);
           return (
             <li key={r.token} className={`inv${r.sent_at ? ' sent' : ''}`}>
               <div className="inv-main">
@@ -530,6 +640,11 @@ export default function InvitesPanel({
                     {s(STATE_KEY[st])}
                     {st === 'confirmed' ? ` (${r.confirmed_count ?? r.party_size}/${r.party_size})` : ''}
                   </span>
+                  {g && st !== 'declined' && (
+                    <span className={`exp-tag ${kind}`} title={s('expPrivate')}>
+                      {s(EXP_LABEL[kind])}
+                    </span>
+                  )}
                   {r.change_requested_at && r.status === 'pending' && (
                     <span className="pill waiting">
                       {s('changeRequested')}{' '}
@@ -560,6 +675,70 @@ export default function InvitesPanel({
                     </button>
                   </div>
                 )}
+                {g &&
+                  (ex.answered ? (
+                    <p className="exp-answer">
+                      {r.status === 'declined' ? s('expDeclined') : s('expAnswered', { n: ex.sure })}
+                    </p>
+                  ) : (
+                    <div className="exp-row">
+                      <span className="stepper sure">
+                        <span className="lbl">{s('expSure')}</span>
+                        <button
+                          type="button"
+                          aria-label={`${s('expSure')} −`}
+                          disabled={ex.sure === 0}
+                          onClick={() => setGuess(r.guest_id, r.party_size, ex.sure - 1, ex.maybe)}
+                        >
+                          −
+                        </button>
+                        <output>{ex.sure}</output>
+                        <button
+                          type="button"
+                          aria-label={`${s('expSure')} +`}
+                          disabled={ex.sure + ex.maybe >= r.party_size && ex.maybe === 0}
+                          onClick={() =>
+                            setGuess(
+                              r.guest_id,
+                              r.party_size,
+                              ex.sure + 1,
+                              ex.maybe - (ex.sure + ex.maybe >= r.party_size ? 1 : 0),
+                            )
+                          }
+                        >
+                          +
+                        </button>
+                      </span>
+                      <span className="stepper maybe">
+                        <span className="lbl">{s('expMaybe')}</span>
+                        <button
+                          type="button"
+                          aria-label={`${s('expMaybe')} −`}
+                          disabled={ex.maybe === 0}
+                          onClick={() => setGuess(r.guest_id, r.party_size, ex.sure, ex.maybe - 1)}
+                        >
+                          −
+                        </button>
+                        <output>{ex.maybe}</output>
+                        <button
+                          type="button"
+                          aria-label={`${s('expMaybe')} +`}
+                          disabled={ex.sure + ex.maybe >= r.party_size && ex.sure === 0}
+                          onClick={() =>
+                            setGuess(
+                              r.guest_id,
+                              r.party_size,
+                              ex.sure - (ex.sure + ex.maybe >= r.party_size ? 1 : 0),
+                              ex.maybe + 1,
+                            )
+                          }
+                        >
+                          +
+                        </button>
+                      </span>
+                      {ex.court > 0 && <span className="exp-rest">{s('expRest', { n: ex.court })}</span>}
+                    </div>
+                  ))}
                 <div className="inv-sub">
                   {g?.group && <span>{g.group}</span>}
                   {r.sent_at && (
@@ -631,6 +810,7 @@ export default function InvitesPanel({
           );
         })}
       </ul>
+      <p className="exp-private muted">{s('expPrivate')}</p>
       {list.length === 0 && <p className="empty">{rows.length === 0 ? s('noInvites') : s('noMatches')}</p>}
       {list.length > SHOWN && <p className="muted">{s('showingFirst', { n: SHOWN, total: list.length })}</p>}
     </>
