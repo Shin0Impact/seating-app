@@ -70,12 +70,37 @@ export function roles(guests: Guest[]): Map<string, ExpectKind> {
   const byGuest = new Map(guests.map((g) => [g.id, g]));
   const out = new Map<string, ExpectKind>();
   for (const d of inviteDrafts(guests)) {
-    const c = planned(byGuest.get(d.guestId), d.partySize);
-    [d.guestId, ...d.memberIds].forEach((id, i) =>
-      out.set(id, i < c.sure ? 'sure' : i < c.sure + c.maybe ? 'maybe' : 'court'),
-    );
+    const letters = roleLetters(byGuest.get(d.guestId), d.partySize);
+    [d.guestId, ...d.memberIds].forEach((id, i) => out.set(id, KIND[letters[i]]));
   }
   return out;
+}
+
+const KIND: Record<string, ExpectKind> = { s: 'sure', m: 'maybe', c: 'court' };
+const LETTER: Record<ExpectKind, string> = { sure: 's', maybe: 'm', court: 'c' };
+
+/** One letter per person on an invite: the saved per-person list while it agrees with the numbers, else sure, then maybe, then courtesy in order. */
+function roleLetters(head: Guest | undefined, size: number): string[] {
+  const c = planned(head, size);
+  const seq = head?.expect?.seq;
+  if (seq && seq.length === size) {
+    const n = (ch: string) => [...seq].filter((x) => x === ch).length;
+    if (n('s') === c.sure && n('m') === c.maybe) return [...seq];
+  }
+  return Array.from({ length: size }, (_, i) => (i < c.sure ? 's' : i < c.sure + c.maybe ? 'm' : 'c'));
+}
+
+/** Sets one person's part (sure / maybe / courtesy) and returns the updated guest list; the invite's numbers follow. */
+export function setRole(guests: Guest[], personId: string, kind: ExpectKind): Guest[] {
+  const byGuest = new Map(guests.map((g) => [g.id, g]));
+  const d = inviteDrafts(guests).find((x) => x.guestId === personId || x.memberIds.includes(personId));
+  if (!d) return guests;
+  const letters = roleLetters(byGuest.get(d.guestId), d.partySize);
+  const idx = [d.guestId, ...d.memberIds].indexOf(personId);
+  letters[idx] = LETTER[kind];
+  const seq = letters.join('');
+  const expect = { sure: letters.filter((x) => x === 's').length, maybe: letters.filter((x) => x === 'm').length, seq };
+  return guests.map((g) => (g.id === d.guestId ? { ...g, expect } : g));
 }
 
 const WORDS: Record<ExpectKind, RegExp> = {

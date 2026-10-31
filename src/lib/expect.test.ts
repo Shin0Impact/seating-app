@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { chairsInHall, chairsNeeded, expectTotals, expected, kindOf, planned, readExpectCell, roles } from './expect';
-import { parseLayout, type Guest } from './layout';
+import {
+  chairsInHall,
+  chairsNeeded,
+  expectTotals,
+  expected,
+  kindOf,
+  planned,
+  readExpectCell,
+  roles,
+  setRole,
+} from './expect';
+import { newGuest, parseLayout, type Guest } from './layout';
 
 const g = (id: string, name: string, extra: Partial<Guest> = {}): Guest => ({
   id,
@@ -137,5 +147,32 @@ describe('saving and loading', () => {
     expect(l.guests[2].expect).toBeUndefined();
     expect(l.options).toEqual({ maybeSeats: false });
     expect(parseLayout({ version: 1, elements: [] }).options).toEqual({ maybeSeats: true });
+  });
+});
+
+describe('per-person parts', () => {
+  const mk = () => {
+    const a = newGuest('Sami', 'G', null);
+    const b = newGuest('Sami +1', 'G', null);
+    const c = newGuest('Sami +2', 'G', null);
+    return [a, b, c];
+  };
+  it('sets one person and the invite numbers follow', () => {
+    const g = mk();
+    const next = setRole(g, g[1].id, 'maybe');
+    expect(next[0].expect).toMatchObject({ sure: 2, maybe: 1 });
+    const r = roles(next);
+    expect([r.get(g[0].id), r.get(g[1].id), r.get(g[2].id)]).toEqual(['sure', 'maybe', 'sure']);
+  });
+  it('can make the named guest the maybe one and keeps it that way', () => {
+    const g = mk();
+    const r = roles(setRole(g, g[0].id, 'court'));
+    expect([r.get(g[0].id), r.get(g[1].id), r.get(g[2].id)]).toEqual(['court', 'sure', 'sure']);
+  });
+  it('falls back to the order when the saved list no longer agrees with the numbers', () => {
+    const g = mk();
+    g[0].expect = { sure: 1, maybe: 1, seq: 'ssc' };
+    const r = roles(g);
+    expect([r.get(g[0].id), r.get(g[1].id), r.get(g[2].id)]).toEqual(['sure', 'maybe', 'court']);
   });
 });

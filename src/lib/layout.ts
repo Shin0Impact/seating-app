@@ -53,7 +53,15 @@ export type Guest = {
 };
 
 /** How many people on one invitation the planner expects: sure + maybe never exceeds the invite's size. */
-export type Expect = { sure: number; maybe: number };
+export type Expect = {
+  sure: number;
+  maybe: number;
+  /**
+   * Optional: each person's part, in invite order (named guest first, then the "+k" people), one letter each:
+   * s = sure, m = maybe, c = courtesy. Only used while it agrees with the two numbers.
+   */
+  seq?: string;
+};
 
 /** Event-wide choices that are not about the hall's geometry (kept out of `settings`, which guests' maps receive). */
 export type PlanOptions = {
@@ -413,7 +421,8 @@ function parseExpect(v: unknown): { expect?: Expect } {
     typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.min(LIMITS.maxParty, Math.round(x))) : 0;
   const sure = n(e.sure);
   const maybe = Math.min(n(e.maybe), LIMITS.maxParty - sure);
-  return { expect: { sure, maybe } };
+  const seq = typeof e.seq === 'string' && /^[smc]{1,50}$/.test(e.seq) ? e.seq : undefined;
+  return { expect: seq ? { sure, maybe, seq } : { sure, maybe } };
 }
 
 export function parseLayout(raw: unknown): Layout {

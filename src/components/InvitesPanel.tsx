@@ -787,7 +787,6 @@ export default function InvitesPanel({
                     </div>
                   ))}
                 <div className="inv-sub">
-                  {g?.group && <span>{g.group}</span>}
                   {r.sent_at && (
                     <span>
                       {s('sentAt', {
