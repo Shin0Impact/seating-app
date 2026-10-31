@@ -1,7 +1,7 @@
 'use client';
 
 import type Konva from 'konva';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { Circle, Group, Line, Rect, Text } from 'react-konva';
 import { canvasMeasure, fitChairLabel } from '@/lib/chairlabel';
 import type { ExpectKind } from '@/lib/expect';
@@ -188,6 +188,13 @@ function Chair({
   const availM = extX * 1.04;
   const measure = useMemo(() => canvasMeasure(FONT), []);
   const fitted = guest && big ? fitChairLabel(guest.name, availM * scale, extY * scale, fontPx, measure) : null;
+  // On touch a chair only lifts after a short hold, so pinching or panning over chairs never moves anyone.
+  const hold = useRef<{ timer: number; x: number; y: number } | null>(null);
+  const clearHold = (node?: Konva.Node | null) => {
+    if (hold.current) window.clearTimeout(hold.current.timer);
+    hold.current = null;
+    if (node && guest) node.draggable(true);
+  };
   const setCursor = (e: Konva.KonvaEventObject<Event>, value: string) => {
     const c = e.target.getStage()?.container();
     if (c) c.style.cursor = value;
@@ -207,6 +214,32 @@ function Chair({
       draggable={!!guest}
       onDblClick={open}
       onDblTap={open}
+      onTouchStart={(e) => {
+        if (!guest) return;
+        const node = e.currentTarget;
+        clearHold();
+        if (e.evt.touches.length !== 1) return;
+        node.draggable(false);
+        hold.current = {
+          x: e.evt.touches[0].clientX,
+          y: e.evt.touches[0].clientY,
+          timer: window.setTimeout(() => {
+            hold.current = null;
+            node.draggable(true);
+            navigator.vibrate?.(10);
+            node.startDrag();
+          }, 260),
+        };
+      }}
+      onTouchMove={(e) => {
+        const h = hold.current;
+        if (!h) return;
+        const t = e.evt.touches[0];
+        if (e.evt.touches.length > 1 || !t || Math.hypot(t.clientX - h.x, t.clientY - h.y) > 8)
+          clearHold(e.currentTarget);
+      }}
+      onTouchEnd={(e) => clearHold(e.currentTarget)}
+      onTouchCancel={(e) => clearHold(e.currentTarget)}
       onClick={() => onPick?.()}
       onTap={() => onPick?.()}
       onMouseEnter={(e) => {
@@ -224,10 +257,13 @@ function Chair({
         e.cancelBubble = true;
         setCursor(e, 'grabbing');
         onTip?.(null);
+        // Keep the lifted chair out of the table's measured bounds so its selection box does not stretch after it.
+        (e.target as Konva.Node).getClientRect = () => ({ x: 0, y: 0, width: 0, height: 0 });
       }}
       onDragEnd={(e) => {
         e.cancelBubble = true;
         const node = e.target;
+        delete (node as { getClientRect?: unknown }).getClientRect;
         const layer = node.getLayer();
         const p = layer
           ? layer.getAbsoluteTransform().copy().invert().point(node.getAbsolutePosition())
