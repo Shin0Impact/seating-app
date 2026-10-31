@@ -202,23 +202,8 @@ export default function InvitesPanel({
     }
   }
 
-  /**
-   * Manual check-in at the entrance, for guests who never used the app: one tap marks the invite as sent, confirmed
-   * (everyone, unless they had already confirmed a number) and arrived. Undoing only clears the arrival.
-   */
-  async function setArrived(r: InviteRow, arrived: boolean) {
-    if (!arrived && !window.confirm(s('undoArrivedConfirm'))) return;
-    const now = new Date().toISOString();
-    const patch: Partial<InviteRow> & { responded_at?: string } = arrived
-      ? {
-          checked_in_at: r.checked_in_at ?? now,
-          sent_at: r.sent_at ?? now,
-          status: 'confirmed',
-          confirmed_count: r.status === 'confirmed' ? (r.confirmed_count ?? r.party_size) : r.party_size,
-          change_requested_at: null,
-          ...(r.status === 'confirmed' ? {} : { responded_at: now }),
-        }
-      : { checked_in_at: null };
+  /** Saves a change to one invite right away on screen, undoing it if the save fails. */
+  async function patchInvite(r: InviteRow, patch: Partial<InviteRow>) {
     const before = { ...r };
     pending.current.add(r.token);
     setRows((cur) => cur.map((x) => (x.token === r.token ? { ...x, ...patch } : x)));
@@ -228,6 +213,39 @@ export default function InvitesPanel({
       setRows((cur) => cur.map((x) => (x.token === r.token ? { ...x, ...before } : x)));
       setMsg({ kind: 'err', text: s('arrivedFailed') + error.message });
     }
+  }
+
+  /**
+   * Manual check-in at the entrance, for guests who never used the app: marks the invite as sent, confirmed and
+   * arrived, with the number of people who really came (kept as the confirmed count).
+   */
+  function setArrived(r: InviteRow, count: number) {
+    const now = new Date().toISOString();
+    const n = Math.max(1, Math.min(70, Math.floor(count) || 1));
+    void patchInvite(r, {
+      checked_in_at: r.checked_in_at ?? now,
+      sent_at: r.sent_at ?? now,
+      status: 'confirmed',
+      confirmed_count: n,
+      change_requested_at: null,
+      responded_at: r.status === 'confirmed' ? (r.responded_at ?? now) : now,
+    });
+    setArriving(null);
+  }
+
+  /**
+   * Takes the arrival back. What the door tap filled in (the answer and the "sent" mark carry the same time as the
+   * arrival) goes back to empty; an answer the family gave itself earlier is kept.
+   */
+  function resetArrival(r: InviteRow) {
+    if (!window.confirm(s('undoArrivedConfirm'))) return;
+    const same = (t?: string | null) => !!t && t === r.checked_in_at;
+    void patchInvite(r, {
+      checked_in_at: null,
+      ...(same(r.responded_at) ? { status: 'pending', confirmed_count: null, responded_at: null } : {}),
+      ...(same(r.sent_at) ? { sent_at: null } : {}),
+    });
+    setArriving(null);
   }
 
   async function copy(text: string, done: string) {
@@ -413,6 +431,7 @@ export default function InvitesPanel({
       pending.current.delete(r.token);
     }
   }
+  const [arriving, setArriving] = useState<{ token: string; n: number } | null>(null);
   const [confirmDel, setConfirmDel] = useState<string | null>(null); // token, or 'all'
 
   /** Deletes invite links whose guest is no longer in the plan. The saved plan is re-read first, so a stale tab can't delete a live invite. */
@@ -835,12 +854,51 @@ export default function InvitesPanel({
                 </button>
                 <button
                   className={`btn small${r.checked_in_at ? ' arrived-on' : ''}`}
-                  aria-pressed={!!r.checked_in_at}
-                  onClick={() => setArrived(r, !r.checked_in_at)}
+                  aria-expanded={arriving?.token === r.token}
+                  onClick={() =>
+                    setArriving(
+                      arriving?.token === r.token ? null : { token: r.token, n: r.confirmed_count ?? r.party_size },
+                    )
+                  }
                 >
-                  {r.checked_in_at ? s('undoArrived') : s('markArrived')}
+                  {r.checked_in_at ? `${s('markArrived')} · ${r.confirmed_count ?? r.party_size}` : s('markArrived')}
                 </button>
               </div>
+              {arriving?.token === r.token && (
+                <div className="arr-panel" role="group" aria-label={s('arrivedHowMany')}>
+                  <span>{s('arrivedHowMany')}</span>
+                  <span className="stepper">
+                    <button
+                      type="button"
+                      aria-label="−"
+                      disabled={arriving.n <= 1}
+                      onClick={() => setArriving({ ...arriving, n: arriving.n - 1 })}
+                    >
+                      −
+                    </button>
+                    <output>{arriving.n}</output>
+                    <button
+                      type="button"
+                      aria-label="+"
+                      disabled={arriving.n >= 70}
+                      onClick={() => setArriving({ ...arriving, n: arriving.n + 1 })}
+                    >
+                      +
+                    </button>
+                  </span>
+                  <button className="btn small primary" onClick={() => setArrived(r, arriving.n)}>
+                    {r.checked_in_at ? s('save') : s('arrivedSave')}
+                  </button>
+                  {r.checked_in_at && (
+                    <button className="btn small danger" onClick={() => resetArrival(r)}>
+                      {s('undoArrived')}
+                    </button>
+                  )}
+                  <button className="btn small" onClick={() => setArriving(null)}>
+                    {s('cancel')}
+                  </button>
+                </div>
+              )}
             </li>
           );
         })}

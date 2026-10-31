@@ -6,6 +6,8 @@ export type InviteRow = {
   confirmed_count: number | null;
   checked_in_at: string | null;
   sent_at: string | null;
+  /** When the family (or the planner at the door) answered; cleared when the answer is taken back. */
+  responded_at?: string | null;
   /** Set when the family asked to change its answer; cleared when it answers again. */
   change_requested_at?: string | null;
   /** People a confirmed family asked to add on top of its invitation; 0 when none. */
