@@ -899,20 +899,27 @@ textarea {
   margin: 0;
 }
 .grow.pin {
-  grid-template-columns: 2.2rem minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 1.5fr) minmax(0, 7.5rem) 42px 42px 42px;
+  grid-template-columns: 2.2rem minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 1.5fr) minmax(0, 7.5rem) 18rem 42px 42px 42px;
 }
 .guest-acts {
   display: contents;
 }
 .grow {
   display: grid;
-  grid-template-columns: 2.2rem minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 1.5fr) minmax(0, 7.5rem) 42px 42px;
+  grid-template-columns: 2.2rem minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 1.5fr) minmax(0, 7.5rem) 18rem 42px 42px;
   gap: 8px;
   align-items: center;
 }
-.guest-top,
 .guest-bottom {
   display: contents;
+}
+.grow .guest-top {
+  display: flex;
+  margin: 0;
+  min-width: 0;
+}
+.guest-exp {
+  min-width: 0;
 }
 .glist {
   gap: 6px;
@@ -1014,13 +1021,54 @@ textarea {
   .filters {
     grid-template-columns: 1fr;
   }
+}
+/* every width (the page column stays narrow even on wide screens): a card with three tidy lines (name, group/table/chair, expectation and buttons) */
+@media all {
   .grow,
   .grow.pin {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: 2.2rem minmax(0, 1fr) minmax(0, 1fr) 7.5rem;
+  }
+  .glist-head {
+    display: none;
+  }
+  .glist .guest {
+    padding: 10px 12px;
+    row-gap: 8px;
+  }
+  .grow .c-num {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .grow .guest-top {
+    grid-column: 2 / -1;
+    grid-row: 1;
+  }
+  .grow .g-group {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .grow .g-table {
+    grid-column: 3;
+    grid-row: 2;
+  }
+  .grow .g-chair {
+    grid-column: 4;
+    grid-row: 2;
+  }
+  .grow .guest-exp {
+    grid-column: 1 / 4;
+    grid-row: 3;
+  }
+  .grow .guest-exp:empty {
+    display: none;
+  }
+  .grow .guest-acts {
+    grid-column: 4;
+    grid-row: 3;
   }
   .guest-acts {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     justify-content: flex-end;
     align-items: center;
   }
@@ -1039,7 +1087,12 @@ textarea {
   .guests-step .page {
     padding: 4px 0 16px;
   }
-  .grow .guest-name {
+  .grow,
+  .grow.pin {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .grow .guest-top {
+    grid-column: 1 / -1;
     grid-row: 1;
   }
   .grow .g-group {
@@ -1054,20 +1107,27 @@ textarea {
     grid-column: 1 / -1;
     grid-row: 3;
   }
-  .grow .guest-acts {
+  .grow .guest-exp {
     grid-column: 1 / -1;
     grid-row: 4;
   }
-  .glist .guest {
-    padding: 10px;
-    row-gap: 8px;
+  .guest-exp .exp-row {
+    flex-wrap: nowrap;
   }
-  .grow .c-num,
-  .glist-head {
+  .guest-exp .stepper {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: space-between;
+  }
+  .guest-exp .exp-rest {
     display: none;
   }
-  .grow .guest-name {
+  .grow .guest-acts {
     grid-column: 1 / -1;
+    grid-row: 5;
+  }
+  .grow .c-num {
+    display: none;
   }
   .glist .guest {
     padding: 8px;
