@@ -247,7 +247,7 @@ const en = {
   changeNo: 'Keep my answer',
   tapAgain: 'Tap again to confirm',
   changeBlocked:
-    'We couldn’t change the answer. Try again in a moment, and if you have already entered the hall, ask the hosts.',
+    'We couldn’t change the answer. Please try again in a moment.',
   changeRequested: 'change requested',
   changeBanner: '{n} families asked to change their answer',
   rsvpConfirmedShort: 'Thank you for confirming your arrival!',
@@ -522,7 +522,7 @@ const ar: Record<SKey, string> = {
   changeYes: 'نعم، غيّروا الرد',
   changeNo: 'إبقاء الرد',
   tapAgain: 'اضغط مرة ثانية للتأكيد',
-  changeBlocked: 'تعذّر تغيير الرد. جرّبوا مرة ثانية بعد لحظات، وإذا كنتم قد دخلتم القاعة كلّموا أصحاب الدعوة.',
+  changeBlocked: 'تعذّر تغيير الرد. جرّبوا مرة ثانية بعد لحظات.',
   changeRequested: 'طلبوا التغيير',
   changeBanner: 'عائلات طلبت تغيير ردها: {n}',
   rsvpConfirmedShort: 'شكرًا لتأكيد حضوركم!',
