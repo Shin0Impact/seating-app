@@ -29,7 +29,7 @@ async function answer(form: FormData) {
   const supabase = await serverClient();
   const n = Number.isFinite(count) ? Math.min(Math.max(count, 1), 70) : 1;
   const { data: done } = await supabase.rpc('rsvp_set', { p_token: token, p_status: status, p_count: n });
-  // going back to "unanswered" is refused once someone has been checked in; say so instead of doing nothing
+  // if the change did not go through, say so instead of doing nothing
   if (status === 'pending' && done !== true) redirect(`/r/${token}?blocked=1`);
   // more people than the invitation: the extras wait for the host's approval (the function ignores a count that matches)
   const party = Number.parseInt(String(form.get('party') ?? '0'), 10);

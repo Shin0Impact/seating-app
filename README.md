@@ -54,7 +54,7 @@ Copy `.env.example` to `.env.local` and fill it in. The offline editor at `/edit
 
 ## Setup
 
-1. Create a Supabase project. In the SQL editor run the files in `supabase/migrations/` in order, `0001` to `0009`.
+1. Create a Supabase project. In the SQL editor run the files in `supabase/migrations/` in order, `0001` to `0010`.
 2. For backups, enable the `pg_cron` extension (Database, Extensions) before running `0009_backups.sql`.
 3. Supabase, Authentication, URL configuration: set the Site URL to your deployed address and add `https://YOUR-APP.vercel.app/**` to the redirect URLs.
 4. Import the repo into Vercel and set the environment variables below. The build command stays `npm run build`.
