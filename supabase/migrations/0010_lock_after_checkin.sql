@@ -1,6 +1,15 @@
--- A family can change its answer (the app asks "are you sure?" first), until the invitation closes:
--- once the guest has been scanned at the door, or from the day of the event (Israel time).
--- Unanswered invitations can still be answered on the day.
+-- A family can change its answer (the app asks "are you sure?" first) until the event starts: from the event's date and
+-- time (Israel time; midnight if no valid time is set) the answers are closed. Unanswered invitations can still be answered.
+create or replace function public.event_started(p_date date, p_time text)
+returns boolean
+language sql
+stable
+as $$
+  select p_date is not null
+     and (p_date + case when coalesce(p_time, '') ~ '^([01]?[0-9]|2[0-3]):[0-5][0-9]$' then p_time::time else time '00:00' end)
+         <= (now() at time zone 'Asia/Jerusalem');
+$$;
+
 create or replace function public.rsvp_set(p_token text, p_status text, p_count integer)
 returns boolean
 language plpgsql
@@ -21,9 +30,7 @@ begin
     from public.events e
    where e.id = i.event_id
      and i.token = p_token
-     and (i.status = 'pending'
-          or not (i.checked_in_at is not null
-                  or (e.event_date is not null and e.event_date <= (now() at time zone 'Asia/Jerusalem')::date)));
+     and (i.status = 'pending' or not public.event_started(e.event_date, e.event_time));
   get diagnostics n = row_count;
   return n = 1;
 end;
@@ -47,8 +54,7 @@ begin
    where e.id = i.event_id
      and i.token = p_token
      and i.status = 'confirmed'
-     and i.checked_in_at is null
-     and not (e.event_date is not null and e.event_date <= (now() at time zone 'Asia/Jerusalem')::date)
+     and not public.event_started(e.event_date, e.event_time)
      and p_count is distinct from (coalesce(i.confirmed_count, 0) + i.extra_requested);
   get diagnostics n = row_count;
   return n = 1;
