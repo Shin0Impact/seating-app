@@ -174,7 +174,6 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
         key={g.id}
         className={`guest grow${onLocate ? ' pin' : ''}${tb ? ' seated' : ' unseated'}${PLUS.test(g.name) ? ' member' : ''}`}
       >
-        <span className="c-num muted">{i + 1}</span>
         <div className="guest-top">
           <input
             type="text"
