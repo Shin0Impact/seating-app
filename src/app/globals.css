@@ -4171,3 +4171,10 @@ button.primary.danger-fill {
   flex: 1 1 8rem;
   justify-content: center;
 }
+
+.btn.arrived-on {
+  background: var(--good-bg);
+  border-color: var(--good-ink);
+  color: var(--good-ink);
+  font-weight: 600;
+}
