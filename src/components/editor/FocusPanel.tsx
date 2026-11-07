@@ -58,34 +58,37 @@ export function FocusPanel({
 
   return (
     <aside className="focus-panel" aria-label={table.label}>
-      <header>
-        <div>
-          <h2 dir="auto">{table.label}</h2>
-          <p className={`muted${count > table.seats ? ' over' : ''}`}>
-            {count}/{table.seats} {t('chairs')}
-          </p>
+      {/* the title, close button and order switch stay in view while the list scrolls */}
+      <div className="focus-head">
+        <header>
+          <div>
+            <h2 dir="auto">{table.label}</h2>
+            <p className={`muted${count > table.seats ? ' over' : ''}`}>
+              {count}/{table.seats} {t('chairs')}
+            </p>
+          </div>
+          <button className="btn small" onClick={onClose} aria-label={t('close')}>
+            ✕
+          </button>
+        </header>
+        <div className="seg focus-order" role="group" aria-label={t('sortBy')}>
+          <button
+            type="button"
+            className={order === 'chair' ? 'on' : ''}
+            aria-pressed={order === 'chair'}
+            onClick={() => setOrder('chair')}
+          >
+            {t('byChair')}
+          </button>
+          <button
+            type="button"
+            className={order === 'name' ? 'on' : ''}
+            aria-pressed={order === 'name'}
+            onClick={() => setOrder('name')}
+          >
+            {t('byName')}
+          </button>
         </div>
-        <button className="btn small" onClick={onClose} aria-label={t('close')}>
-          ✕
-        </button>
-      </header>
-      <div className="seg focus-order" role="group" aria-label={t('sortBy')}>
-        <button
-          type="button"
-          className={order === 'chair' ? 'on' : ''}
-          aria-pressed={order === 'chair'}
-          onClick={() => setOrder('chair')}
-        >
-          {t('byChair')}
-        </button>
-        <button
-          type="button"
-          className={order === 'name' ? 'on' : ''}
-          aria-pressed={order === 'name'}
-          onClick={() => setOrder('name')}
-        >
-          {t('byName')}
-        </button>
       </div>
       <ol className="focus-list">
         {chairs.map(({ seat, g }) => (
