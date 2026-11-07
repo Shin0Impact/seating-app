@@ -1,3 +1,5 @@
+import { swallowRestOfPress } from '@/lib/touchdrag';
+
 type Props = {
   label: string;
   text: string;
@@ -11,7 +13,13 @@ type Props = {
 export function ConfirmDialog({ label, text, confirmLabel, cancelLabel, onConfirm, onCancel, danger = true }: Props) {
   return (
     <>
-      <div className="picker-backdrop" onMouseDown={onCancel} />
+      <div
+        className="picker-backdrop"
+        onMouseDown={() => {
+          swallowRestOfPress();
+          onCancel();
+        }}
+      />
       <div
         className="import-dialog confirm"
         role="alertdialog"

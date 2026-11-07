@@ -1,5 +1,6 @@
 'use client';
 
+import { swallowRestOfPress } from '@/lib/touchdrag';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Guest, LIMITS, TableEl } from '@/lib/layout';
 import { Key } from '@/lib/i18n';
@@ -58,7 +59,13 @@ export function ChairPicker({
 
   return (
     <>
-      <div className="picker-backdrop" onMouseDown={onClose} />
+      <div
+        className="picker-backdrop"
+        onMouseDown={() => {
+          swallowRestOfPress();
+          onClose();
+        }}
+      />
       <div
         className="picker"
         role="dialog"
@@ -196,7 +203,13 @@ export function GuestEditPopup({
   const top = Math.max(8, Math.min(y + 8, window.innerHeight - 340));
   return (
     <>
-      <div className="picker-backdrop" onMouseDown={onClose} />
+      <div
+        className="picker-backdrop"
+        onMouseDown={() => {
+          swallowRestOfPress();
+          onClose();
+        }}
+      />
       <div
         className="picker"
         role="dialog"

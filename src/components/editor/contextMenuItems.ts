@@ -27,6 +27,8 @@ export type MenuContext = {
   setToast: (msg: string) => void;
   emptyChair: (guestId: string) => void;
   emptyTable: (tableId: string) => void;
+  unseatGroup: (group: string) => void;
+  focusTable: (tableId: string) => void;
   duplicateSelected: () => void;
   rotateSelected: () => void;
   setShape: (ids: string[], shape: 'round' | 'rect') => void;
@@ -52,6 +54,7 @@ export function buildMenuItems(m: MenuState, c: MenuContext): MenuItem[] {
         onClick: () => c.setPicker({ tableId, seat, x: m.x, y: m.y }),
       },
       ...(occ ? [{ label: `${c.t('emptyChair')} (${occ.name})`, onClick: () => c.emptyChair(occ.id) }] : []),
+      ...(occ && occ.group ? [groupItem(c, occ.group)] : []),
       ...(partyIds.length > 1
         ? [
             {
@@ -96,8 +99,15 @@ export function buildMenuItems(m: MenuState, c: MenuContext): MenuItem[] {
           ),
       });
     }
+    if (only && only.kind === 'table') {
+      items.push({ label: c.t('focusTable'), onClick: () => c.focusTable(only.id) });
+    }
     if (only && only.kind === 'table' && l.guests.some((g) => g.tableId === only.id)) {
       items.push({ label: c.t('emptyTable'), onClick: () => c.emptyTable(only.id) });
+      // the groups sitting here (largest first), so a whole group can be taken off its tables at once
+      const at = new Map<string, number>();
+      for (const g of l.guests) if (g.tableId === only.id && g.group) at.set(g.group, (at.get(g.group) ?? 0) + 1);
+      for (const [name] of [...at.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)) items.push(groupItem(c, name));
     }
     items.push('sep', {
       label: many ? `${c.t('remove')} (${sel.length})` : c.t('remove'),
@@ -132,4 +142,10 @@ export function buildMenuItems(m: MenuState, c: MenuContext): MenuItem[] {
     'sep',
     { label: c.t('selectAll'), disabled: l.elements.length === 0, onClick: c.selectAll },
   ];
+}
+
+/** "Unseat group «name» (n)": takes everyone in the group off their tables (asks first). */
+function groupItem(c: MenuContext, group: string): MenuItem {
+  const n = c.layout.guests.filter((g) => g.group === group && g.tableId).length;
+  return { label: `${c.t('unseatGroup')} «${group}» (${n})`, onClick: () => c.unseatGroup(group) };
 }

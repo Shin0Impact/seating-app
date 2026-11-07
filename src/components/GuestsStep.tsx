@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { STRINGS } from '@/lib/i18n';
 import { useLang, useS } from './LangProvider';
 import { GuestsView, applyChanges } from './GuestsView';
-import { Guest, Layout, TableEl, placeNewTables } from '@/lib/layout';
+import { Guest, Layout, TableEl, placeNewTables, settleLayout } from '@/lib/layout';
 import { applyIncoming, useLayoutSync } from './useLayoutSync';
+import { partyOf, removeParty } from '@/lib/party';
 import { ConfirmDialog } from './editor/ConfirmDialog';
 
 /** The guests step: the same guest list as the hall editor (add, edit, seat, import), saved into the event with the same version check. */
@@ -22,7 +23,8 @@ export default function GuestsStep({ id, initial, version }: { id: string; initi
   layoutRef.current = layout;
 
   const commit = useCallback(
-    (next: Layout) => {
+    (raw: Layout) => {
+      const next = settleLayout(raw);
       layoutRef.current = next;
       setLayout(next);
       onChange(next);
@@ -68,14 +70,20 @@ export default function GuestsStep({ id, initial, version }: { id: string; initi
       {askRemove && (
         <ConfirmDialog
           label={t('removeGuest')}
-          text={t('confirmRemoveGuest').replace('{name}', layout.guests.find((g) => g.id === askRemove)?.name ?? '')}
+          text={t('confirmRemoveGuest').replace(
+            '{name}',
+            (() => {
+              const p = partyOf(layout.guests, askRemove);
+              return p.length > 1 ? `${p[0].name} (+${p.length - 1})` : (p[0]?.name ?? '');
+            })(),
+          )}
           confirmLabel={t('removeGuest')}
           cancelLabel={t('importCancel')}
           onConfirm={() => {
             const gid = askRemove;
             setAskRemove(null);
             const l = layoutRef.current;
-            commit({ ...l, guests: l.guests.filter((g) => g.id !== gid) });
+            commit({ ...l, guests: removeParty(l.guests, gid) });
           }}
           onCancel={() => setAskRemove(null)}
         />

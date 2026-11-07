@@ -1,5 +1,6 @@
 'use client';
 
+import { swallowRestOfPress } from '@/lib/touchdrag';
 import {
   Children,
   Fragment,
@@ -135,6 +136,7 @@ export function Select({ value, onChange, children, className = '', disabled, na
     const down = (e: Event) => {
       const n = e.target as Node;
       if (popup.current?.contains(n) || trigger.current?.contains(n)) return;
+      swallowRestOfPress();
       close(false);
     };
     const scroll = (e: Event) => {
@@ -304,7 +306,15 @@ export function Select({ value, onChange, children, className = '', disabled, na
         typeof document !== 'undefined' &&
         createPortal(
           <>
-            {sheet && <div className="sel-backdrop" onPointerDown={() => close(false)} />}
+            {sheet && (
+              <div
+                className="sel-backdrop"
+                onPointerDown={() => {
+                  swallowRestOfPress();
+                  close(false);
+                }}
+              />
+            )}
             {list}
           </>,
           document.body,

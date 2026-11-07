@@ -45,6 +45,7 @@ import { resizePatch } from './editor/resizeElement';
 import { useEditorKeys, useShiftHeld } from './editor/useEditorKeys';
 import { useLongPress } from './editor/useLongPress';
 import { buildMenuItems, type MenuState } from './editor/contextMenuItems';
+import { FocusPanel } from './editor/FocusPanel';
 import { useLayoutHistory } from './editor/useLayoutHistory';
 import { useHallDrop } from './editor/useHallDrop';
 import { EditorHeader, type EditorView } from './editor/EditorHeader';
@@ -568,6 +569,8 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       setToast,
       emptyChair,
       emptyTable,
+      unseatGroup,
+      focusTable,
       duplicateSelected,
       rotateSelected,
       setShape,
@@ -621,6 +624,38 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       });
   };
 
+  /** One table in focus: zoomed to fill the view (beside the guest list panel), the rest of the hall dimmed. */
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const fitFocus = (id: string) => {
+    const l = layoutRef.current;
+    const el = l.elements.find((e): e is TableEl => e.id === id && e.kind === 'table');
+    if (!el) return;
+    const f = tableFootprint(el, l.settings);
+    const r = f.type === 'circle' ? f.r : Math.hypot(f.w, f.h) / 2;
+    const wide = size.w > 700;
+    const availW = size.w - (wide ? 330 : 0);
+    const availH = size.h - (wide ? 0 : Math.round(size.h * 0.45));
+    const scale = clamp(Math.min(availW, availH) / (2 * r + 1.4), 3, 200);
+    setView({ scale, x: availW / 2 - el.x * scale, y: availH / 2 - el.y * scale });
+  };
+  const focusTable = (id: string) => {
+    if (!layoutRef.current.elements.some((e) => e.id === id && e.kind === 'table')) return;
+    setViewTab('hall');
+    setSelection([id]);
+    setFocusId(id);
+    setMenu(null);
+    // on a phone the panel would cover the table: fold it (the focus list takes its place)
+    if (window.matchMedia('(max-width: 760px)').matches) setSheetOpen(false);
+    fitFocus(id);
+  };
+  // the canvas changes size (panel folded, phone turned): keep the focused table filling it
+  useEffect(() => {
+    if (focusId) fitFocus(focusId);
+  }, [size.w, size.h]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (focusId && !layout.elements.some((e) => e.id === focusId)) setFocusId(null);
+  }, [focusId, layout.elements]);
+
   const [guestEdit, setGuestEdit] = useState<{ id: string; x: number; y: number } | null>(null);
   /** Double-click on an element: select it and show its properties in the side panel. */
   const openProps = (id: string) => {
@@ -644,6 +679,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     changeSeats,
     resolveDrop,
     idsOfGroup,
+    unseatGroup,
     dropMany,
     dropGuest,
   } = useSeatingActions({
@@ -686,6 +722,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     undo,
     redo,
     escape: () => {
+      if (focusId && !picker && !menu) setFocusId(null);
       setPicker(null);
       setMenu(null);
       setMarquee(null);
@@ -1084,6 +1121,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
                     pickedIds={pickedSet}
                     onChairPick={peopleTool ? togglePerson : undefined}
                     locked={peopleTool || layoutLocked}
+                    faded={!!focusId && el.id !== focusId}
                   />
                 ))}
               <Transformer
@@ -1147,6 +1185,19 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
           />
           <ScaleBar t={t} scale={view.scale} />
           <MarqueeBox box={marquee} />
+          {focusId &&
+            (() => {
+              const tb = tables.find((x) => x.id === focusId);
+              return tb ? (
+                <FocusPanel
+                  t={t}
+                  table={tb}
+                  guests={layout.guests}
+                  onClose={() => setFocusId(null)}
+                  onOpenChair={(seat, x, y) => setPicker({ tableId: tb.id, seat, x, y })}
+                />
+              ) : null;
+            })()}
           <CanvasTools
             t={t}
             snapGrid={snapGrid}
@@ -1204,6 +1255,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
                 onDuplicate={duplicateSelected}
                 onRotate={rotateSelected}
                 onRemove={removeSelected}
+                onFocus={focusTable}
               />
             )}
 

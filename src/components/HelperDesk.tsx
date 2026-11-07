@@ -178,20 +178,22 @@ export default function HelperDesk({ token }: { token: string }) {
                 <div className="helper-btns">
                   {(() => {
                     const ids = [i.guest_id, ...i.member_ids];
-                    const f = layout ? buildFocus(layout, ids) : null;
-                    const text = layout
-                      ? seatsSummary(
-                          layout,
-                          ids,
-                          (table, n, chairs) =>
-                            s('tableChairs', { table, word: n === 1 ? s('chairOne') : s('chairMany'), chairs }),
-                          s('andWord'),
-                        )
-                      : '';
-                    return f && layout ? (
+                    // the walking route is worked out only when the map is opened (it is the slow part)
+                    const at = layout ? locate(layout, ids).find((p) => p.tableId) : undefined;
+                    const text =
+                      layout && at
+                        ? seatsSummary(
+                            layout,
+                            ids,
+                            (table, n, chairs) =>
+                              s('tableChairs', { table, word: n === 1 ? s('chairOne') : s('chairMany'), chairs }),
+                            s('andWord'),
+                          )
+                        : '';
+                    return layout && at ? (
                       <ZoomPan
-                        label={text || s('tableOnly', { table: f.table })}
-                        map={{ layout: { ...layout, guests: [] }, focus: f }}
+                        label={text || s('tableOnly', { table: at.table ?? '' })}
+                        map={() => ({ layout: { ...layout, guests: [] }, focus: buildFocus(layout, ids) })}
                       />
                     ) : (
                       <span className="btn zp-open" aria-disabled>

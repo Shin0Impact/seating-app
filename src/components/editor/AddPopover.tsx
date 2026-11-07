@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { LIMITS, MARKER_KINDS, MarkerKind } from '@/lib/layout';
 import { Key, Lang, dirOf } from '@/lib/i18n';
-import { coarsePointer } from '@/lib/touchdrag';
+import { coarsePointer, swallowRestOfPress } from '@/lib/touchdrag';
 import { NumField } from '../NumField';
 import { specToString, type Spec } from '../editor-specs';
 
@@ -28,6 +28,7 @@ export function AddPopover({ t, lang, pos, seats, onSeats, markerLabel, anchorRe
     const down = (e: Event) => {
       const n = e.target as Node;
       if (ref.current?.contains(n) || anchorRef.current?.contains(n)) return;
+      swallowRestOfPress();
       onClose();
     };
     const gone = () => {

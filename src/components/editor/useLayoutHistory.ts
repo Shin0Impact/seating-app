@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { emptyLayout, type Layout } from '@/lib/layout';
+import { emptyLayout, settleLayout, type Layout } from '@/lib/layout';
 import { merge3 } from '@/lib/merge';
 import { applyIncoming, type IncomingPlan } from '../useLayoutSync';
 
@@ -25,7 +25,8 @@ export function useLayoutHistory() {
     }
     future.current = [];
     lastEdit.current = { key, time: now };
-    setLayout(next);
+    // whoever is waiting at a table for a chair takes one as soon as it frees up
+    setLayout(settleLayout(next));
   }, []);
 
   const undo = useCallback(() => {

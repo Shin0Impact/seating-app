@@ -22,6 +22,8 @@ export type IssueState = 'overlap' | 'tight' | undefined;
 export type ChairTip = { text: string; x: number; y: number };
 
 type Props = {
+  /** Dimmed while another table is in focus. */
+  faded?: boolean;
   el: Element;
   settings: Settings;
   issue: IssueState;
@@ -461,6 +463,7 @@ export function ElementNode({
   onChairPick,
   locked,
   roles,
+  faded,
 }: Props) {
   const stroke = issue === 'overlap' ? COLORS.overlap : issue === 'tight' ? COLORS.tight : COLORS.line;
   const chairFill = issue === 'overlap' ? COLORS.chairOverlap : issue === 'tight' ? COLORS.chairTight : COLORS.chair;
@@ -618,6 +621,7 @@ export function ElementNode({
       ref={(n) => register(el.id, n)}
       x={el.x}
       y={el.y}
+      opacity={faded ? 0.18 : 1}
       rotation={el.rotation}
       draggable={!locked}
       onMouseDown={(e) => {

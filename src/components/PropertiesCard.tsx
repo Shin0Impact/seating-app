@@ -16,6 +16,7 @@ type Props = {
   onDuplicate: () => void;
   onRotate: () => void;
   onRemove: () => void;
+  onFocus?: (id: string) => void;
 };
 
 /** The "Properties" card: name, size, chairs, rotation and position of whatever is selected. */
@@ -32,6 +33,7 @@ export function PropertiesCard({
   onDuplicate,
   onRotate,
   onRemove,
+  onFocus,
 }: Props) {
   const dims = selected && selected.kind === 'table' ? tableDims(selected, settings) : null;
   const footprint = selected && selected.kind === 'table' ? tableFootprint(selected, settings) : null;
@@ -96,6 +98,7 @@ export function PropertiesCard({
                 max={LIMITS.seatsMax}
                 step={1}
                 int
+                delay={900}
                 onChange={(v) => onSeats(selected.id, v)}
               />
               {dims?.shape === 'round' && (
@@ -200,6 +203,11 @@ export function PropertiesCard({
             <button onClick={onRotate}>{t('rotate90')}</button>
             <IconButton icon="trash" label={t('remove')} danger onClick={onRemove} />
           </div>
+          {selected.kind === 'table' && onFocus && (
+            <button className="btn focus-btn" onClick={() => onFocus(selected.id)}>
+              {t('focusTable')}
+            </button>
+          )}
         </>
       )}
     </section>

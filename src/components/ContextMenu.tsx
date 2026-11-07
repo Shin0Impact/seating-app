@@ -1,5 +1,6 @@
 'use client';
 
+import { swallowRestOfPress } from '@/lib/touchdrag';
 import { useEffect, useRef } from 'react';
 
 export type MenuItem = { label: string; onClick: () => void; danger?: boolean; disabled?: boolean } | 'sep';
@@ -35,8 +36,16 @@ export function ContextMenu({
       <div
         className="menu-backdrop"
         // a finger lifting right after a long press must not close the menu it just opened
-        onMouseDown={() => mayClose() && onClose()}
-        onTouchStart={() => Date.now() - opened.current > 350 && onClose()}
+        onMouseDown={() => {
+          if (!mayClose()) return;
+          swallowRestOfPress();
+          onClose();
+        }}
+        onTouchStart={() => {
+          if (Date.now() - opened.current <= 350) return;
+          swallowRestOfPress();
+          onClose();
+        }}
         onContextMenu={(e) => {
           e.preventDefault();
           if (mayClose()) onClose();

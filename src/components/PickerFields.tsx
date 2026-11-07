@@ -1,5 +1,6 @@
 'use client';
 
+import { swallowRestOfPress } from '@/lib/touchdrag';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { localeOf } from '@/lib/site-i18n';
@@ -45,6 +46,7 @@ function Pop({
     const down = (e: Event) => {
       const n = e.target as Node;
       if (box.current?.contains(n) || anchor?.contains(n)) return;
+      swallowRestOfPress();
       onClose();
     };
     const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -70,7 +72,15 @@ function Pop({
   }, [sheet]);
   return createPortal(
     <>
-      {sheet && <div className="sel-backdrop" onPointerDown={onClose} />}
+      {sheet && (
+        <div
+          className="sel-backdrop"
+          onPointerDown={() => {
+            swallowRestOfPress();
+            onClose();
+          }}
+        />
+      )}
       <div
         ref={box}
         role="dialog"

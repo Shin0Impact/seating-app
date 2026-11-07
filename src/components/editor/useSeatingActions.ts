@@ -8,11 +8,17 @@ import {
   nearestChair,
   newGuest,
   normalizeSeats,
+  settleSeats,
+  waitingCounts,
   seatGuest,
   seatMany,
   tableAt,
+  type TableEl,
 } from '@/lib/layout';
 import type { Key } from '@/lib/i18n';
+import { partyOf, patchGuest, removeParty, seatParty } from '@/lib/party';
+
+const tablesIn = (l: Layout) => l.elements.filter((e): e is TableEl => e.kind === 'table');
 
 type Picker = { tableId: string; seat: number; x: number; y: number };
 
@@ -62,12 +68,20 @@ export function useSeatingActions(d: Deps) {
   const setAllSeats = (seats: number) => {
     const l = layoutRef.current;
     const elements = l.elements.map((e) => (e.kind === 'table' ? { ...e, seats } : e));
-    commit({ ...l, elements, guests: normalizeSeats(elements, l.guests) });
+    const guests = settleSeats(elements, normalizeSeats(elements, l.guests));
+    commit({ ...l, elements, guests });
+    noteWaiting(
+      elements,
+      guests,
+      elements.filter((e) => e.kind === 'table').map((e) => e.id),
+    );
   };
   const pickGuest = (guestId: string) => {
     if (!picker) return;
     const l = layoutRef.current;
-    commit({ ...l, guests: seatGuest(l.guests, guestId, picker.tableId, picker.seat) });
+    const guests = seatParty(tablesIn(l), l.guests, guestId, picker.tableId, picker.seat, seatGuest);
+    commit({ ...l, guests });
+    noteWaiting(l.elements, guests, [picker.tableId]);
     setSelectedId(picker.tableId);
     setPicker(null);
   };
@@ -81,31 +95,21 @@ export function useSeatingActions(d: Deps) {
   };
   const editGuest = (id: string, patch: Partial<Guest>) => {
     const l = layoutRef.current;
-    commit(
-      {
-        ...l,
-        guests: l.guests.map((g) =>
-          g.id === id
-            ? {
-                ...g,
-                ...patch,
-                name: (patch.name ?? g.name).slice(0, LIMITS.nameMax),
-                group: (patch.group ?? g.group).slice(0, LIMITS.nameMax),
-              }
-            : g,
-        ),
-      },
-      `guest:${id}`,
-    );
+    const clean = { ...patch };
+    if (clean.name !== undefined) clean.name = clean.name.slice(0, LIMITS.nameMax);
+    if (clean.group !== undefined) clean.group = clean.group.slice(0, LIMITS.nameMax);
+    // a new name or group for a named guest goes to their +1s too
+    commit({ ...l, guests: patchGuest(l.guests, id, clean) }, `guest:${id}`);
   };
   const removeGuestById = (id: string) => {
-    const name = layoutRef.current.guests.find((g) => g.id === id)?.name ?? '';
+    const party = partyOf(layoutRef.current.guests, id);
+    const name = party[0]?.name ?? '';
     setPicker(null);
     setPendingDelete({
-      text: t('confirmRemoveGuest').replace('{name}', name),
+      text: t('confirmRemoveGuest').replace('{name}', party.length > 1 ? `${name} (+${party.length - 1})` : name),
       run: () => {
         const l = layoutRef.current;
-        commit({ ...l, guests: l.guests.filter((g) => g.id !== id) });
+        commit({ ...l, guests: removeParty(l.guests, id) });
       },
     });
   };
@@ -123,14 +127,33 @@ export function useSeatingActions(d: Deps) {
   };
   const emptyChair = (guestId: string) => {
     const l = layoutRef.current;
-    commit({ ...l, guests: seatGuest(l.guests, guestId, null, null) });
+    commit({ ...l, guests: seatParty(tablesIn(l), l.guests, guestId, null, null, seatGuest) });
     setPicker(null);
   };
 
+  /** Fewer chairs never takes anyone off the table: who no longer has a chair waits at it, and sits again when one frees up. */
   const changeSeats = (id: string, seats: number) => {
     const l = layoutRef.current;
     const elements = l.elements.map((e) => (e.id === id ? ({ ...e, seats } as Element) : e));
-    commit({ ...l, elements, guests: normalizeSeats(elements, l.guests) }, `${id}:seats`);
+    const guests = settleSeats(elements, normalizeSeats(elements, l.guests));
+    commit({ ...l, elements, guests }, `${id}:seats`);
+    noteWaiting(elements, guests, [id]);
+  };
+
+  /** A small notice when people at these tables are waiting for a chair. */
+  const noteWaiting = (elements: Element[], guests: Guest[], ids: string[]) => {
+    const w = waitingCounts(guests);
+    for (const tid of ids) {
+      const n = w.get(tid) ?? 0;
+      if (n === 0) continue;
+      const tb = elements.find((e) => e.id === tid);
+      setToast(
+        t('tableFullWaiting')
+          .replace('{table}', tb?.label ?? '')
+          .replace('{n}', String(n)),
+      );
+      return;
+    }
   };
 
   /** Which table and chair a drop at this world position means, if any. */
@@ -141,6 +164,20 @@ export function useSeatingActions(d: Deps) {
     const tb = tableAt(l.elements, l.settings, wx, wy);
     if (tb) return { tableId: tb.id, seat: firstFreeSeat(tb, l.guests, ignoreId) };
     return null;
+  };
+
+  /** Take everyone in a group off their tables, after asking. */
+  const unseatGroup = (group: string) => {
+    const n = layoutRef.current.guests.filter((g) => g.group === group && g.tableId).length;
+    if (n === 0) return;
+    setPendingDelete({
+      text: t('confirmUnseatGroup').replace('{group}', group).replace('{n}', String(n)),
+      run: () => {
+        const l = layoutRef.current;
+        commit({ ...l, guests: l.guests.map((g) => (g.group === group ? { ...g, tableId: null, seat: null } : g)) });
+        setToast(`${n} ${t('unseatedN')}`);
+      },
+    });
   };
 
   const idsOfGroup = (group: string) =>
@@ -173,7 +210,10 @@ export function useSeatingActions(d: Deps) {
     const r = resolveDrop(wx, wy, guestId);
     if (!me || !r) return;
     if (me.tableId === r.tableId && me.seat === r.seat) return; // dropped back where it was
-    commit({ ...l, guests: seatGuest(l.guests, guestId, r.tableId, r.seat) });
+    // a named guest brings their +1s along
+    const guests = seatParty(tablesIn(l), l.guests, guestId, r.tableId, r.seat, seatGuest);
+    commit({ ...l, guests });
+    noteWaiting(l.elements, guests, [r.tableId]);
     setSelectedId(r.tableId);
   };
 
@@ -189,6 +229,7 @@ export function useSeatingActions(d: Deps) {
     changeSeats,
     resolveDrop,
     idsOfGroup,
+    unseatGroup,
     dropMany,
     dropGuest,
   };

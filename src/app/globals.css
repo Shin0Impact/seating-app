@@ -4787,3 +4787,123 @@ input[type='number'] {
   min-width: 44px;
   max-width: 44px;
 }
+
+/* +N people with a named guest, on the guest card */
+.plus-step {
+  flex: none;
+}
+.plus-step output {
+  min-width: 30px;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* one table in focus: its guests chair by chair, over the right side of the hall */
+.focus-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-inline-start: 4px solid var(--accent);
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  overflow: auto;
+  z-index: 5;
+  touch-action: pan-y;
+}
+.focus-panel header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.focus-panel h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.focus-panel p {
+  margin: 2px 0 0;
+}
+.focus-panel .over {
+  color: var(--danger);
+  font-weight: 600;
+}
+.focus-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.focus-list li > button,
+.focus-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.focus-list li > button {
+  width: 100%;
+  min-height: 38px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.focus-list li > button:hover {
+  background: var(--hover);
+}
+.focus-list .num {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.focus-list .nm {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.focus-list li.free .nm {
+  color: var(--muted);
+}
+.focus-btn {
+  width: 100%;
+  margin-top: 8px;
+}
+@media (max-width: 700px) {
+  .focus-panel {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: auto;
+    max-height: 45%;
+  }
+}
+.sl-tabs {
+  display: flex;
+  width: 100%;
+  margin-bottom: 8px;
+}
+.sl-tabs button {
+  flex: 1;
+  min-height: 36px;
+}
+.grouplist li.done {
+  opacity: 0.55;
+}

@@ -172,6 +172,7 @@ export function TablesView({
                         max={LIMITS.seatsMax}
                         step={1}
                         int
+                        delay={900}
                         onChange={(v) => onSeats(tb.id, v)}
                       />
                       <span className="tsize">

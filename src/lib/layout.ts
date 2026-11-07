@@ -417,6 +417,12 @@ export function settleSeats(elements: Element[], guests: Guest[]): Guest[] {
   return guests.map((g) => (give.has(g.id) ? { ...g, seat: give.get(g.id)! } : g));
 }
 
+/** The plan with waiting guests moved onto any free chairs (returns the same object when nothing changes). */
+export function settleLayout(l: Layout): Layout {
+  const guests = settleSeats(l.elements, l.guests);
+  return guests === l.guests ? l : { ...l, guests };
+}
+
 /** How many guests are waiting at each table for a chair (seated at it, but without a chair). */
 export function waitingCounts(guests: Guest[]): Map<string, number> {
   const m = new Map<string, number>();

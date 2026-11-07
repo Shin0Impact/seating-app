@@ -1,4 +1,5 @@
 'use client';
+import { swallowRestOfPress } from '@/lib/touchdrag';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { Icon, IconButton } from './Icon';
@@ -166,7 +167,13 @@ export default function SettingsPanel({
   }, [onClose]);
   return (
     <>
-      <div className="picker-backdrop" onMouseDown={onClose} />
+      <div
+        className="picker-backdrop"
+        onMouseDown={() => {
+          swallowRestOfPress();
+          onClose();
+        }}
+      />
       <div className="import-dialog settings" role="dialog" aria-label={s('settings')}>
         <div className="set-head">
           <h2>{s('settings')}</h2>

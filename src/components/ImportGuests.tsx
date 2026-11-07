@@ -1,5 +1,6 @@
 'use client';
 
+import { swallowRestOfPress } from '@/lib/touchdrag';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Expect, Guest, TableEl } from '@/lib/layout';
 import { Select } from './Select';
@@ -109,7 +110,15 @@ export function ImportGuests({ t, guests, tables, onImport, onClose, inline }: P
 
   return (
     <>
-      {!inline && <div className="picker-backdrop" onMouseDown={onClose} />}
+      {!inline && (
+        <div
+          className="picker-backdrop"
+          onMouseDown={() => {
+            swallowRestOfPress();
+            onClose();
+          }}
+        />
+      )}
       <div
         className={`import-dialog${inline ? ' inline' : ''}`}
         role="dialog"

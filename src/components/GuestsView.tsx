@@ -1,11 +1,13 @@
 'use client';
 
+import { swallowRestOfPress } from '@/lib/touchdrag';
 import { Fragment, useMemo, useRef, useState } from 'react';
 import { planned, roles, setRole, type ExpectKind } from '@/lib/expect';
 import { ExpectSteppers } from './ExpectSteppers';
 import { Guest, LIMITS, TableEl, firstFreeSeat, newGuest, seatGuest, seatedCounts } from '@/lib/layout';
 import { Key } from '@/lib/i18n';
 import { PLUS, inviteDrafts } from '@/lib/invites';
+import { patchGuest, removeParty, seatParty, setPartySize } from '@/lib/party';
 import { matches } from '@/lib/search';
 import { GroupInput } from './GroupInput';
 import { Select } from './Select';
@@ -123,12 +125,10 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
     setBulk('');
   };
 
+  // a new name or group for a named guest goes to their +1s too
   const update = (id: string, patch: Partial<Guest>, key: string) =>
-    onChange(
-      guests.map((g) => (g.id === id ? { ...g, ...patch } : g)),
-      `guest:${id}:${key}`,
-    );
-  const remove = (id: string) => onChange(guests.filter((g) => g.id !== id));
+    onChange(patchGuest(guests, id, patch), `guest:${id}:${key}`);
+  const remove = (id: string) => onChange(removeParty(guests, id));
 
   const tableOption = (tb: TableEl) => (
     <option key={tb.id} value={tb.id}>
@@ -192,6 +192,27 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
               else if (!before) remove(g.id);
             }}
           />
+          {!PLUS.test(g.name) && (
+            <span className="stepper plus-step" role="group" aria-label={t('plusPeople')}>
+              <button
+                type="button"
+                aria-label={`${t('plusPeople')} −`}
+                disabled={(sizeOf.get(g.id) ?? 1) <= 1}
+                onClick={() => onChange(setPartySize(guests, g.id, (sizeOf.get(g.id) ?? 1) - 2), `guest:${g.id}:plus`)}
+              >
+                −
+              </button>
+              <output dir="ltr">+{(sizeOf.get(g.id) ?? 1) - 1}</output>
+              <button
+                type="button"
+                aria-label={`${t('plusPeople')} +`}
+                disabled={guests.length >= LIMITS.maxGuests}
+                onClick={() => onChange(setPartySize(guests, g.id, sizeOf.get(g.id) ?? 1), `guest:${g.id}:plus`)}
+              >
+                +
+              </button>
+            </span>
+          )}
         </div>
         <div className="guest-bottom">
           <GroupInput
@@ -211,7 +232,14 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
               const id = e.target.value;
               const target = id ? tableById.get(id) : undefined;
               onChange(
-                seatGuest(guests, g.id, target ? target.id : null, target ? firstFreeSeat(target, guests, g.id) : null),
+                seatParty(
+                  tables,
+                  guests,
+                  g.id,
+                  target ? target.id : null,
+                  target ? firstFreeSeat(target, guests, g.id) : null,
+                  seatGuest,
+                ),
               );
             }}
           >
@@ -329,7 +357,13 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
         </section>
         {adding && (
           <>
-            <div className="picker-backdrop" onMouseDown={() => setAdding(false)} />
+            <div
+              className="picker-backdrop"
+              onMouseDown={() => {
+                swallowRestOfPress();
+                setAdding(false);
+              }}
+            />
             <div
               className="import-dialog add-dialog"
               role="dialog"
