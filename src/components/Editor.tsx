@@ -46,6 +46,7 @@ import { useEditorKeys, useShiftHeld } from './editor/useEditorKeys';
 import { useLongPress } from './editor/useLongPress';
 import { buildMenuItems, type MenuState } from './editor/contextMenuItems';
 import { FocusPanel } from './editor/FocusPanel';
+import { partyOf } from '@/lib/party';
 import { useLayoutHistory } from './editor/useLayoutHistory';
 import { useHallDrop } from './editor/useHallDrop';
 import { EditorHeader, type EditorView } from './editor/EditorHeader';
@@ -658,6 +659,33 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   }, [focusId, layout.elements]);
 
   const [guestEdit, setGuestEdit] = useState<{ id: string; x: number; y: number } | null>(null);
+  /** Right-click on a guest in a list: edit, show, take off the table, unseat the group, delete. */
+  const [guestMenu, setGuestMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const guestMenuItems = (m: { id: string; x: number; y: number }): MenuItem[] => {
+    const l = layoutRef.current;
+    const g = l.guests.find((x) => x.id === m.id);
+    if (!g) return [];
+    const party = partyOf(l.guests, g.id);
+    const groupSeated = g.group ? l.guests.filter((x) => x.group === g.group && x.tableId).length : 0;
+    return [
+      { label: t('editPerson'), onClick: () => setGuestEdit({ id: g.id, x: m.x, y: m.y }) },
+      ...(g.tableId
+        ? [
+            { label: t('showOnMap'), onClick: () => void locateGuestId(g.id) },
+            { label: t('unseatPerson'), onClick: () => emptyChair(g.id) },
+          ]
+        : []),
+      ...(groupSeated > 0
+        ? [{ label: `${t('unseatGroup')} «${g.group}» (${groupSeated})`, onClick: () => unseatGroup(g.group) }]
+        : []),
+      'sep',
+      {
+        label: `${t('removeGuest')}${party.length > 1 ? ` (+${party.length - 1})` : ''}`,
+        danger: true,
+        onClick: () => removeGuestById(g.id),
+      },
+    ];
+  };
   /** Double-click on an element: select it and show its properties in the side panel. */
   const openProps = (id: string) => {
     setSelection([id]);
@@ -1000,6 +1028,14 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
         })()}
 
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu)} onClose={() => setMenu(null)} />}
+      {guestMenu && (
+        <ContextMenu
+          x={guestMenu.x}
+          y={guestMenu.y}
+          items={guestMenuItems(guestMenu)}
+          onClose={() => setGuestMenu(null)}
+        />
+      )}
 
       {picker &&
         (() => {
@@ -1202,6 +1238,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
                   onClose={() => setFocusId(null)}
                   onOpenChair={(seat, x, y) => setPicker({ tableId: tb.id, seat, x, y })}
                   onRemoveGuest={removeGuestById}
+                  onMenu={(id, x, y) => setGuestMenu({ id, x, y })}
                 />
               ) : null;
             })()}
@@ -1277,6 +1314,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
                 onToggle={togglePerson}
                 onEdit={(id, x, y) => setGuestEdit({ id, x, y })}
                 onRemove={removeGuestById}
+                onMenu={(id, x, y) => setGuestMenu({ id, x, y })}
               />
             </section>
 

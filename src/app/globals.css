@@ -4928,3 +4928,13 @@ input[type='number'] {
   color: var(--danger);
   border-color: var(--danger);
 }
+.focus-order {
+  display: flex;
+  width: 100%;
+}
+.focus-order button {
+  flex: 1;
+  min-height: 34px;
+  padding: 4px 8px;
+  white-space: nowrap;
+}

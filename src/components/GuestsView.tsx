@@ -7,7 +7,8 @@ import { ExpectSteppers } from './ExpectSteppers';
 import { Guest, LIMITS, TableEl, firstFreeSeat, newGuest, seatGuest, seatedCounts } from '@/lib/layout';
 import { Key } from '@/lib/i18n';
 import { PLUS, inviteDrafts } from '@/lib/invites';
-import { patchGuest, removeParty, seatParty, setPartySize } from '@/lib/party';
+import { partyOf, patchGuest, removeParty, seatParty, setPartySize } from '@/lib/party';
+import { ContextMenu, type MenuItem } from './ContextMenu';
 import { matches } from '@/lib/search';
 import { GroupInput } from './GroupInput';
 import { Select } from './Select';
@@ -136,6 +137,29 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
     </option>
   );
 
+  const [cardMenu, setCardMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const cardMenuItems = (id: string): MenuItem[] => {
+    const g = guests.find((x) => x.id === id);
+    if (!g) return [];
+    const party = partyOf(guests, id);
+    return [
+      ...(g.tableId && onLocate ? [{ label: t('showOnMap'), onClick: () => onLocate(g) }] : []),
+      ...(g.tableId
+        ? [
+            {
+              label: t('unseatPerson'),
+              onClick: () => onChange(seatParty(tables, guests, g.id, null, null, seatGuest)),
+            },
+          ]
+        : []),
+      ...(g.tableId || onLocate ? ['sep' as const] : []),
+      {
+        label: `${t('removeGuest')}${party.length > 1 ? ` (+${party.length - 1})` : ''}`,
+        danger: true,
+        onClick: () => (onAskRemove ? onAskRemove(g.id) : remove(g.id)),
+      },
+    ];
+  };
   const sizeOf = useMemo(() => new Map(inviteDrafts(guests).map((d) => [d.guestId, d.partySize])), [guests]);
   const roleCount = useMemo(() => {
     const n = { sure: 0, maybe: 0, court: 0 };
@@ -172,6 +196,13 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
     return (
       <li
         key={g.id}
+        onContextMenu={(e) => {
+          // typing fields keep the browser's own copy/paste menu
+          const el = e.target as HTMLElement;
+          if (el.closest('input, textarea') || (e.nativeEvent as PointerEvent).pointerType === 'touch') return;
+          e.preventDefault();
+          setCardMenu({ id: g.id, x: e.clientX, y: e.clientY });
+        }}
         className={`guest grow${onLocate ? ' pin' : ''}${tb ? ' seated' : ' unseated'}${PLUS.test(g.name) ? ' member' : ''}`}
       >
         <div className="guest-top">
@@ -325,6 +356,14 @@ export function GuestsView({ t, guests, tables, onChange, onAskRemove, onLocate,
 
   return (
     <div className="page">
+      {cardMenu && (
+        <ContextMenu
+          x={cardMenu.x}
+          y={cardMenu.y}
+          items={cardMenuItems(cardMenu.id)}
+          onClose={() => setCardMenu(null)}
+        />
+      )}
       <div className="page-inner guests">
         <section className="card add-bar">
           <button

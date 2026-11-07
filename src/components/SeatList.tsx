@@ -18,6 +18,7 @@ export function SeatList({
   tables,
   onEdit,
   onRemove,
+  onMenu,
   peopleTool,
   picked,
   onToggle,
@@ -27,6 +28,8 @@ export function SeatList({
   tables: TableEl[];
   onEdit?: (id: string, x: number, y: number) => void;
   onRemove?: (id: string) => void;
+  /** Right-click on a guest: the guest's menu (edit, take off the table, delete…). */
+  onMenu?: (id: string, x: number, y: number) => void;
   peopleTool?: boolean;
   picked?: Set<string>;
   onToggle?: (id: string) => void;
@@ -161,6 +164,12 @@ export function SeatList({
                       ? () => ids.forEach((id) => (inPicked !== picked?.has(id) ? null : onToggle?.(id)))
                       : undefined
                   }
+                  onContextMenu={(e) => {
+                    // a finger's long press drags the guest; the menu is for the mouse
+                    if (!onMenu || (e.nativeEvent as PointerEvent).pointerType === 'touch') return;
+                    e.preventDefault();
+                    onMenu(g.id, e.clientX, e.clientY);
+                  }}
                   onDragStart={(e) => {
                     if (dragIds) {
                       e.dataTransfer.setData('text/guest-ids', dragIds.join(','));
