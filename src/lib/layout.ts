@@ -389,6 +389,41 @@ export function normalizeSeats(elements: Element[], guests: Guest[]): Guest[] {
   });
 }
 
+/**
+ * Guests who are at a table but have no chair (the table was full, or got fewer chairs) take the first free chairs
+ * as soon as there are any. Nobody is ever taken off a table just because it shrank.
+ */
+export function settleSeats(elements: Element[], guests: Guest[]): Guest[] {
+  const waiting = guests.filter((g) => g.tableId && g.seat === null);
+  if (waiting.length === 0) return guests;
+  const tables = new Map(elements.filter((e): e is TableEl => e.kind === 'table').map((e) => [e.id, e]));
+  const taken = new Map<string, Set<number>>();
+  for (const g of guests)
+    if (g.tableId && g.seat !== null)
+      (taken.get(g.tableId) ?? taken.set(g.tableId, new Set()).get(g.tableId)!).add(g.seat);
+  const give = new Map<string, number>();
+  for (const g of waiting) {
+    const tb = tables.get(g.tableId!);
+    if (!tb) continue;
+    const used = taken.get(tb.id) ?? taken.set(tb.id, new Set()).get(tb.id)!;
+    for (let i = 0; i < tb.seats; i++)
+      if (!used.has(i)) {
+        used.add(i);
+        give.set(g.id, i);
+        break;
+      }
+  }
+  if (give.size === 0) return guests;
+  return guests.map((g) => (give.has(g.id) ? { ...g, seat: give.get(g.id)! } : g));
+}
+
+/** How many guests are waiting at each table for a chair (seated at it, but without a chair). */
+export function waitingCounts(guests: Guest[]): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const g of guests) if (g.tableId && g.seat === null) m.set(g.tableId, (m.get(g.tableId) ?? 0) + 1);
+  return m;
+}
+
 /** Number of guests seated at each table. */
 export function seatedCounts(guests: Guest[]): Map<string, number> {
   const m = new Map<string, number>();

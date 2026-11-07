@@ -1,5 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { emptyLayout, type Layout } from '@/lib/layout';
+import { merge3 } from '@/lib/merge';
+import { applyIncoming, type IncomingPlan } from '../useLayoutSync';
 
 const MAX_UNDO = 60;
 /** Edits with the same key within this many ms (typing in a field, nudging a number) undo as one step. */
@@ -44,8 +46,20 @@ export function useLayoutHistory() {
     }
   }, []);
 
+  /** Another device saved: show the merged plan, and let undo/redo keep that device's changes. */
+  const rebase = useCallback((inc: IncomingPlan) => {
+    const fix = (p: Layout) => merge3(inc.base, p, inc.theirs);
+    past.current = past.current.map(fix);
+    future.current = future.current.map(fix);
+    lastEdit.current = { key: '', time: 0 };
+    const next = applyIncoming(layoutRef.current, inc);
+    layoutRef.current = next;
+    setLayout(next);
+  }, []);
+
   return {
     layout,
+    rebase,
     setLayout,
     layoutRef,
     commit,

@@ -53,6 +53,7 @@ import { useElementActions } from './editor/useElementActions';
 import { useSeatingActions } from './editor/useSeatingActions';
 import { useTouchDrag } from './editor/useTouchDrag';
 import { roles } from '@/lib/expect';
+import type { IncomingPlan } from './useLayoutSync';
 
 const STORAGE_KEY = 'seating-layout-v1';
 const ORDER: Record<Element['kind'], number> = { zone: 0, marker: 1, table: 2, column: 3 };
@@ -69,9 +70,11 @@ export type EditorProps = {
   account?: AccountProps;
   /** Open zoomed in on this guest's chair (from the guests page pin). */
   focusGuest?: string;
+  /** A newer plan saved on another device (merged with this one); shown as soon as no finger or button is down. */
+  incoming?: IncomingPlan | null;
 };
 
-export default function Editor({ initial, onChange, leading, account, focusGuest }: EditorProps = {}) {
+export default function Editor({ initial, onChange, leading, account, focusGuest, incoming }: EditorProps = {}) {
   const { lang } = useLang();
   const t = useCallback((k: Key) => STRINGS[lang][k], [lang]);
   const langRef = useRef(lang);
@@ -82,8 +85,41 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   /** Anything destructive that is not undone by a click asks first; the pending action runs on Delete. */
   const [pendingDelete, setPendingDelete] = useState<{ text: string; run: () => void } | null>(null);
 
-  const { layout, setLayout, layoutRef, commit, undo, redo, canUndo, canRedo } = useLayoutHistory();
+  const { layout, setLayout, layoutRef, commit, undo, redo, canUndo, canRedo, rebase } = useLayoutHistory();
   const [hydrated, setHydrated] = useState(false);
+  const pointerDown = useRef(false);
+  useEffect(() => {
+    const down = () => (pointerDown.current = true);
+    const up = () => (pointerDown.current = false);
+    window.addEventListener('pointerdown', down, true);
+    window.addEventListener('pointerup', up, true);
+    window.addEventListener('pointercancel', up, true);
+    return () => {
+      window.removeEventListener('pointerdown', down, true);
+      window.removeEventListener('pointerup', up, true);
+      window.removeEventListener('pointercancel', up, true);
+    };
+  }, []);
+  useEffect(() => {
+    if (!incoming) return;
+    // never swap the plan under a finger mid-drag: wait until it lifts
+    let done = false;
+    const apply = () => {
+      if (done) return;
+      done = true;
+      window.removeEventListener('pointerup', apply, true);
+      window.removeEventListener('pointercancel', apply, true);
+      rebase(incoming);
+    };
+    if (pointerDown.current) {
+      window.addEventListener('pointerup', apply, true);
+      window.addEventListener('pointercancel', apply, true);
+    } else apply();
+    return () => {
+      window.removeEventListener('pointerup', apply, true);
+      window.removeEventListener('pointercancel', apply, true);
+    };
+  }, [incoming, rebase]);
 
   const [view_, setViewTab] = useState<EditorView>('hall');
   const inHall = view_ === 'hall';

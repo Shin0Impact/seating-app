@@ -2459,6 +2459,10 @@ button.primary.danger-fill {
   color: var(--danger);
   font-weight: 600;
 }
+.save-status.merged {
+  color: var(--accent);
+  font-weight: 600;
+}
 .import-dialog.inline {
   z-index: auto;
   position: static;

@@ -146,6 +146,7 @@ const en = {
   saving: 'Saving…',
   saveError: 'Could not save — we will retry on your next change',
   saveConflict: 'The plan was changed in another window. Reload the page.',
+  syncedOther: 'Updated from another device',
   // invites
   invitesTitle: 'Invitations',
   all: 'All',
@@ -470,6 +471,7 @@ const ar: Record<SKey, string> = {
   saving: 'جارٍ الحفظ…',
   saveError: 'لم نستطع حفظ — سنحاول مرة ثانية عند التعديل',
   saveConflict: 'تم تعديل المخطط من نافذة أخرى. أعد تحميل الصفحة.',
+  syncedOther: 'انعمل تحديث من جهاز ثاني',
   invitesTitle: 'الدعوات',
   all: 'الكل',
   stUnsent: 'لم تُرسل',
