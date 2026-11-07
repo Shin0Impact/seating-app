@@ -4995,3 +4995,35 @@ input[type='number'] {
     max-height: max(340px, 55vh);
   }
 }
+
+/* door desk: connection status and taps waiting to be sent */
+.helper-net {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 13px;
+}
+.helper-net .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2e9e5b;
+  flex: none;
+}
+.helper-net.off {
+  background: #fff4e0;
+  color: #8a5300;
+}
+.helper-net.off .dot {
+  background: #e08a00;
+}
+.helper-wait {
+  flex: none;
+  font-size: 14px;
+}

@@ -7,47 +7,187 @@ import { locate, seatsSummary } from '@/lib/invites';
 import { buildFocus } from '@/lib/route';
 import { useS } from './LangProvider';
 import ZoomPan from './ZoomPan';
-import Scanner, { ScanResultView, type ScanResult } from './Scanner';
+import Scanner, { type ScanResult } from './Scanner';
+import {
+  enqueue,
+  forget,
+  loadSaved,
+  overlay,
+  pendingInvites,
+  saveData,
+  saveQueue,
+  type HelperData,
+  type HelperInvite,
+  type HelperOp,
+} from '@/lib/helperOffline';
 
-type Inv = {
-  token: string;
-  guest_id: string;
-  member_ids: string[];
-  party_size: number;
-  status: string;
-  confirmed_count: number | null;
-  checked_in_at: string | null;
-};
-type Data = { name: string; layout: unknown; invites: Inv[] };
+const uid = () =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Math.random());
 
-/** The door desk for helpers: no login, only the secret link. All access goes through token-checked database functions. */
+type Inv = HelperInvite;
+type Data = HelperData;
+
+/** A queued tap was sent (ok), cannot ever succeed (drop), should be tried again later (retry), or the link is off. */
+type Sent = 'ok' | 'drop' | 'retry' | 'dead';
+
+/**
+ * The door desk for helpers: no login, only the secret link. All access goes through token-checked database
+ * functions. It keeps working on a weak or missing connection: the last list is kept on the phone, and taps are
+ * queued and sent as soon as possible (with the time they were made).
+ */
 export default function HelperDesk({ token }: { token: string }) {
   const s = useS();
   const sb = useMemo(() => browserClient(), []);
-  const [data, setData] = useState<Data | null>(null);
+  const [server, setServer] = useState<Data | null>(null);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [queue, setQueueState] = useState<HelperOp[]>([]);
+  const [reachable, setReachable] = useState(true);
   const [dead, setDead] = useState(false);
   const [tab, setTab] = useState<'scan' | 'names'>('scan');
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<{ token: string; n: number } | null>(null);
   const [walk, setWalk] = useState({ name: '', n: 1 });
   const [msg, setMsg] = useState('');
-  const [busy, setBusy] = useState(false);
+
+  const queueRef = useRef<HelperOp[]>([]);
+  const setQueue = useCallback(
+    (next: HelperOp[]) => {
+      queueRef.current = next;
+      setQueueState(next);
+      saveQueue(token, next);
+    },
+    [token],
+  );
+
+  // what this phone already has, shown at once (even with no signal)
+  useEffect(() => {
+    const saved = loadSaved(token);
+    if (saved.data) setServer(saved.data);
+    setSavedAt(saved.savedAt);
+    queueRef.current = saved.queue;
+    setQueueState(saved.queue);
+  }, [token]);
 
   const load = useCallback(async () => {
     const { data: d, error } = await sb.rpc('helper_get', { p_token: token });
-    if (error) return;
-    if (!d) return setDead(true);
+    if (error) {
+      setReachable(false);
+      return;
+    }
+    setReachable(true);
+    if (!d) {
+      forget(token);
+      return setDead(true);
+    }
     setDead(false);
-    setData(d as Data);
+    const at = new Date().toISOString();
+    setServer(d as Data);
+    setSavedAt(at);
+    saveData(token, d as Data, at);
   }, [sb, token]);
 
+  /** Call a database function; if the database has not been updated yet, use the older form of it. */
+  const call = useCallback(
+    async (fn: string, args: Record<string, unknown>, older: Record<string, unknown>) => {
+      let r = await sb.rpc(fn, args);
+      if (r.error && (r.error.code === 'PGRST202' || /could not find the function/i.test(r.error.message)))
+        r = await sb.rpc(fn, older);
+      return r;
+    },
+    [sb],
+  );
+
+  const send = useCallback(
+    async (op: HelperOp): Promise<Sent> => {
+      const r =
+        op.kind === 'checkin'
+          ? await call(
+              'helper_checkin',
+              { p_token: token, p_invite: op.invite, p_count: op.count, p_undo: op.undo, p_at: op.at },
+              { p_token: token, p_invite: op.invite, p_count: op.count, p_undo: op.undo },
+            )
+          : op.kind === 'scan'
+            ? await call(
+                'helper_scan',
+                { p_token: token, p_invite: op.invite, p_at: op.at },
+                { p_token: token, p_invite: op.invite },
+              )
+            : await call(
+                'helper_add_walkin',
+                { p_token: token, p_name: op.name, p_count: op.count, p_key: op.key, p_at: op.at },
+                { p_token: token, p_name: op.name, p_count: op.count },
+              );
+      if (r.error) {
+        // no answer, or the server is struggling: try again later; anything else will never work
+        const st = (r as { status?: number }).status ?? 0;
+        return st === 0 || st >= 500 || st === 408 || st === 429 ? 'retry' : 'drop';
+      }
+      const res = r.data as { ok?: boolean; error?: string } | null;
+      if (res?.error === 'helper') return 'dead';
+      if (res?.error === 'full') setMsg(s('helperWalkinFull'));
+      return 'ok';
+    },
+    [call, token, s],
+  );
+
+  const flushing = useRef(false);
+  const flush = useCallback(async () => {
+    if (flushing.current || queueRef.current.length === 0) return;
+    flushing.current = true;
+    let sentAny = false;
+    try {
+      while (queueRef.current.length > 0) {
+        const op = queueRef.current[0];
+        const res = await send(op);
+        if (res === 'retry') {
+          setReachable(false);
+          break;
+        }
+        if (res === 'dead') {
+          forget(token);
+          setDead(true);
+          break;
+        }
+        setReachable(true);
+        sentAny = true;
+        // the queue may have changed while this was on its way: remove just this tap
+        setQueue(queueRef.current.filter((x) => x.id !== op.id));
+      }
+    } finally {
+      flushing.current = false;
+    }
+    if (sentAny) void load();
+  }, [send, setQueue, load, token]);
+
+  const push = useCallback(
+    (op: HelperOp) => {
+      setQueue(enqueue(queueRef.current, op));
+      void flush();
+    },
+    [setQueue, flush],
+  );
+
   useEffect(() => {
-    void load();
+    void load().then(() => void flush());
     const t = setInterval(() => {
-      if (document.visibilityState === 'visible') void load();
-    }, 10000);
-    return () => clearInterval(t);
-  }, [load]);
+      if (document.visibilityState !== 'visible') return;
+      if (queueRef.current.length > 0) void flush();
+      else void load();
+    }, 8000);
+    const back = () => {
+      void flush();
+      void load();
+    };
+    window.addEventListener('online', back);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener('online', back);
+    };
+  }, [load, flush]);
+
+  /** The list as it will be once the queued taps are through. */
+  const data = useMemo(() => (server ? overlay(server, queue) : null), [server, queue]);
+  const waiting = useMemo(() => pendingInvites(queue), [queue]);
 
   const layout: Layout | null = useMemo(() => (data ? parseLayout(data.layout) : null), [data]);
   const nameOf = useMemo(() => new Map((layout?.guests ?? []).map((g) => [g.id, g.name])), [layout]);
@@ -79,10 +219,20 @@ export default function HelperDesk({ token }: { token: string }) {
     [],
   );
 
-  // stable, so the camera does not restart on every refresh
+  // a scanned code is looked up on the phone first, so it works without signal; stable, so the camera keeps running
   const check = useCallback(
     async (code: string): Promise<ScanResult> => {
-      const { data: r, error } = await sb.rpc('helper_scan', { p_token: token, p_invite: code });
+      const here = dataRef.current.data?.invites.find((i) => i.token === code);
+      if (here) {
+        if (!here.checked_in_at) push({ id: uid(), kind: 'scan', invite: code, at: new Date().toISOString() });
+        return describe(here, here.checked_in_at);
+      }
+      // not on this phone's list (maybe added since): ask the server, if it can be reached
+      const { data: r, error } = await call(
+        'helper_scan',
+        { p_token: token, p_invite: code, p_at: new Date().toISOString() },
+        { p_token: token, p_invite: code },
+      );
       if (error) return { error: 'network' };
       const out = r as {
         error?: string;
@@ -94,7 +244,6 @@ export default function HelperDesk({ token }: { token: string }) {
         member_ids: string[];
       };
       if (out.error) return { error: out.error === 'helper' ? 'login' : out.error };
-      // pick up the new arrival right away, then draw where to take them from the hall shapes we already have
       void load();
       return describe(
         {
@@ -107,33 +256,31 @@ export default function HelperDesk({ token }: { token: string }) {
         out.already ?? null,
       );
     },
-    [sb, token, load, describe],
+    [call, token, load, describe, push],
   );
 
-  async function mark(i: Inv, n: number, undo = false) {
-    setBusy(true);
-    await sb.rpc('helper_checkin', { p_token: token, p_invite: i.token, p_count: n, p_undo: undo });
+  function mark(i: Inv, n: number, undo = false) {
+    push({ id: uid(), kind: 'checkin', invite: i.token, count: n, undo, at: new Date().toISOString() });
     setOpen(null);
-    await load();
-    setBusy(false);
   }
 
-  async function addWalkin(e: React.FormEvent) {
+  function addWalkin(e: React.FormEvent) {
     e.preventDefault();
     if (!walk.name.trim()) return;
-    setBusy(true);
-    const { data: r } = await sb.rpc('helper_add_walkin', { p_token: token, p_name: walk.name, p_count: walk.n });
-    setBusy(false);
-    const res = r as { ok?: boolean; error?: string } | null;
-    if (res?.ok) {
-      setMsg(s('helperWalkinDone'));
-      setWalk({ name: '', n: 1 });
-      await load();
-    } else setMsg(res?.error === 'full' ? s('helperWalkinFull') : s('genericError'));
+    push({
+      id: uid(),
+      kind: 'walkin',
+      key: crypto.randomUUID(),
+      name: walk.name.trim().slice(0, 56),
+      count: walk.n,
+      at: new Date().toISOString(),
+    });
+    setMsg(reachable ? s('helperWalkinDone') : s('helperWalkinQueued'));
+    setWalk({ name: '', n: 1 });
   }
 
   if (dead) return <p className="notice err">{s('helperOffline')}</p>;
-  if (!data) return <p className="muted">…</p>;
+  if (!data) return <p className="muted">{reachable ? '…' : s('helperNoData')}</p>;
 
   const needle = q.trim().toLowerCase();
   const rows = data.invites
@@ -141,10 +288,17 @@ export default function HelperDesk({ token }: { token: string }) {
     .filter((r) => r.name && (!needle || r.name.toLowerCase().includes(needle)))
     .sort((a, b) => a.name.localeCompare(b.name));
   const arrived = data.invites.filter((i) => i.checked_in_at).length;
+  const time = savedAt ? new Date(savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 
   return (
     <div className="helper">
       <p className="muted">{s('helperArrivedCount', { n: arrived, total: data.invites.length })}</p>
+      <p className={`helper-net${reachable ? '' : ' off'}`} role="status">
+        <span className="dot" aria-hidden />
+        {reachable ? s('helperOnline') : s('helperOfflineNow')}
+        {queue.length > 0 && <b> · {s('helperPending', { n: queue.length })}</b>}
+        {time && <span className="muted"> · {s('helperUpdated', { time })}</span>}
+      </p>
       <div className="seg" role="tablist">
         {(['scan', 'names'] as const).map((k) => (
           <button
@@ -174,6 +328,11 @@ export default function HelperDesk({ token }: { token: string }) {
                 <div className="helper-top">
                   <span className="num-sq">{i.confirmed_count ?? i.party_size}</span>
                   <b>{name}</b>
+                  {waiting.has(i.token) && (
+                    <span className="helper-wait" title={s('helperWaitingOne')} aria-label={s('helperWaitingOne')}>
+                      ⏳
+                    </span>
+                  )}
                 </div>
                 <div className="helper-btns">
                   {(() => {
@@ -233,11 +392,11 @@ export default function HelperDesk({ token }: { token: string }) {
                         +
                       </button>
                     </span>
-                    <button className="btn small primary" disabled={busy} onClick={() => mark(i, open.n)}>
+                    <button className="btn small primary" onClick={() => mark(i, open.n)}>
                       {i.checked_in_at ? s('save') : s('arrivedSave')}
                     </button>
                     {i.checked_in_at && (
-                      <button className="btn small danger" disabled={busy} onClick={() => mark(i, 1, true)}>
+                      <button className="btn small danger" onClick={() => mark(i, 1, true)}>
                         {s('undoArrived')}
                       </button>
                     )}
@@ -280,7 +439,7 @@ export default function HelperDesk({ token }: { token: string }) {
             aria-label={s('helperWalkinName')}
           />
         </div>
-        <button className="btn primary" disabled={busy || !walk.name.trim()}>
+        <button className="btn primary" disabled={!walk.name.trim()}>
           {s('helperWalkinAdd')}
         </button>
         {msg && (
