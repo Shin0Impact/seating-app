@@ -4950,3 +4950,46 @@ input[type='number'] {
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
+
+/* hall side panel: wider on big screens, and guest names are never cut off */
+@media (min-width: 761px) {
+  .side {
+    width: clamp(400px, 32vw, 540px);
+  }
+}
+.seatlist .sl-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.seatlist .sl-text .sl-name {
+  flex: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  overflow: visible;
+}
+.seatlist .sl-text .sl-meta:empty {
+  display: none;
+}
+.seatlist .sl-text .sl-meta {
+  max-width: none;
+}
+.seatlist .sl-edit {
+  margin-inline-start: 0;
+  flex: none;
+}
+.seatlist .gcount,
+.seatlist .exp-tag {
+  flex: none;
+}
+.seatlist .gcount {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+@media (min-width: 761px) {
+  .seatlist {
+    max-height: max(340px, 55vh);
+  }
+}

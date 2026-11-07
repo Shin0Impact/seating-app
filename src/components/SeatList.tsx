@@ -190,8 +190,14 @@ export function SeatList({
                       <Icon name="grip" />
                     </span>
                   )}
-                  <span className="sl-name" dir="auto">
-                    {g.name}
+                  {/* the name gets the room (wrapping if long); group or table goes underneath */}
+                  <span className="sl-text">
+                    <span className="sl-name" dir="auto">
+                      {g.name}
+                    </span>
+                    <span className="sl-meta" dir="auto">
+                      {g.tableId ? `${label.get(g.tableId) ?? ''}${g.seat !== null ? ` #${g.seat + 1}` : ''}` : g.group}
+                    </span>
                   </span>
                   {kindOf(planned(g, ids.length)) !== 'sure' && (
                     <span className={`exp-tag small ${kindOf(planned(g, ids.length))}`}>
@@ -203,9 +209,6 @@ export function SeatList({
                       +{extra.length}
                     </span>
                   )}
-                  <span className="sl-meta" dir="auto">
-                    {g.tableId ? `${label.get(g.tableId) ?? ''}${g.seat !== null ? ` #${g.seat + 1}` : ''}` : g.group}
-                  </span>
                   {onEdit && (
                     <button
                       className="sl-edit"
