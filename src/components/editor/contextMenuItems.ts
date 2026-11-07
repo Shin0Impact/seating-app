@@ -29,6 +29,7 @@ export type MenuContext = {
   emptyTable: (tableId: string) => void;
   unseatGroup: (group: string) => void;
   removeGuest: (guestId: string) => void;
+  changeTable: (guestId: string, x: number, y: number) => void;
   focusTable: (tableId: string) => void;
   duplicateSelected: () => void;
   rotateSelected: () => void;
@@ -54,6 +55,7 @@ export function buildMenuItems(m: MenuState, c: MenuContext): MenuItem[] {
         label: occ ? c.t('changeGuest') : c.t('seatGuestHere'),
         onClick: () => c.setPicker({ tableId, seat, x: m.x, y: m.y }),
       },
+      ...(occ ? [{ label: c.t('changeTable'), onClick: () => c.changeTable(occ.id, m.x, m.y) }] : []),
       ...(occ ? [{ label: `${c.t('emptyChair')} (${occ.name})`, onClick: () => c.emptyChair(occ.id) }] : []),
       ...(occ && occ.group ? [groupItem(c, occ.group)] : []),
       ...(occ

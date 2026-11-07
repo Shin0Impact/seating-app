@@ -613,6 +613,8 @@ textarea {
   position: fixed;
   z-index: 70;
   width: 240px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--surface);
   border: 1px solid var(--line-strong);
   border-radius: 12px;

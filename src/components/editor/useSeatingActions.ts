@@ -182,6 +182,22 @@ export function useSeatingActions(d: Deps) {
     return null;
   };
 
+  /** Move a guest (and their +1s) to another table, on its first free chairs; null takes them off their table. */
+  const moveToTable = (guestId: string, tableId: string | null) => {
+    const l = layoutRef.current;
+    const tb = tableId ? tablesIn(l).find((x) => x.id === tableId) : undefined;
+    const guests = seatParty(
+      tablesIn(l),
+      l.guests,
+      guestId,
+      tb ? tb.id : null,
+      tb ? firstFreeSeat(tb, l.guests, guestId) : null,
+      seatGuest,
+    );
+    commit({ ...l, guests });
+    if (tb) noteWaiting(l.elements, guests, [tb.id]);
+  };
+
   /** Take everyone in a group off their tables, after asking. */
   const unseatGroup = (group: string) => {
     const n = layoutRef.current.guests.filter((g) => g.group === group && g.tableId).length;
@@ -247,6 +263,7 @@ export function useSeatingActions(d: Deps) {
     resolveDrop,
     idsOfGroup,
     unseatGroup,
+    moveToTable,
     dropMany,
     dropGuest,
   };

@@ -572,6 +572,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       emptyTable,
       unseatGroup,
       removeGuest: removeGuestById,
+      changeTable: (id, x, y) => setTableMenu({ id, x, y }),
       focusTable,
       duplicateSelected,
       rotateSelected,
@@ -659,6 +660,26 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   }, [focusId, layout.elements]);
 
   const [guestEdit, setGuestEdit] = useState<{ id: string; x: number; y: number } | null>(null);
+  /** "Change table…" opens its own menu: every table (with how full it is), or no table. */
+  const [tableMenu, setTableMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const tableMenuItems = (m: { id: string }): MenuItem[] => {
+    const l = layoutRef.current;
+    const g = l.guests.find((x) => x.id === m.id);
+    if (!g) return [];
+    const n = seatedCounts(l.guests);
+    const list = l.elements
+      .filter((e): e is TableEl => e.kind === 'table')
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+    return [
+      { label: t('noTableOption'), disabled: !g.tableId, onClick: () => moveToTable(g.id, null) },
+      'sep',
+      ...list.map((tb) => ({
+        label: `${tb.label} (${n.get(tb.id) ?? 0}/${tb.seats})${tb.id === g.tableId ? ' ✓' : ''}`,
+        disabled: tb.id === g.tableId,
+        onClick: () => moveToTable(g.id, tb.id),
+      })),
+    ];
+  };
   /** Right-click on a guest in a list: edit, show, take off the table, unseat the group, delete. */
   const [guestMenu, setGuestMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const guestMenuItems = (m: { id: string; x: number; y: number }): MenuItem[] => {
@@ -669,6 +690,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     const groupSeated = g.group ? l.guests.filter((x) => x.group === g.group && x.tableId).length : 0;
     return [
       { label: t('editPerson'), onClick: () => setGuestEdit({ id: g.id, x: m.x, y: m.y }) },
+      { label: t('changeTable'), onClick: () => setTableMenu({ id: g.id, x: m.x, y: m.y }) },
       ...(g.tableId
         ? [
             { label: t('showOnMap'), onClick: () => void locateGuestId(g.id) },
@@ -710,6 +732,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     resolveDrop,
     idsOfGroup,
     unseatGroup,
+    moveToTable,
     dropMany,
     dropGuest,
   } = useSeatingActions({
@@ -1028,6 +1051,14 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
         })()}
 
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu)} onClose={() => setMenu(null)} />}
+      {tableMenu && (
+        <ContextMenu
+          x={tableMenu.x}
+          y={tableMenu.y}
+          items={tableMenuItems(tableMenu)}
+          onClose={() => setTableMenu(null)}
+        />
+      )}
       {guestMenu && (
         <ContextMenu
           x={guestMenu.x}

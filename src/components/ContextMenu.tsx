@@ -28,7 +28,8 @@ export function ContextMenu({
     return () => document.removeEventListener('touchend', touch, true);
   }, []);
   const mayClose = () => Date.now() - opened.current > 350 && Date.now() - lastTouch.current > 700;
-  const H = items.length * 40 + 16;
+  // a long menu (every table) scrolls inside the screen
+  const H = Math.min(items.length * 40 + 16, window.innerHeight - 16);
   const left = Math.max(8, Math.min(x, window.innerWidth - 248));
   const top = Math.max(8, Math.min(y, window.innerHeight - H - 8));
   return (
@@ -55,7 +56,7 @@ export function ContextMenu({
         ref={ref}
         className="ctxmenu"
         role="menu"
-        style={{ left, top }}
+        style={{ left, top, maxHeight: H }}
         onKeyDown={(e) => {
           if (e.key === 'Escape') onClose();
         }}
