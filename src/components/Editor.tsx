@@ -570,6 +570,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
       emptyChair,
       emptyTable,
       unseatGroup,
+      removeGuest: removeGuestById,
       focusTable,
       duplicateSelected,
       rotateSelected,
@@ -674,6 +675,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     addAndSeat,
     editGuest,
     removeGuestById,
+    removeGuests,
     setShape,
     emptyChair,
     changeSeats,
@@ -714,8 +716,11 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
 
   useEditorKeys({
     enabled: inHallRef,
-    hasSelection: () => selectionRef.current.length > 0,
-    remove: removeSelected,
+    hasSelection: () => selectionRef.current.length > 0 || peopleSelRef.current.length > 0,
+    remove: () =>
+      peopleSelRef.current.length > 0 && selectionRef.current.length === 0
+        ? removeGuests(peopleSelRef.current)
+        : removeSelected(),
     selectAll,
     copy: copySelected,
     paste: pasteClipboard,
@@ -1181,6 +1186,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
               });
               setPeopleSel([]);
             }}
+            onRemove={() => removeGuests(peopleSel)}
             onClear={() => setPeopleSel([])}
           />
           <ScaleBar t={t} scale={view.scale} />
@@ -1195,6 +1201,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
                   guests={layout.guests}
                   onClose={() => setFocusId(null)}
                   onOpenChair={(seat, x, y) => setPicker({ tableId: tb.id, seat, x, y })}
+                  onRemoveGuest={removeGuestById}
                 />
               ) : null;
             })()}
@@ -1269,6 +1276,7 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
                 picked={pickedSet}
                 onToggle={togglePerson}
                 onEdit={(id, x, y) => setGuestEdit({ id, x, y })}
+                onRemove={removeGuestById}
               />
             </section>
 
@@ -1287,7 +1295,8 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
                 {error}
               </p>
             )}
-            <p className="muted saved">{t('saved')}</p>
+            {/* only the offline editor keeps the plan on this device; an event shows its save status in the top bar */}
+            {!onChange && <p className="muted saved">{t('saved')}</p>}
           </aside>
         )}
       </div>

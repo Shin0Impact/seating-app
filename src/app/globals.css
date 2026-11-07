@@ -4907,3 +4907,24 @@ input[type='number'] {
 .grouplist li.done {
   opacity: 0.55;
 }
+
+/* deleting guests from the hall editor */
+.sl-edit.sl-del {
+  margin-inline-start: 0;
+  color: var(--danger);
+}
+.focus-list li > button.del {
+  flex: none;
+  width: 36px;
+  min-height: 36px;
+  justify-content: center;
+  padding: 0;
+  color: var(--danger);
+}
+.focus-list li > button.del:hover {
+  background: var(--danger-soft, var(--hover));
+}
+.pickbar button.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}

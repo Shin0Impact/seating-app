@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import type { Guest, TableEl } from '@/lib/layout';
 import type { Key } from '@/lib/i18n';
+import { Icon } from '../Icon';
 
 /** One table in focus: who sits on it, chair by chair, and who is waiting for a chair there. */
 export function FocusPanel({
@@ -11,6 +12,7 @@ export function FocusPanel({
   guests,
   onClose,
   onOpenChair,
+  onRemoveGuest,
 }: {
   t: (k: Key) => string;
   table: TableEl;
@@ -18,6 +20,7 @@ export function FocusPanel({
   onClose: () => void;
   /** Open the chair menu (change / empty) for this chair. */
   onOpenChair: (seat: number, x: number, y: number) => void;
+  onRemoveGuest: (id: string) => void;
 }) {
   const { chairs, waiting, count } = useMemo(() => {
     const at = guests.filter((g) => g.tableId === table.id);
@@ -57,6 +60,17 @@ export function FocusPanel({
                 {g ? g.name : t('freeChair')}
               </span>
             </button>
+            {g && (
+              <button
+                type="button"
+                className="del"
+                aria-label={`${t('removeGuest')} (${g.name})`}
+                title={t('removeGuest')}
+                onClick={() => onRemoveGuest(g.id)}
+              >
+                <Icon name="trash" size={16} />
+              </button>
+            )}
           </li>
         ))}
       </ol>
@@ -72,6 +86,15 @@ export function FocusPanel({
                 <span className="nm" dir="auto">
                   {g.name}
                 </span>
+                <button
+                  type="button"
+                  className="del"
+                  aria-label={`${t('removeGuest')} (${g.name})`}
+                  title={t('removeGuest')}
+                  onClick={() => onRemoveGuest(g.id)}
+                >
+                  <Icon name="trash" size={16} />
+                </button>
               </li>
             ))}
           </ul>

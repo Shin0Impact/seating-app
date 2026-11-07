@@ -17,6 +17,7 @@ export function SeatList({
   guests,
   tables,
   onEdit,
+  onRemove,
   peopleTool,
   picked,
   onToggle,
@@ -25,6 +26,7 @@ export function SeatList({
   guests: Guest[];
   tables: TableEl[];
   onEdit?: (id: string, x: number, y: number) => void;
+  onRemove?: (id: string) => void;
   peopleTool?: boolean;
   picked?: Set<string>;
   onToggle?: (id: string) => void;
@@ -206,6 +208,16 @@ export function SeatList({
                       }}
                     >
                       <Icon name="edit" size={16} />
+                    </button>
+                  )}
+                  {onRemove && (
+                    <button
+                      className="sl-edit sl-del"
+                      aria-label={`${t('removeGuest')} (${g.name})`}
+                      title={t('removeGuest')}
+                      onClick={() => onRemove(g.id)}
+                    >
+                      <Icon name="trash" size={16} />
                     </button>
                   )}
                 </li>

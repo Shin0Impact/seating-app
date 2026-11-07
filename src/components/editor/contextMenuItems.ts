@@ -28,6 +28,7 @@ export type MenuContext = {
   emptyChair: (guestId: string) => void;
   emptyTable: (tableId: string) => void;
   unseatGroup: (group: string) => void;
+  removeGuest: (guestId: string) => void;
   focusTable: (tableId: string) => void;
   duplicateSelected: () => void;
   rotateSelected: () => void;
@@ -55,6 +56,12 @@ export function buildMenuItems(m: MenuState, c: MenuContext): MenuItem[] {
       },
       ...(occ ? [{ label: `${c.t('emptyChair')} (${occ.name})`, onClick: () => c.emptyChair(occ.id) }] : []),
       ...(occ && occ.group ? [groupItem(c, occ.group)] : []),
+      ...(occ
+        ? [
+            'sep' as const,
+            { label: `${c.t('removeGuest')} (${occ.name})`, danger: true, onClick: () => c.removeGuest(occ.id) },
+          ]
+        : []),
       ...(partyIds.length > 1
         ? [
             {

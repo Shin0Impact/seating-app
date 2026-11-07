@@ -113,6 +113,22 @@ export function useSeatingActions(d: Deps) {
       },
     });
   };
+  /** Delete several guests (and the +1s of any named guest among them), after asking. */
+  const removeGuests = (ids: string[]) => {
+    const l0 = layoutRef.current;
+    const all = new Set<string>();
+    for (const id of ids) for (const g of partyOf(l0.guests, id)) all.add(g.id);
+    if (all.size === 0) return;
+    setPicker(null);
+    setPendingDelete({
+      text: t('confirmRemoveGuests').replace('{n}', String(all.size)),
+      run: () => {
+        const l = layoutRef.current;
+        commit({ ...l, guests: l.guests.filter((g) => !all.has(g.id)) });
+        setPeopleSel([]);
+      },
+    });
+  };
   /** Turn the given tables round or rectangular; chairs and guests stay with them. */
   const setShape = (ids: string[], shape: 'round' | 'rect') => {
     const l = layoutRef.current;
@@ -224,6 +240,7 @@ export function useSeatingActions(d: Deps) {
     addAndSeat,
     editGuest,
     removeGuestById,
+    removeGuests,
     setShape,
     emptyChair,
     changeSeats,

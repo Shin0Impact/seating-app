@@ -9,11 +9,13 @@ export function PickBar({
   t,
   count,
   onUnseat,
+  onRemove,
   onClear,
 }: {
   t: T;
   count: number;
   onUnseat: () => void;
+  onRemove?: () => void;
   onClear: () => void;
 }) {
   if (count === 0) return null;
@@ -21,6 +23,11 @@ export function PickBar({
     <div className="pickbar" role="status">
       <b>{count}</b> {t('peopleSelected')}
       <button onClick={onUnseat}>{t('unseatSelected')}</button>
+      {onRemove && (
+        <button className="danger" onClick={onRemove}>
+          {t('removeSelectedGuests')}
+        </button>
+      )}
       <button onClick={onClear}>{t('clearSelection')}</button>
     </div>
   );
