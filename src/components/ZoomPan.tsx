@@ -187,12 +187,15 @@ export default function ZoomPan({
   map,
   label,
   small,
+  content,
 }: {
   children?: React.ReactNode;
   /** Draw the hall on a canvas instead of showing `children`; far smoother to zoom on phones and tablets. */
   map?: MapProps | (() => MapProps);
   label: string;
   small?: boolean;
+  /** What the button shows instead of the plain label (the label still names the map for screen readers). */
+  content?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -204,13 +207,14 @@ export default function ZoomPan({
         type="button"
         className={small ? 'btn small zp-open zp-small' : 'btn zp-open'}
         onClick={() => setOpen(true)}
+        aria-label={content ? label : undefined}
       >
         <svg viewBox="0 0 24 24" aria-hidden>
           <path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z" />
           <circle cx="12" cy="9.5" r="2.5" />
         </svg>
-        <span>{label}</span>
-        {!small && <span aria-hidden>⤢</span>}
+        {content ?? <span>{label}</span>}
+        {!small && !content && <span aria-hidden>⤢</span>}
       </button>
       {open &&
         mounted &&

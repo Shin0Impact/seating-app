@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { browserClient } from '@/lib/supabase/browser';
 import { parseLayout, type Layout } from '@/lib/layout';
-import { locate, seatsSummary } from '@/lib/invites';
+import { formatRanges, locate, seatRanges } from '@/lib/invites';
 import { buildFocus } from '@/lib/route';
 import { useS } from './LangProvider';
 import ZoomPan from './ZoomPan';
@@ -288,7 +288,7 @@ export default function HelperDesk({ token }: { token: string }) {
     .filter((r) => r.name && (!needle || r.name.toLowerCase().includes(needle)))
     .sort((a, b) => a.name.localeCompare(b.name));
   const arrived = data.invites.filter((i) => i.checked_in_at).length;
-  const time = savedAt ? new Date(savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+  const time = savedAt ? new Date(savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
 
   return (
     <div className="helper">
@@ -339,19 +339,43 @@ export default function HelperDesk({ token }: { token: string }) {
                     const ids = [i.guest_id, ...i.member_ids];
                     // the walking route is worked out only when the map is opened (it is the slow part)
                     const at = layout ? locate(layout, ids).find((p) => p.tableId) : undefined;
-                    const text =
-                      layout && at
-                        ? seatsSummary(
-                            layout,
-                            ids,
-                            (table, n, chairs) =>
-                              s('tableChairs', { table, word: n === 1 ? s('chairOne') : s('chairMany'), chairs }),
-                            s('andWord'),
-                          )
-                        : '';
+                    // "طاولة 12 · 1-2": the table number in bold, then just the chair numbers
+                    const seats = new Map<string, number[]>();
+                    for (const g of layout?.guests ?? [])
+                      if (ids.includes(g.id) && g.tableId && g.seat !== null)
+                        seats.set(g.tableId, [...(seats.get(g.tableId) ?? []), g.seat + 1]);
+                    const parts = [...seats.entries()].map(([tid, list]) => ({
+                      table: layout?.elements.find((e) => e.id === tid)?.label ?? '',
+                      chairs: formatRanges(seatRanges(list), s('andWord')),
+                    }));
+                    if (parts.length === 0 && at) parts.push({ table: at.table ?? '', chairs: '' });
+                    const text = parts.map((p) => `${p.table}${p.chairs ? ` · ${p.chairs}` : ''}`).join(' | ');
                     return layout && at ? (
                       <ZoomPan
-                        label={text || s('tableOnly', { table: at.table ?? '' })}
+                        label={text}
+                        content={
+                          <span className="hz-where">
+                            {parts.map((p, k) => (
+                              <span key={k} className="hz-part">
+                                <span className="hz-table">
+                                  {p.table
+                                    .split(/(\d+)/)
+                                    .map((bit, j) => (/^\d+$/.test(bit) ? <b key={j}>{bit}</b> : bit))}
+                                </span>
+                                {p.chairs && (
+                                  <span className="hz-dot" aria-hidden>
+                                    ·
+                                  </span>
+                                )}
+                                {p.chairs && (
+                                  <span className="hz-chairs" dir="ltr">
+                                    {p.chairs}
+                                  </span>
+                                )}
+                              </span>
+                            ))}
+                          </span>
+                        }
                         map={() => ({ layout: { ...layout, guests: [] }, focus: buildFocus(layout, ids) })}
                       />
                     ) : (

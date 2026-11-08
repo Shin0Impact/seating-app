@@ -5027,3 +5027,46 @@ input[type='number'] {
   flex: none;
   font-size: 14px;
 }
+
+/* door desk rows: the table button gets the room, both buttons the same size, "طاولة 12 · 1-2" on one line */
+.helper-btns {
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  align-items: stretch;
+}
+.helper-btns .btn {
+  min-height: 52px;
+  padding: 6px 12px;
+  font-size: 16px;
+  line-height: 1.25;
+}
+.helper-btns .zp-open {
+  justify-content: flex-start;
+  gap: 8px;
+}
+.hz-where {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  text-align: start;
+}
+.hz-part {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.hz-table b {
+  font-weight: 800;
+}
+.hz-dot {
+  color: var(--muted);
+}
+.hz-chairs {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+  unicode-bidi: isolate;
+}
