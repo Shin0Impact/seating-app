@@ -5094,3 +5094,10 @@ input[type='number'] {
 .site-bar:has(.helper-slot) .crumbs {
   flex: none;
 }
+/* door desk: guests who already arrived are slightly faded (still tappable) */
+.helper .inv.arrived {
+  opacity: 0.6;
+}
+.helper .inv.arrived:focus-within {
+  opacity: 1;
+}

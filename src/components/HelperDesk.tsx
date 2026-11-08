@@ -345,7 +345,7 @@ export default function HelperDesk({ token }: { token: string }) {
         <>
           <ul className="inv-list">
             {rows.slice(0, 60).map(({ i, name }) => (
-              <li key={i.token} className="inv">
+              <li key={i.token} className={`inv${i.checked_in_at ? ' arrived' : ''}`}>
                 <div className="helper-top">
                   <span className="num-sq">{i.confirmed_count ?? i.party_size}</span>
                   <b>{name}</b>
