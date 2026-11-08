@@ -288,7 +288,9 @@ export default function HelperDesk({ token }: { token: string }) {
     .filter((r) => r.name && (!needle || r.name.toLowerCase().includes(needle)))
     .sort((a, b) => a.name.localeCompare(b.name));
   const arrived = data.invites.filter((i) => i.checked_in_at).length;
-  const time = savedAt ? new Date(savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+  const time = savedAt
+    ? new Date(savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+    : '';
 
   return (
     <div className="helper">
