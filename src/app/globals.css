@@ -5070,3 +5070,27 @@ input[type='number'] {
   font-variant-numeric: tabular-nums;
   unicode-bidi: isolate;
 }
+
+/* door desk: search in the top bar */
+.helper-slot {
+  flex: 1;
+  min-width: 0;
+}
+.helper-slot .helper-search {
+  margin: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+}
+.helper-slot .helper-search input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  padding-inline: 38px 10px;
+  font-size: 16px;
+}
+.site-bar:has(.helper-slot) .crumbs {
+  flex: none;
+}

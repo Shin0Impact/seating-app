@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Icon } from './Icon';
 import { browserClient } from '@/lib/supabase/browser';
 import { parseLayout, type Layout } from '@/lib/layout';
 import { formatRanges, locate, seatRanges } from '@/lib/invites';
@@ -48,6 +50,10 @@ export default function HelperDesk({ token }: { token: string }) {
   const [open, setOpen] = useState<{ token: string; n: number } | null>(null);
   const [walk, setWalk] = useState({ name: '', n: 1 });
   const [msg, setMsg] = useState('');
+
+  // the search sits in the top bar (always in view); typing in it opens the names list
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => setSlot(document.getElementById('helper-search')), []);
 
   const queueRef = useRef<HelperOp[]>([]);
   const setQueue = useCallback(
@@ -292,8 +298,28 @@ export default function HelperDesk({ token }: { token: string }) {
     ? new Date(savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
     : '';
 
+  const search = slot
+    ? createPortal(
+        <label className="search helper-search">
+          <Icon name="search" size={18} />
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              if (e.target.value.trim()) setTab('names');
+            }}
+            placeholder={s('helperSearch')}
+            aria-label={s('helperSearch')}
+          />
+        </label>,
+        slot,
+      )
+    : null;
+
   return (
     <div className="helper">
+      {search}
       <p className="muted">{s('helperArrivedCount', { n: arrived, total: data.invites.length })}</p>
       <p className={`helper-net${reachable ? '' : ' off'}`} role="status">
         <span className="dot" aria-hidden />
@@ -317,13 +343,6 @@ export default function HelperDesk({ token }: { token: string }) {
       {tab === 'scan' && <Scanner check={check} />}
       {tab === 'names' && (
         <>
-          <input
-            className="field-input helper-search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={s('helperSearch')}
-            aria-label={s('helperSearch')}
-          />
           <ul className="inv-list">
             {rows.slice(0, 60).map(({ i, name }) => (
               <li key={i.token} className="inv">

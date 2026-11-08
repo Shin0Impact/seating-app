@@ -16,11 +16,12 @@ export default async function Helper({ params }: { params: Promise<{ token: stri
     <div className="site">
       <header className="site-bar">
         <div className="crumbs">
-          <span className="brand">
+          <span className="brand" title={s('helperDeskTitle')}>
             <Logo />
-            <span className="brand-name">{s('helperDeskTitle')}</span>
           </span>
         </div>
+        {/* the desk puts its search here, so it stays in view while scrolling */}
+        <div id="helper-search" className="helper-slot" />
         <SiteSettings />
       </header>
       <main className="container scan">
