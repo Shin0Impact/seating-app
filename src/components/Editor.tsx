@@ -74,9 +74,19 @@ export type EditorProps = {
   focusGuest?: string;
   /** A newer plan saved on another device (merged with this one); shown as soon as no finger or button is down. */
   incoming?: IncomingPlan | null;
+  /** Called once a plan from another device is on the screen. */
+  onShown?: (seq: number) => void;
 };
 
-export default function Editor({ initial, onChange, leading, account, focusGuest, incoming }: EditorProps = {}) {
+export default function Editor({
+  initial,
+  onChange,
+  leading,
+  account,
+  focusGuest,
+  incoming,
+  onShown,
+}: EditorProps = {}) {
   const { lang } = useLang();
   const t = useCallback((k: Key) => STRINGS[lang][k], [lang]);
   const langRef = useRef(lang);
@@ -90,16 +100,23 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
   const { layout, setLayout, layoutRef, commit, undo, redo, canUndo, canRedo, rebase } = useLayoutHistory();
   const [hydrated, setHydrated] = useState(false);
   const pointerDown = useRef(false);
+  const onShownRef = useRef(onShown);
+  onShownRef.current = onShown;
   useEffect(() => {
     const down = () => (pointerDown.current = true);
     const up = () => (pointerDown.current = false);
     window.addEventListener('pointerdown', down, true);
     window.addEventListener('pointerup', up, true);
     window.addEventListener('pointercancel', up, true);
+    // a mouse drag and drop can end without a pointerup (Safari, Firefox)
+    window.addEventListener('dragend', up, true);
+    window.addEventListener('drop', up, true);
     return () => {
       window.removeEventListener('pointerdown', down, true);
       window.removeEventListener('pointerup', up, true);
       window.removeEventListener('pointercancel', up, true);
+      window.removeEventListener('dragend', up, true);
+      window.removeEventListener('drop', up, true);
     };
   }, []);
   useEffect(() => {
@@ -109,18 +126,15 @@ export default function Editor({ initial, onChange, leading, account, focusGuest
     const apply = () => {
       if (done) return;
       done = true;
-      window.removeEventListener('pointerup', apply, true);
-      window.removeEventListener('pointercancel', apply, true);
+      off();
       rebase(incoming);
+      onShownRef.current?.(incoming.seq);
     };
-    if (pointerDown.current) {
-      window.addEventListener('pointerup', apply, true);
-      window.addEventListener('pointercancel', apply, true);
-    } else apply();
-    return () => {
-      window.removeEventListener('pointerup', apply, true);
-      window.removeEventListener('pointercancel', apply, true);
-    };
+    const ends = ['pointerup', 'pointercancel', 'dragend', 'drop'];
+    const off = () => ends.forEach((t) => window.removeEventListener(t, apply, true));
+    if (pointerDown.current) ends.forEach((t) => window.addEventListener(t, apply, true));
+    else apply();
+    return off;
   }, [incoming, rebase]);
 
   const [view_, setViewTab] = useState<EditorView>('hall');

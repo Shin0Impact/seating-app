@@ -18,7 +18,7 @@ export default function GuestsStep({ id, initial, version }: { id: string; initi
   const t = useCallback((k: keyof typeof STRINGS.ar) => STRINGS[lang][k], [lang]);
   const [layout, setLayout] = useState(initial);
   const [askRemove, setAskRemove] = useState<string | null>(null);
-  const { status, incoming, onChange, saveNow } = useLayoutSync(id, initial, version);
+  const { status, incoming, onChange, saveNow, shown } = useLayoutSync(id, initial, version);
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
 
@@ -38,8 +38,9 @@ export default function GuestsStep({ id, initial, version }: { id: string; initi
     const next = applyIncoming(layoutRef.current, incoming);
     layoutRef.current = next;
     setLayout(next);
+    shown(incoming.seq);
     onChange(next);
-  }, [incoming, onChange]);
+  }, [incoming, onChange, shown]);
 
   const tables = layout.elements.filter((e): e is TableEl => e.kind === 'table');
   const label = { saved: s('saved'), saving: s('saving'), error: s('saveError'), merged: s('syncedOther') }[status];

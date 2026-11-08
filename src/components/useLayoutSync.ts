@@ -36,6 +36,12 @@ export function useLayoutSync(id: string, initial: Layout, version: number) {
   const seq = useRef(0);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressed = useRef(false);
+  /**
+   * A merged plan handed to the screen that the screen has not shown yet (it waits while a finger or the mouse is
+   * down). Until it says so, every plan the screen reports is merged with it, so an edit made on the older screen
+   * cannot save over what the other device did.
+   */
+  const unshown = useRef<IncomingPlan | null>(null);
 
   const flash = useCallback(() => {
     setStatus('merged');
@@ -61,7 +67,9 @@ export function useLayoutSync(id: string, initial: Layout, version: number) {
     baseJson.current = JSON.stringify(theirs);
     current.current = merged;
     dirty.current = merged !== theirs && JSON.stringify(merged) !== baseJson.current;
-    setIncoming({ layout: merged, mineAt: mine, base: prev, theirs, seq: ++seq.current });
+    const inc = { layout: merged, mineAt: mine, base: prev, theirs, seq: ++seq.current };
+    unshown.current = inc;
+    setIncoming(inc);
     flash();
     return true;
   }, [id, flash]);
@@ -85,9 +93,16 @@ export function useLayoutSync(id: string, initial: Layout, version: number) {
     }
     if (!data || data.length === 0) {
       // someone else saved first: take their changes, keep ours on top, and save again
-      await pull();
+      const got = await pull();
       busy.current = false;
-      void flush();
+      if (got) {
+        void flush();
+        return;
+      }
+      // nothing newer either: the save was refused (signed out, or no access any more). Say so, keep the edits
+      // on this screen and try again in a moment instead of hammering the server
+      setStatus('error');
+      timer.current = setTimeout(() => void flush(), 4000);
       return;
     }
     ver.current = data[0].version as number;
@@ -100,7 +115,9 @@ export function useLayoutSync(id: string, initial: Layout, version: number) {
   }, [id, pull]);
 
   const onChange = useCallback(
-    (layout: Layout) => {
+    (screen: Layout) => {
+      const u = unshown.current;
+      const layout = u ? applyIncoming(screen, u) : screen;
       current.current = layout;
       const json = JSON.stringify(layout);
       dirty.current = json !== baseJson.current;
@@ -110,6 +127,11 @@ export function useLayoutSync(id: string, initial: Layout, version: number) {
     },
     [flush],
   );
+
+  /** The screen now shows this merged plan. */
+  const shown = useCallback((s: number) => {
+    if (unshown.current && unshown.current.seq <= s) unshown.current = null;
+  }, []);
 
   /** Save now (before leaving the page). */
   const saveNow = useCallback(async () => {
@@ -125,13 +147,30 @@ export function useLayoutSync(id: string, initial: Layout, version: number) {
       void pull();
     };
     const iv = setInterval(tick, POLL_MS);
-    const vis = () => document.visibilityState === 'visible' && tick();
+    const vis = () => {
+      if (document.visibilityState === 'visible') return tick();
+      // the app is going to the background (phone locked, switched app, tab closed): save right away, a phone may
+      // stop the page before the usual short wait is over
+      if (dirty.current) {
+        if (timer.current) clearTimeout(timer.current);
+        void flush();
+      }
+    };
+    const hide = () => {
+      if (!dirty.current) return;
+      if (timer.current) clearTimeout(timer.current);
+      void flush();
+    };
     const warn = (e: BeforeUnloadEvent) => {
       if (dirty.current || busy.current) e.preventDefault();
     };
     window.addEventListener('pointerdown', down, true);
     window.addEventListener('pointerup', up, true);
     window.addEventListener('pointercancel', up, true);
+    // a mouse drag and drop ends without a pointerup in some browsers
+    window.addEventListener('dragend', up, true);
+    window.addEventListener('drop', up, true);
+    window.addEventListener('pagehide', hide);
     document.addEventListener('visibilitychange', vis);
     window.addEventListener('focus', vis);
     window.addEventListener('beforeunload', warn);
@@ -140,13 +179,16 @@ export function useLayoutSync(id: string, initial: Layout, version: number) {
       window.removeEventListener('pointerdown', down, true);
       window.removeEventListener('pointerup', up, true);
       window.removeEventListener('pointercancel', up, true);
+      window.removeEventListener('dragend', up, true);
+      window.removeEventListener('drop', up, true);
+      window.removeEventListener('pagehide', hide);
       document.removeEventListener('visibilitychange', vis);
       window.removeEventListener('focus', vis);
       window.removeEventListener('beforeunload', warn);
     };
-  }, [pull]);
+  }, [pull, flush]);
 
-  return { status, incoming, onChange, saveNow };
+  return { status, incoming, onChange, saveNow, shown };
 }
 
 /** Bring a merged plan from another device onto the screen without losing an edit made while it was on its way. */

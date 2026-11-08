@@ -6,6 +6,7 @@ import { LangProvider } from '@/components/LangProvider';
 import { getLang } from '@/lib/lang-server';
 import { dirOf } from '@/lib/i18n';
 import PwaRegister from '@/components/PwaRegister';
+import UpdateBanner from '@/components/UpdateBanner';
 import { NativeUi } from '@/components/NativeUi';
 
 export const metadata: Metadata = {
@@ -28,6 +29,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <LangProvider initial={lang}>
           {children}
           <NativeUi />
+          <UpdateBanner />
         </LangProvider>
         <PwaRegister />
       </body>

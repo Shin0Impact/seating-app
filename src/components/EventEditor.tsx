@@ -26,7 +26,7 @@ export default function EventEditor({
 }) {
   const s = useS();
   const router = useRouter();
-  const { status, incoming, onChange } = useLayoutSync(id, initial, version);
+  const { status, incoming, onChange, shown } = useLayoutSync(id, initial, version);
 
   const label = { saved: s('saved'), saving: s('saving'), error: s('saveError'), merged: s('syncedOther') }[status];
   return (
@@ -35,6 +35,7 @@ export default function EventEditor({
       focusGuest={focusGuest}
       onChange={onChange}
       incoming={incoming}
+      onShown={shown}
       account={{ eventId: id, signOut }}
       leading={
         <div className="event-lead">

@@ -16,6 +16,8 @@ const security = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // a release id, so pages left open from an older release can tell (see UpdateBanner)
+  env: { NEXT_PUBLIC_BUILD: process.env.VERCEL_GIT_COMMIT_SHA || String(Date.now()) },
   async headers() {
     return [
       { source: '/:path*', headers: security },
