@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import type { Layout } from '@/lib/layout';
 import { signOut } from '@/app/actions';
 import { useLayoutSync } from './useLayoutSync';
@@ -25,7 +25,6 @@ export default function EventEditor({
   focusGuest?: string;
 }) {
   const s = useS();
-  const router = useRouter();
   const { status, incoming, onChange, shown } = useLayoutSync(id, initial, version);
 
   const label = { saved: s('saved'), saving: s('saving'), error: s('saveError'), merged: s('syncedOther') }[status];
@@ -39,14 +38,11 @@ export default function EventEditor({
       account={{ eventId: id, signOut }}
       leading={
         <div className="event-lead">
-          <button
-            type="button"
-            className="back-link"
-            aria-label={s('backToEventAria')}
-            onClick={() => (window.history.length > 1 ? router.back() : router.push(`/events/${id}`))}
-          >
+          {/* always to this event's page (going "back" in history could land on the guest list, another event or
+              an earlier view of the editor); anything not saved yet is saved on the way out */}
+          <Link className="back-link" href={`/events/${id}`} aria-label={s('backToEventAria')}>
             {s('backToEvent')}
-          </button>
+          </Link>
           <h1>{name}</h1>
           <span className={`save-status ${status}`} role="status">
             {label}

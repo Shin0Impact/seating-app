@@ -7,6 +7,7 @@ import { serverClient } from '@/lib/supabase/server';
 import { getS } from '@/lib/lang-server';
 import { localeOf } from '@/lib/site-i18n';
 import { supabaseConfigured } from '@/lib/supabase/env';
+import { mailLink, whatsappLink } from '@/lib/contact';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +24,7 @@ async function create(form: FormData) {
     .insert({ name, event_date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null, layout: emptyLayout() })
     .select('id')
     .single();
+  if (error?.message?.includes('event_limit')) redirect('/events?limit=1');
   if (error || !data) redirect('/events?error=1');
   redirect(`/events/${data.id}`);
 }
@@ -35,15 +37,16 @@ export async function generateMetadata() {
 export default async function Events({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; deleted?: string; new?: string }>;
+  searchParams: Promise<{ error?: string; deleted?: string; new?: string; limit?: string }>;
 }) {
   if (!supabaseConfigured) redirect('/');
   const q = await searchParams;
   const { lang, s } = await getS();
   const supabase = await serverClient();
-  const [{ data: events }, { data: inv }] = await Promise.all([
+  const [{ data: events }, { data: inv }, { data: max }] = await Promise.all([
     supabase.from('events').select('id,name,event_date,updated_at').order('updated_at', { ascending: false }),
     supabase.from('invites').select('event_id,status,sent_at,party_size'),
+    supabase.rpc('my_event_limit'),
   ]);
   const stat = new Map<string, { families: number; sent: number; yes: number }>();
   for (const r of inv ?? []) {
@@ -58,7 +61,10 @@ export default async function Events({
       ? new Date(d + 'T00:00:00').toLocaleDateString(localeOf(lang), { day: 'numeric', month: 'long', year: 'numeric' })
       : s('noDate');
   const list = events ?? [];
-  const showForm = !!q.new;
+  // one event per account unless the owner gave it more (until the database knows about limits, none applies)
+  const full = typeof max === 'number' && list.length >= max;
+  const showLimit = !!q.limit || (full && !!q.new);
+  const showForm = !!q.new && !showLimit;
   const plus = <span aria-hidden>+</span>;
   return (
     <div className="site">
@@ -82,6 +88,23 @@ export default async function Events({
           <p className="notice err" role="alert">
             {s('createFailed')}
           </p>
+        )}
+        {showLimit && (
+          <section className="card-box limit-card" role="status">
+            <h2>{s('limitTitle')}</h2>
+            <p>{s('limitBody')}</p>
+            <div className="limit-actions">
+              <a className="btn primary" href={whatsappLink(s('limitAsk'))} target="_blank" rel="noopener noreferrer">
+                {s('limitWhatsapp')}
+              </a>
+              <a className="btn" href={mailLink(s('limitSubject'))}>
+                {s('limitEmail')}
+              </a>
+              <Link className="btn" href="/events">
+                {s('cancel')}
+              </Link>
+            </div>
+          </section>
         )}
         {showForm && (
           <form action={create} className="card-box">

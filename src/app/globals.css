@@ -5128,3 +5128,17 @@ input[type='number'] {
   -webkit-user-select: none;
   user-select: none;
 }
+
+/* "one event per account": how to reach the owner for more */
+.limit-card h2 {
+  margin: 0 0 6px;
+}
+.limit-card p {
+  margin: 0 0 14px;
+  line-height: 1.6;
+}
+.limit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}

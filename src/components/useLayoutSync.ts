@@ -176,6 +176,11 @@ export function useLayoutSync(id: string, initial: Layout, version: number) {
     window.addEventListener('beforeunload', warn);
     return () => {
       clearInterval(iv);
+      // leaving the editor inside the app (back button, a link): save what is still waiting
+      if (dirty.current) {
+        if (timer.current) clearTimeout(timer.current);
+        void flush();
+      }
       window.removeEventListener('pointerdown', down, true);
       window.removeEventListener('pointerup', up, true);
       window.removeEventListener('pointercancel', up, true);

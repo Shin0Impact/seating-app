@@ -1,6 +1,6 @@
 # طاولتنا / Our Table
 
-Wedding-hall seating for a planner and their guests. Draw the hall to scale, seat guests at chairs, send each guest a private RSVP link with a QR code, and check people in at the door.
+Event-hall seating for a planner and their guests. Draw the hall to scale, seat guests at chairs, send each guest a private RSVP link with a QR code, and check people in at the door.
 
 Arabic (right-to-left) is the default language; English is one tap away.
 
