@@ -6,6 +6,22 @@ Arabic (right-to-left) is the default language; English is one tap away.
 
 Stack: Next.js 16, React 19, TypeScript, Konva (canvas), Supabase (Postgres, Auth, RLS), deployed on Vercel.
 
+## At a glance
+
+| | |
+|---|---|
+| **What** | Seating planner for event halls: draw the hall to scale, seat guests, send private RSVP links with QR codes, check people in at the door |
+| **Stack** | Next.js 16, React 19, TypeScript, Konva canvas, Supabase (Postgres, Auth, row-level security), Vercel |
+| **Languages** | Arabic (right-to-left, default) and English |
+| **Quality** | Vitest unit tests (layout, CSV import, invites, search, merge, routing), 14 SQL migrations; CI runs typecheck, tests and build on every push and PR |
+
+## Design decisions
+
+- **Guests never get table access.** The RSVP page runs through security-definer database functions, so a guest sees only their own invite, never other guests.
+- **Row-level security per planner.** Each planner can read and write only their own events.
+- **Safe saves.** Saves are debounced and version-checked, so a stale tab cannot overwrite newer work. Daily backups with a restore page.
+- **Works offline.** The editor at `/editor` runs without Supabase, with JSON export and import validated on load.
+
 ## Features
 
 **Hall editor**
